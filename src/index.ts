@@ -5,6 +5,8 @@ export {
   type CreateHealerOptions,
 } from './healer.js';
 export {
+  AUDIT_ATTACHMENT_CONTENT_TYPE,
+  AUDIT_ATTACHMENT_PREFIX,
   AUDIT_SCHEMA_VERSION,
   AUDIT_PROVENANCE_VERSION,
   CompositeAuditSink,
@@ -46,6 +48,7 @@ export {
 export { executePrimaryAction, type PrimaryLocatorProbe } from './classification.js';
 export {
   ArtifactCaptureError,
+  AuditEvidenceError,
   AuditWriteError,
   HealingResultWriteError,
   MissingPrimaryLocatorError,
@@ -55,6 +58,18 @@ export {
   TargetActionNotAllowedError,
   UnknownTargetError,
 } from './errors.js';
+export {
+  AUDIT_EVIDENCE_SUMMARY_SCHEMA_VERSION,
+  auditEventsFromAttachments,
+  canonicalizeAuditEvents,
+  createAuditEvidenceSummary,
+  serializeAuditHistory,
+  writeAuditEvidence,
+  type AuditAttachment,
+  type AuditEvidenceSummary,
+  type AuditEvidenceTargetSummary,
+  type WriteAuditEvidenceOptions,
+} from './evidence.js';
 export {
   DEFAULT_PROPOSAL_MINIMUM_OBSERVATIONS,
   HEALING_PROPOSAL_SCHEMA_URL,

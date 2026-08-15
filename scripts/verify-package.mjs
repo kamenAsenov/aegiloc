@@ -5,9 +5,13 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const expectedRuntimeExports = [
+  'AUDIT_ATTACHMENT_CONTENT_TYPE',
+  'AUDIT_ATTACHMENT_PREFIX',
+  'AUDIT_EVIDENCE_SUMMARY_SCHEMA_VERSION',
   'AUDIT_SCHEMA_VERSION',
   'AUDIT_PROVENANCE_VERSION',
   'ArtifactCaptureError',
+  'AuditEvidenceError',
   'AuditWriteError',
   'CompositeAuditSink',
   'ConsoleHealingResultSink',
@@ -35,7 +39,10 @@ const expectedRuntimeExports = [
   'TargetActionNotAllowedError',
   'UnknownTargetError',
   'assessCandidates',
+  'auditEventsFromAttachments',
+  'canonicalizeAuditEvents',
   'collectCandidates',
+  'createAuditEvidenceSummary',
   'createHealer',
   'createAuditProvenance',
   'createHealingAuditEvent',
@@ -55,8 +62,10 @@ const expectedRuntimeExports = [
   'resolvePrimaryLocator',
   'renderHealingProposalReport',
   'scoreCandidate',
+  'serializeAuditHistory',
   'verifyHealingProposal',
   'verifyHealingProposalBundle',
+  'writeAuditEvidence',
 ];
 
 const publicApi = await import('healwright');
@@ -73,6 +82,9 @@ if (typeof reporterModule.default !== 'function') {
 if (typeof reporterModule.healingStatusLines !== 'function') {
   throw new TypeError('Built reporter subpath does not provide healingStatusLines');
 }
+if (reporterModule.DEFAULT_EVIDENCE_OUTPUT_DIRECTORY !== 'test-results/healwright') {
+  throw new TypeError('Built reporter subpath has an invalid evidence output default');
+}
 
 const packageJson = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
 const artifactPaths = [
@@ -84,10 +96,14 @@ const artifactPaths = [
   packageJson.exports['./reporter'].types,
   packageJson.exports['./registry-schema'],
   packageJson.exports['./proposal-schema'],
+  packageJson.exports['./evidence-summary-schema'],
+  './scripts/verify-evidence.mjs',
   './scripts/propose-heals.mjs',
   './scripts/verify-proposals.mjs',
   './dist/index.js.map',
   './dist/index.d.ts.map',
+  './dist/evidence.js',
+  './dist/evidence.d.ts',
   './dist/proposal-validation.js',
   './dist/proposal-validation.d.ts',
   './dist/reporter.js.map',
@@ -112,6 +128,13 @@ const verifyCliHelp = execFileSync(process.execPath, ['scripts/verify-proposals.
 });
 if (!verifyCliHelp.includes('exits nonzero')) {
   throw new Error('Proposal verification CLI help is missing its failure contract');
+}
+const evidenceCliHelp = execFileSync(process.execPath, ['scripts/verify-evidence.mjs', '--help'], {
+  cwd: repositoryPath,
+  encoding: 'utf8',
+});
+if (!evidenceCliHelp.includes('non-canonical')) {
+  throw new Error('Evidence verification CLI help is missing its canonical-output contract');
 }
 
 function proposalAuditEvents(index) {
@@ -194,13 +217,20 @@ function proposalAuditEvents(index) {
 const cliDirectory = await mkdtemp(join(tmpdir(), 'healwright-package-check-'));
 try {
   const historyPath = join(cliDirectory, 'history.jsonl');
+  const summaryPath = join(cliDirectory, 'summary.json');
   const jsonPath = join(cliDirectory, 'proposals.json');
   const markdownPath = join(cliDirectory, 'proposals.md');
-  const history = [1, 2, 3]
-    .flatMap(proposalAuditEvents)
-    .map((event) => JSON.stringify(event))
-    .join('\n');
-  await writeFile(historyPath, `${history}\n`, 'utf8');
+  const historyEvents = [1, 2, 3].flatMap(proposalAuditEvents);
+  await publicApi.writeAuditEvidence(historyEvents, {
+    historyPath,
+    summaryPath,
+    generatedAt: '2026-08-16T00:00:00.000Z',
+  });
+  const evidenceOutput = execFileSync(
+    process.execPath,
+    ['scripts/verify-evidence.mjs', '--history', historyPath, '--summary', summaryPath],
+    { cwd: repositoryPath, encoding: 'utf8' },
+  );
   const cliOutput = execFileSync(
     process.execPath,
     [
@@ -234,7 +264,8 @@ try {
     bundle.proposals[0]?.status !== 'review-required' ||
     !report.includes('Review required') ||
     !cliOutput.includes('Registry and test source were not modified') ||
-    !verifyOutput.includes('hashes and current registry state are valid')
+    !verifyOutput.includes('hashes and current registry state are valid') ||
+    !evidenceOutput.includes('matching run summary')
   ) {
     throw new Error('Proposal CLI end-to-end verification failed');
   }
@@ -256,10 +287,25 @@ try {
   if (tamperedVerification.status === 0 || !tamperedVerification.stderr.includes('hash-mismatch')) {
     throw new Error('Proposal verification CLI did not reject tampering');
   }
+  const tamperedSummaryPath = join(cliDirectory, 'tampered-summary.json');
+  const tamperedSummary = JSON.parse(await readFile(summaryPath, 'utf8'));
+  tamperedSummary.events.total += 1;
+  await writeFile(tamperedSummaryPath, `${JSON.stringify(tamperedSummary)}\n`, 'utf8');
+  const tamperedEvidenceVerification = spawnSync(
+    process.execPath,
+    ['scripts/verify-evidence.mjs', '--history', historyPath, '--summary', tamperedSummaryPath],
+    { cwd: repositoryPath, encoding: 'utf8' },
+  );
+  if (
+    tamperedEvidenceVerification.status === 0 ||
+    !tamperedEvidenceVerification.stderr.includes('does not match')
+  ) {
+    throw new Error('Evidence verification CLI did not reject a mismatched summary');
+  }
 } finally {
   await rm(cliDirectory, { recursive: true, force: true });
 }
 
 process.stdout.write(
-  `Verified ${expectedRuntimeExports.length} runtime exports, reporter and schema subpaths, proposal generation and verification CLIs end to end, and ${new Set(artifactPaths).size} build artifacts.\n`,
+  `Verified ${expectedRuntimeExports.length} runtime exports, reporter and schema subpaths, evidence and proposal CLIs end to end, and ${new Set(artifactPaths).size} build artifacts.\n`,
 );

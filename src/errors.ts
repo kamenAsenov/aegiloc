@@ -72,3 +72,12 @@ export class ProposalBundleValidationError extends Error {
     this.name = 'ProposalBundleValidationError';
   }
 }
+
+export class AuditEvidenceError extends Error {
+  public constructor(message: string, cause?: unknown) {
+    super(`Invalid Healwright audit evidence: ${message}`, {
+      ...(cause === undefined ? {} : { cause }),
+    });
+    this.name = 'AuditEvidenceError';
+  }
+}

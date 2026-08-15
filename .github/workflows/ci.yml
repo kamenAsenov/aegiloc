@@ -47,8 +47,23 @@ jobs:
       - name: Install Chromium
         run: pnpm exec playwright install --with-deps chromium
 
+      - name: Exercise reporter with parallel workers
+        run: pnpm test:reporter:parallel
+
       - name: Run test suite
         run: pnpm test
+
+      - name: Verify canonical Healwright evidence
+        run: pnpm evidence:verify
+
+      - name: Upload Healwright evidence
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: healwright-evidence
+          path: test-results/healwright/
+          if-no-files-found: warn
+          retention-days: 14
 
       - name: Upload Playwright report
         if: ${{ !cancelled() }}

@@ -10,6 +10,8 @@ import type { HealingMode, PrimaryLocatorDefinition, TargetAction } from './type
 
 export const AUDIT_SCHEMA_VERSION = 1 as const;
 export const AUDIT_PROVENANCE_VERSION = 1 as const;
+export const AUDIT_ATTACHMENT_PREFIX = 'healwright-audit-' as const;
+export const AUDIT_ATTACHMENT_CONTENT_TYPE = 'application/vnd.healwright.audit+json' as const;
 
 export interface AuditProvenanceInput {
   readonly runId: string;
@@ -343,9 +345,9 @@ export class PlaywrightAttachmentAuditSink implements AuditSink {
   public constructor(private readonly testInfo: Pick<TestInfo, 'attach'>) {}
 
   public async write(event: HealwrightAuditEvent): Promise<void> {
-    await this.testInfo.attach(`healwright-${event.eventId}`, {
+    await this.testInfo.attach(`${AUDIT_ATTACHMENT_PREFIX}${event.eventId}`, {
       body: JSON.stringify(event, null, 2),
-      contentType: 'application/json',
+      contentType: AUDIT_ATTACHMENT_CONTENT_TYPE,
     });
   }
 }

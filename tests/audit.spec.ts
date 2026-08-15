@@ -3,6 +3,8 @@ import { readFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
 
 import {
+  AUDIT_ATTACHMENT_CONTENT_TYPE,
+  AUDIT_ATTACHMENT_PREFIX,
   CompositeAuditSink,
   InMemoryAuditSink,
   JsonlAuditSink,
@@ -75,8 +77,8 @@ test('attaches structured JSON through the public Playwright API', async ({
   await sink.write(auditEvent());
 
   expect(testInfo.attachments.at(-1)).toMatchObject({
-    name: 'healwright-event-1',
-    contentType: 'application/json',
+    name: `${AUDIT_ATTACHMENT_PREFIX}event-1`,
+    contentType: AUDIT_ATTACHMENT_CONTENT_TYPE,
   });
 });
 

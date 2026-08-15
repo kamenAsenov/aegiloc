@@ -57,6 +57,7 @@ Healwright takes the narrow path:
 | Typed ESM build with explicit package exports                | Available |
 | Provenance-backed, review-only locator proposals             | Available |
 | Strict proposal parsing, stale-state, and tamper detection   | Available |
+| Parallel-safe reporter aggregation and run summaries         | Available |
 
 ## Quick start
 
@@ -76,26 +77,30 @@ pnpm lint
 pnpm typecheck
 pnpm build
 pnpm package:check
+pnpm test:reporter:parallel
 pnpm test
+pnpm evidence:verify
 ```
 
 Playwright starts the deterministic fixture app automatically at `http://127.0.0.1:4173`.
 
 ## Package contract
 
-The repository remains private and unpublished. `pnpm build` emits ESM, source maps, declarations,
-and declaration maps to the ignored `dist/` directory. The package exposes four intentional
+The package remains marked private and unpublished. `pnpm build` emits ESM, source maps,
+declarations, and declaration maps to the ignored `dist/` directory. The package exposes five intentional
 entry points:
 
 - `healwright` for the public framework API;
 - `healwright/reporter` for the Playwright reporter;
 - `healwright/registry-schema` for the target-registry JSON Schema;
-- `healwright/proposal-schema` for the review-proposal JSON Schema.
+- `healwright/proposal-schema` for the review-proposal JSON Schema;
+- `healwright/evidence-summary-schema` for the run-summary JSON Schema.
 
 `pnpm package:check` compiles an external-style TypeScript consumer, self-imports both JavaScript
-entry points through Node's package resolution, verifies the expected artifacts, and exercises both
-proposal CLIs—including a deliberate tampering failure. `pnpm pack --dry-run --json` additionally
-shows the exact files that would enter a tarball without creating or publishing one.
+entry points through Node's package resolution, verifies the expected artifacts, and exercises the
+evidence and proposal CLIs—including deliberate mismatch and tampering failures. `pnpm pack
+--dry-run --json` additionally shows the exact files that would enter a tarball without creating or
+publishing one.
 
 ## Wrapper API
 
@@ -307,6 +312,29 @@ new value, for example `HEALWRIGHT_RUN_ID="$(uuidgen)" pnpm test:healing`. Falli
 `testInfo.testId` is safe for ordinary auditing, but repeated executions will intentionally not
 count as independent proposal evidence.
 
+For parallel runs, prefer `PlaywrightAttachmentAuditSink`. The Healwright reporter receives those
+typed attachments in Playwright's coordinator process and atomically writes deterministic output:
+
+```text
+test-results/healwright/history.jsonl
+test-results/healwright/summary.json
+```
+
+The summary includes assessment decisions, execution outcomes, target/action counts, successful
+heals, runs, tests, projects, retries, commits, and legacy-event counts. Identical duplicate events
+are deduplicated; conflicting reuse of an event ID, a malformed typed attachment, a missing body, or
+an attachment/event-ID mismatch fails closed. Verify the pair independently with:
+
+```bash
+pnpm evidence:verify
+```
+
+This reporter-level path avoids concurrent workers writing one shared file and remains compatible
+with Playwright's supported custom-reporter and merged-report workflows. Direct `JsonlAuditSink`
+instances remain useful for isolated processes and per-test files. If a default JSONL history is
+already present, the reporter validates and merges it with attached events; malformed history or a
+conflicting event ID fails the run instead of being overwritten.
+
 An audit-write failure is surfaced as `AuditWriteError`; Healwright will not continue toward a
 healed action without its required evidence trail. A pre-action screenshot failure also prevents
 execution. If the replacement itself has an actionability problem, its ordinary Playwright failure
@@ -448,17 +476,20 @@ pnpm test:proposals
 ```text
 .
 ├── fixtures/app/               # Deterministic checkout UI and controlled mutations
+├── CHANGELOG.md                # Versioned release notes and security-relevant changes
 ├── package-tests/              # External-consumer TypeScript contract
 ├── playwright.unit.config.ts   # Fast browser-free policy and scoring tests
-├── registry/                   # Targets plus registry/proposal JSON Schemas
+├── registry/                   # Target, proposal, and evidence-summary JSON Schemas
 ├── scripts/
 │   ├── propose-heals.mjs       # Local review-artifact generator
+│   ├── verify-evidence.mjs     # Canonical history and summary consistency gate
 │   └── verify-proposals.mjs    # Proposal integrity and registry-state gate
 ├── src/
 │   ├── artifacts.ts            # Before/after screenshot capture
 │   ├── candidates.ts           # Public-API live candidate snapshots
 │   ├── audit.ts                # Versioned events and local/Playwright sinks
 │   ├── classification.ts       # Conservative missing-target proof
+│   ├── evidence.ts             # Canonical aggregation, summaries, and atomic output
 │   ├── healer.ts               # Explicit wrapper API
 │   ├── locator.ts              # Primary locator resolution
 │   ├── proposal-validation.ts  # Strict proposal parser and bundle verification
@@ -488,7 +519,7 @@ Healwright will not heal:
 It will not silently rewrite test source or the locator registry. The MVP requires no LLM, API key,
 cloud service, Docker container, database, OCR, or visual AI.
 
-## Roadmap
+## Completed foundation
 
 - [x] Strict Playwright Test + TypeScript foundation
 - [x] Version-controlled semantic target registry
@@ -509,6 +540,10 @@ cloud service, Docker container, database, OCR, or visual AI.
 - [x] Review-only locator proposal workflow with stale/tamper detection
 - [x] Versioned audit provenance and independent-run consensus
 - [x] Strict proposal-bundle verification API and CLI quality gate
+- [x] Parallel-safe reporter aggregation and canonical evidence summaries
+
+The staged plan from reliable evidence through policy governance, cross-browser qualification,
+stronger integrity, and a stable `v1.0` contract is maintained in [`ROADMAP.md`](ROADMAP.md).
 
 ## Limitations
 
@@ -525,5 +560,5 @@ cloud service, Docker container, database, OCR, or visual AI.
   teams must protect and review their evidence source.
 - Guarded execution requires an exact, unique accessible role/name/tag identity; candidates without
   one fail closed even if their weighted score is otherwise high.
-- JSONL appends are local and intentionally simple; cross-machine history aggregation is out of
-  scope for the no-service MVP.
+- Reporter aggregation is local to one Playwright or merged-report process; cross-machine retention
+  and long-term history storage remain the responsibility of CI artifacts or the consuming team.

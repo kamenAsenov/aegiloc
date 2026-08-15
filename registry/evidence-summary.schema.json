@@ -1,0 +1,128 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/kamenAsenov/healwright/registry/evidence-summary.schema.json",
+  "title": "Healwright audit evidence summary",
+  "description": "Deterministic run-level counts and provenance derived from canonical Healwright audit history.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "generatedAt",
+    "events",
+    "decisions",
+    "executions",
+    "provenance",
+    "targets"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "events": {
+      "$ref": "#/$defs/eventCounts"
+    },
+    "decisions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["observed", "eligible", "rejected", "strictCiFailure"],
+      "properties": {
+        "observed": { "$ref": "#/$defs/count" },
+        "eligible": { "$ref": "#/$defs/count" },
+        "rejected": { "$ref": "#/$defs/count" },
+        "strictCiFailure": { "$ref": "#/$defs/count" }
+      }
+    },
+    "executions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["succeeded", "failed", "rejected"],
+      "properties": {
+        "succeeded": { "$ref": "#/$defs/count" },
+        "failed": { "$ref": "#/$defs/count" },
+        "rejected": { "$ref": "#/$defs/count" }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "runIds",
+        "testIds",
+        "projectNames",
+        "retryIndices",
+        "commitShas",
+        "legacyEventCount"
+      ],
+      "properties": {
+        "runIds": { "$ref": "#/$defs/stringSet" },
+        "testIds": { "$ref": "#/$defs/stringSet" },
+        "projectNames": { "$ref": "#/$defs/stringSet" },
+        "retryIndices": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "integer", "minimum": 0 }
+        },
+        "commitShas": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{7,64}$"
+          }
+        },
+        "legacyEventCount": { "$ref": "#/$defs/count" }
+      }
+    },
+    "targets": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/target" }
+    }
+  },
+  "$defs": {
+    "count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "nonEmptyString": {
+      "type": "string",
+      "pattern": "\\S"
+    },
+    "stringSet": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/nonEmptyString" }
+    },
+    "eventCounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["total", "assessments", "executions"],
+      "properties": {
+        "total": { "$ref": "#/$defs/count" },
+        "assessments": { "$ref": "#/$defs/count" },
+        "executions": { "$ref": "#/$defs/count" }
+      }
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "targetKey",
+        "actions",
+        "assessmentCount",
+        "executionCount",
+        "successfulHealingCount"
+      ],
+      "properties": {
+        "targetKey": { "$ref": "#/$defs/nonEmptyString" },
+        "actions": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "enum": ["click", "fill", "check", "selectOption"] }
+        },
+        "assessmentCount": { "$ref": "#/$defs/count" },
+        "executionCount": { "$ref": "#/$defs/count" },
+        "successfulHealingCount": { "$ref": "#/$defs/count" }
+      }
+    }
+  }
+}

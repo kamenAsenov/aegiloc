@@ -5,16 +5,22 @@ import {
   NoopHealingResultSink,
   createHealer,
   createAuditProvenance,
+  createAuditEvidenceSummary,
   generateHealingProposals,
   renderHealingProposalReport,
   parseHealingProposalBundle,
   verifyHealingProposal,
   verifyHealingProposalBundle,
+  writeAuditEvidence,
   type HealwrightAuditEvent,
   type HealingProposal,
   type TargetRegistry,
 } from 'healwright';
-import HealwrightReporter, { healingStatusLines } from 'healwright/reporter';
+import HealwrightReporter, {
+  DEFAULT_EVIDENCE_OUTPUT_DIRECTORY,
+  healingStatusLines,
+  type HealwrightReporterOptions,
+} from 'healwright/reporter';
 
 declare const page: Page;
 
@@ -52,8 +58,19 @@ const target = healer.target('checkout.submit');
 void target.click;
 void HealwrightReporter;
 void healingStatusLines;
+void DEFAULT_EVIDENCE_OUTPUT_DIRECTORY;
+const reporterOptions = {
+  outputDirectory: 'artifacts/healwright',
+} satisfies HealwrightReporterOptions;
+void reporterOptions;
 
 declare const history: readonly HealwrightAuditEvent[];
+const evidenceSummary = createAuditEvidenceSummary(history, '2026-08-16T00:00:00.000Z');
+void evidenceSummary;
+void writeAuditEvidence(history, {
+  historyPath: 'test-results/healwright/history.jsonl',
+  summaryPath: 'test-results/healwright/summary.json',
+});
 const proposalBundle = generateHealingProposals(history, registry, {
   minimumObservations: DEFAULT_PROPOSAL_MINIMUM_OBSERVATIONS,
 });
