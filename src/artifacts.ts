@@ -58,7 +58,7 @@ export class FileScreenshotCapture implements ScreenshotCapture {
     phase,
   }: ScreenshotCaptureOptions): Promise<CapturedScreenshot> {
     await mkdir(this.directory, { recursive: true });
-    const name = `${safeSegment(targetKey)}-${action}-${eventId}-${phase}.png`;
+    const name = `${safeSegment(targetKey)}-${action}-${safeSegment(eventId)}-${phase}.png`;
     const filePath = join(this.directory, name);
     const sensitiveFormControls = this.page.locator(
       [

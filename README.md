@@ -306,12 +306,24 @@ runtime parser agree on safety-sensitive boundaries. Fast-check exercises scorin
 invariants with the fixed seed `20260815`, making every failure reproducible. GitHub Actions installs
 Chromium, runs every static gate and test, and uploads the Playwright HTML report.
 
+An additional 50-test contract layer covers the less obvious failure surfaces that matter for safe
+healing:
+
+| Contract area            | Coverage                                                                  |
+| ------------------------ | ------------------------------------------------------------------------- |
+| Locator resolution       | Exact/partial semantics, all five locator types, live DOM re-resolution   |
+| Registry validation      | Malformed roots, versions, extra data, roles, geometry, and action policy |
+| Scoring boundaries       | Normalization, absent signals, context, geometry, reweighting, thresholds |
+| Candidate collection     | Visibility, bounded data, attribute privacy, action compatibility         |
+| Runtime safety and audit | Drift proof, fail-closed sinks, artifact naming/masking, result metadata  |
+
 Useful focused commands:
 
 ```bash
 pnpm test:registry
 pnpm test:registry:parity
 pnpm test:classification
+pnpm test:expanded
 pnpm test:audit
 pnpm test:modes
 pnpm test:modes:browser

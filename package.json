@@ -18,6 +18,7 @@
     "test:baseline": "playwright test tests/baseline.spec.ts",
     "test:candidates": "playwright test tests/candidate-collection.spec.ts",
     "test:classification": "playwright test --config=playwright.unit.config.ts tests/classification.spec.ts",
+    "test:expanded": "playwright test tests/locator-contracts.spec.ts tests/registry-validation.expanded.spec.ts tests/scoring-boundaries.expanded.spec.ts tests/candidate-contracts.spec.ts tests/safety-contracts.expanded.spec.ts",
     "test:healing": "playwright test tests/healing.browser.spec.ts",
     "test:healing:adversarial": "playwright test tests/healing-adversarial.browser.spec.ts",
     "test:missing": "playwright test tests/missing-classification.spec.ts",
@@ -29,7 +30,7 @@
     "test:reporter": "playwright test --config=playwright.unit.config.ts tests/reporter.spec.ts",
     "test:scoring": "playwright test --config=playwright.unit.config.ts tests/scoring.spec.ts",
     "test:scoring:property": "playwright test --config=playwright.unit.config.ts tests/scoring.property.spec.ts",
-    "test:unit": "playwright test --config=playwright.unit.config.ts tests/audit.spec.ts tests/classification.spec.ts tests/modes.spec.ts tests/registry.spec.ts tests/registry-schema-parity.spec.ts tests/reporter.spec.ts tests/scoring.spec.ts tests/scoring.property.spec.ts"
+    "test:unit": "playwright test --config=playwright.unit.config.ts tests/audit.spec.ts tests/classification.spec.ts tests/modes.spec.ts tests/registry.spec.ts tests/registry-schema-parity.spec.ts tests/registry-validation.expanded.spec.ts tests/reporter.spec.ts tests/safety-contracts.expanded.spec.ts tests/scoring.spec.ts tests/scoring.property.spec.ts tests/scoring-boundaries.expanded.spec.ts"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
