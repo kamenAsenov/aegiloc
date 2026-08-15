@@ -15,12 +15,14 @@
       "types": "./dist/reporter.d.ts",
       "import": "./dist/reporter.js"
     },
-    "./registry-schema": "./registry/targets.schema.json"
+    "./registry-schema": "./registry/targets.schema.json",
+    "./proposal-schema": "./registry/healing-proposals.schema.json"
   },
   "files": [
     "dist",
     "src",
-    "registry/targets.schema.json",
+    "registry/*.schema.json",
+    "scripts/propose-heals.mjs",
     "README.md"
   ],
   "sideEffects": false,
@@ -35,6 +37,7 @@
     "lint": "eslint .",
     "package:check": "tsc -p tsconfig.package-test.json && node scripts/verify-package.mjs",
     "prepack": "pnpm build && pnpm package:check",
+    "proposal:generate": "pnpm build && node scripts/propose-heals.mjs",
     "typecheck": "tsc --noEmit",
     "test": "playwright test",
     "test:audit": "playwright test --config=playwright.unit.config.ts tests/audit.spec.ts",
@@ -48,12 +51,13 @@
     "test:modes": "playwright test --config=playwright.unit.config.ts tests/modes.spec.ts",
     "test:modes:browser": "playwright test tests/modes.browser.spec.ts",
     "test:primary": "playwright test tests/primary-wrapper.spec.ts",
+    "test:proposals": "playwright test --config=playwright.unit.config.ts tests/proposals.spec.ts",
     "test:registry": "playwright test --config=playwright.unit.config.ts tests/registry.spec.ts",
     "test:registry:parity": "playwright test --config=playwright.unit.config.ts tests/registry-schema-parity.spec.ts",
     "test:reporter": "playwright test --config=playwright.unit.config.ts tests/reporter.spec.ts",
     "test:scoring": "playwright test --config=playwright.unit.config.ts tests/scoring.spec.ts",
     "test:scoring:property": "playwright test --config=playwright.unit.config.ts tests/scoring.property.spec.ts",
-    "test:unit": "playwright test --config=playwright.unit.config.ts tests/audit.spec.ts tests/classification.spec.ts tests/modes.spec.ts tests/registry.spec.ts tests/registry-schema-parity.spec.ts tests/registry-validation.expanded.spec.ts tests/reporter.spec.ts tests/safety-contracts.expanded.spec.ts tests/scoring.spec.ts tests/scoring.property.spec.ts tests/scoring-boundaries.expanded.spec.ts"
+    "test:unit": "playwright test --config=playwright.unit.config.ts tests/audit.spec.ts tests/classification.spec.ts tests/modes.spec.ts tests/proposals.spec.ts tests/registry.spec.ts tests/registry-schema-parity.spec.ts tests/registry-validation.expanded.spec.ts tests/reporter.spec.ts tests/safety-contracts.expanded.spec.ts tests/scoring.spec.ts tests/scoring.property.spec.ts tests/scoring-boundaries.expanded.spec.ts"
   },
   "peerDependencies": {
     "@playwright/test": ">=1.50.0 <2"

@@ -1,0 +1,162 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/kamenAsenov/healwright/registry/healing-proposals.schema.json",
+  "title": "Healwright locator proposal bundle",
+  "description": "Human-reviewable locator suggestions derived from successful guarded healing audit chains.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schemaVersion",
+    "generatedAt",
+    "minimumObservations",
+    "proposals",
+    "rejections"
+  ],
+  "properties": {
+    "$schema": {
+      "const": "https://github.com/kamenAsenov/healwright/registry/healing-proposals.schema.json"
+    },
+    "schemaVersion": { "const": 1 },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "minimumObservations": { "type": "integer", "minimum": 2 },
+    "proposals": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/proposal" }
+    },
+    "rejections": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/rejection" }
+    }
+  },
+  "$defs": {
+    "nonEmptyString": {
+      "type": "string",
+      "pattern": "\\S"
+    },
+    "probability": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "stringSet": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/nonEmptyString" }
+    },
+    "proposal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "proposalId",
+        "status",
+        "targetKey",
+        "action",
+        "targetDefinitionHash",
+        "currentPrimary",
+        "suggestedPrimary",
+        "candidate",
+        "evidence"
+      ],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "proposalId": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "status": { "const": "review-required" },
+        "targetKey": { "$ref": "#/$defs/nonEmptyString" },
+        "action": { "$ref": "#/$defs/action" },
+        "targetDefinitionHash": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "currentPrimary": {
+          "$ref": "targets.schema.json#/$defs/primary"
+        },
+        "suggestedPrimary": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "role", "name", "exact"],
+          "properties": {
+            "type": { "const": "role" },
+            "role": {
+              "$ref": "targets.schema.json#/$defs/ariaRole"
+            },
+            "name": { "$ref": "#/$defs/nonEmptyString" },
+            "exact": { "const": true }
+          }
+        },
+        "candidate": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["role", "accessibleName", "tag"],
+          "properties": {
+            "role": {
+              "$ref": "targets.schema.json#/$defs/ariaRole"
+            },
+            "accessibleName": { "$ref": "#/$defs/nonEmptyString" },
+            "tag": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]*$"
+            }
+          }
+        },
+        "evidence": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "occurrenceCount",
+            "candidateIds",
+            "assessmentEventIds",
+            "executionEventIds",
+            "screenshotPaths",
+            "firstSeen",
+            "lastSeen",
+            "minimumScore",
+            "maximumScore",
+            "minimumMargin"
+          ],
+          "properties": {
+            "occurrenceCount": { "type": "integer", "minimum": 2 },
+            "candidateIds": { "$ref": "#/$defs/stringSet" },
+            "assessmentEventIds": { "$ref": "#/$defs/stringSet" },
+            "executionEventIds": { "$ref": "#/$defs/stringSet" },
+            "screenshotPaths": { "$ref": "#/$defs/stringSet" },
+            "firstSeen": { "type": "string", "format": "date-time" },
+            "lastSeen": { "type": "string", "format": "date-time" },
+            "minimumScore": { "$ref": "#/$defs/probability" },
+            "maximumScore": { "$ref": "#/$defs/probability" },
+            "minimumMargin": { "$ref": "#/$defs/probability" }
+          }
+        }
+      }
+    },
+    "rejection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["targetKey", "action", "reason", "occurrenceCount"],
+      "properties": {
+        "targetKey": { "$ref": "#/$defs/nonEmptyString" },
+        "action": { "$ref": "#/$defs/action" },
+        "reason": {
+          "enum": [
+            "insufficient-evidence",
+            "conflicting-candidates",
+            "inconsistent-audit-chain",
+            "stale-primary",
+            "stale-policy",
+            "unknown-target",
+            "unsupported-candidate",
+            "already-current"
+          ]
+        },
+        "occurrenceCount": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "action": {
+      "enum": ["click", "fill", "check", "selectOption"]
+    }
+  }
+}

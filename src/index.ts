@@ -43,9 +43,27 @@ export {
   HealingResultWriteError,
   MissingPrimaryLocatorError,
   RegistryValidationError,
+  ProposalHistoryError,
   TargetActionNotAllowedError,
   UnknownTargetError,
 } from './errors.js';
+export {
+  DEFAULT_PROPOSAL_MINIMUM_OBSERVATIONS,
+  HEALING_PROPOSAL_SCHEMA_URL,
+  HEALING_PROPOSAL_SCHEMA_VERSION,
+  generateHealingProposals,
+  loadAuditHistory,
+  parseAuditHistory,
+  renderHealingProposalReport,
+  verifyHealingProposal,
+  type GenerateHealingProposalOptions,
+  type HealingProposal,
+  type HealingProposalBundle,
+  type HealingProposalEvidence,
+  type HealingProposalRejection,
+  type HealingProposalRejectionReason,
+  type HealingProposalVerification,
+} from './proposals.js';
 export {
   ConsoleHealingResultSink,
   InMemoryHealingResultSink,

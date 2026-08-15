@@ -54,3 +54,12 @@ export class HealingResultWriteError extends Error {
     this.name = 'HealingResultWriteError';
   }
 }
+
+export class ProposalHistoryError extends Error {
+  public constructor(line: number, message: string, cause?: unknown) {
+    super(`Invalid Healwright history at line ${line}: ${message}`, {
+      ...(cause === undefined ? {} : { cause }),
+    });
+    this.name = 'ProposalHistoryError';
+  }
+}

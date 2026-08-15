@@ -1,8 +1,14 @@
 import type { Page } from '@playwright/test';
 import {
+  DEFAULT_PROPOSAL_MINIMUM_OBSERVATIONS,
   InMemoryAuditSink,
   NoopHealingResultSink,
   createHealer,
+  generateHealingProposals,
+  renderHealingProposalReport,
+  verifyHealingProposal,
+  type HealwrightAuditEvent,
+  type HealingProposal,
   type TargetRegistry,
 } from 'healwright';
 import HealwrightReporter, { healingStatusLines } from 'healwright/reporter';
@@ -37,3 +43,13 @@ const target = healer.target('checkout.submit');
 void target.click;
 void HealwrightReporter;
 void healingStatusLines;
+
+declare const history: readonly HealwrightAuditEvent[];
+const proposalBundle = generateHealingProposals(history, registry, {
+  minimumObservations: DEFAULT_PROPOSAL_MINIMUM_OBSERVATIONS,
+});
+const proposal: HealingProposal | undefined = proposalBundle.proposals[0];
+void renderHealingProposalReport(proposalBundle);
+if (proposal !== undefined) {
+  void verifyHealingProposal(proposal, registry);
+}

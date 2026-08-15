@@ -55,6 +55,7 @@ Healwright takes the narrow path:
 | Visible `PASSED_WITH_HEALING` result decoration              | Available |
 | Guarded replacement execution with second-pass revalidation  | Available |
 | Typed ESM build with explicit package exports                | Available |
+| Review-only locator proposals with integrity verification    | Available |
 
 ## Quick start
 
@@ -82,12 +83,13 @@ Playwright starts the deterministic fixture app automatically at `http://127.0.0
 ## Package contract
 
 The repository remains private and unpublished. `pnpm build` emits ESM, source maps, declarations,
-and declaration maps to the ignored `dist/` directory. The package exposes only three intentional
+and declaration maps to the ignored `dist/` directory. The package exposes four intentional
 entry points:
 
 - `healwright` for the public framework API;
 - `healwright/reporter` for the Playwright reporter;
-- `healwright/registry-schema` for the versioned JSON Schema.
+- `healwright/registry-schema` for the target-registry JSON Schema;
+- `healwright/proposal-schema` for the review-proposal JSON Schema.
 
 `pnpm package:check` compiles an external-style TypeScript consumer, self-imports both JavaScript
 entry points through Node's package resolution, and verifies the expected artifacts. `pnpm pack
@@ -283,6 +285,42 @@ healed action without its required evidence trail. A pre-action screenshot failu
 execution. If the replacement itself has an actionability problem, its ordinary Playwright failure
 is preserved and no passing marker is emitted.
 
+## Reviewable locator proposals
+
+Successful healing is evidence, not permission to edit code. Healwright can aggregate local JSONL
+history into a versioned JSON proposal bundle and a readable Markdown report:
+
+```bash
+pnpm proposal:generate -- \
+  --history test-results/healwright/history.jsonl \
+  --registry registry/targets.json \
+  --json test-results/healwright/proposals.json \
+  --markdown test-results/healwright/proposals.md
+```
+
+The command defaults to those paths and requires three distinct successful audit chains for the
+same target, action, and exact accessible role/name identity. Each chain must connect an eligible
+assessment to its successful guarded execution. Reused events, orphaned executions, unsupported
+roles, missing screenshot phases, disabled or changed policies, no-longer-allowed actions, stale
+primary locators, and conflicting candidates all fail closed.
+
+Every proposal contains:
+
+- the current primary locator and a suggested exact role locator;
+- minimum and maximum observed scores plus the minimum runner-up margin;
+- assessment, execution, candidate, and screenshot references;
+- a target-definition digest that makes later fingerprint or policy changes stale;
+- a deterministic SHA-256 proposal ID covering all review-sensitive content;
+- an explicit `review-required` status.
+
+The generator verifies each proposal against the current registry immediately before writing. The
+public `verifyHealingProposal()` API detects later content tampering and registry drift. Output
+paths are also prevented from overwriting the input history or registry.
+
+> [!CAUTION]
+> Proposal generation never changes `registry/targets.json`, test source, or application code. A
+> human must inspect the evidence and make any registry change as a normal reviewed code edit.
+
 ## Visible healed results
 
 The default console result sink prints `PASSED_WITH_HEALING`. For richer evidence,
@@ -361,6 +399,7 @@ pnpm test:candidates
 pnpm test:scoring
 pnpm test:scoring:property
 pnpm test:primary
+pnpm test:proposals
 ```
 
 ## Project structure
@@ -370,7 +409,8 @@ pnpm test:primary
 ├── fixtures/app/               # Deterministic checkout UI and controlled mutations
 ├── package-tests/              # External-consumer TypeScript contract
 ├── playwright.unit.config.ts   # Fast browser-free policy and scoring tests
-├── registry/                   # Versioned targets and JSON Schema
+├── registry/                   # Targets plus registry/proposal JSON Schemas
+├── scripts/propose-heals.mjs   # Local review-artifact generator
 ├── src/
 │   ├── artifacts.ts            # Before/after screenshot capture
 │   ├── candidates.ts           # Public-API live candidate snapshots
@@ -378,6 +418,7 @@ pnpm test:primary
 │   ├── classification.ts       # Conservative missing-target proof
 │   ├── healer.ts               # Explicit wrapper API
 │   ├── locator.ts              # Primary locator resolution
+│   ├── proposals.ts            # Consensus, integrity checks, and Markdown reports
 │   ├── reporter.ts             # Visible PASSED_WITH_HEALING output
 │   ├── result.ts               # Playwright annotations and attachments
 │   ├── registry.ts             # Strict runtime registry validation
@@ -421,6 +462,7 @@ cloud service, Docker container, database, OCR, or visual AI.
 - [x] JSON Schema/runtime-validator parity tests with Ajv
 - [x] Seeded property-based scoring invariants
 - [x] Typed ESM distribution build and package export verification
+- [x] Review-only locator proposal workflow with stale/tamper detection
 
 ## Limitations
 
@@ -428,7 +470,9 @@ cloud service, Docker container, database, OCR, or visual AI.
 - The package is intentionally private and has not been published to a registry.
 - Candidate collection currently targets common interactive HTML and ARIA patterns.
 - Accessible identity is read from Playwright's public ARIA snapshot representation.
-- Fingerprints are maintained manually; there is no recorder or approval workflow yet.
+- Fingerprints and registry changes remain manual; proposals intentionally have no auto-apply path.
+- Proposal hashes detect changes after generation but do not authenticate the local JSONL history;
+  teams must protect and review their evidence source.
 - Guarded execution requires an exact, unique accessible role/name/tag identity; candidates without
   one fail closed even if their weighted score is otherwise high.
 - JSONL appends are local and intentionally simple; cross-machine history aggregation is out of
