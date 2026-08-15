@@ -20,3 +20,16 @@ export class TargetActionNotAllowedError extends Error {
     this.name = 'TargetActionNotAllowedError';
   }
 }
+
+export class MissingPrimaryLocatorError extends Error {
+  public constructor(
+    public readonly targetKey: string,
+    public readonly action: TargetAction,
+    cause: unknown,
+  ) {
+    super(`Primary locator is genuinely missing for target "${targetKey}" during "${action}"`, {
+      cause,
+    });
+    this.name = 'MissingPrimaryLocatorError';
+  }
+}

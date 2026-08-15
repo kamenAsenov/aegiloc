@@ -10,9 +10,10 @@ await healer.target('checkout.placeOrder').click();
 The framework will try a version-controlled primary locator first and consider a replacement only
 when the target is genuinely missing. A false-positive heal is treated as worse than a failed heal.
 
-> **Current status:** primary-locator wrapper. The deterministic fixture can be driven through the
-> explicit target API, backed by a runtime-validated JSON registry. No healing behavior is
-> implemented yet; a missing primary locator still fails normally.
+> **Current status:** conservative missing-target classification. The deterministic fixture can be
+> driven through the explicit target API, backed by a runtime-validated JSON registry. Genuine
+> absence is distinguished from actionability and waiting failures, but no healing behavior is
+> implemented yet.
 
 ## Foundation demo
 
@@ -39,6 +40,13 @@ await healer.target('checkout.placeOrder').click();
 The registry supports role, label, test-id, text, and CSS primary locators. Every target also stores
 its semantic description, fingerprint, allowed actions, confidence threshold, and minimum score
 margin. Those healing fields are validated but intentionally unused in this stage.
+
+Primary actions use a two-second classification timeout by default, configurable through
+`primaryActionTimeoutMs` or an individual action's Playwright `timeout` option. Healwright reports a
+`MissingPrimaryLocatorError` only when the action times out, the locator was never observed attached
+during that attempt, and the locator still resolves to zero elements afterward. If the locator was
+disabled, hidden, ambiguous, temporarily delayed, or detached after being observed, the original
+Playwright result is preserved.
 
 Run all local quality gates:
 
@@ -79,9 +87,9 @@ source or the locator registry. Low-confidence and ambiguous matches will fail.
 
 ## Current limitations
 
-- Candidate collection, scoring, missing-target classification, audit history, and custom result
-  reporting are not implemented yet.
+- Candidate collection, scoring, audit history, healing modes, and custom result reporting are not
+  implemented yet.
 - Healing policy values are stored and validated but are not executed; only primary locators run.
-- The fixture currently models only the stable baseline state; controlled mutations and adversarial
-  cases will be added alongside healing behavior.
+- The fixture currently includes missing, delayed, disabled, duplicated, and detached target
+  mutations; candidate-similarity mutations will be added alongside scoring.
 - Only Chromium is configured.

@@ -1,5 +1,7 @@
 export { createHealer, Healer, type CreateHealerOptions } from './healer.js';
+export { executePrimaryAction, type PrimaryLocatorProbe } from './classification.js';
 export {
+  MissingPrimaryLocatorError,
   RegistryValidationError,
   TargetActionNotAllowedError,
   UnknownTargetError,
