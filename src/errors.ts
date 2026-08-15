@@ -40,3 +40,17 @@ export class AuditWriteError extends Error {
     this.name = 'AuditWriteError';
   }
 }
+
+export class ArtifactCaptureError extends Error {
+  public constructor(targetKey: string, cause: unknown) {
+    super(`Failed to capture Healwright artifact for target "${targetKey}"`, { cause });
+    this.name = 'ArtifactCaptureError';
+  }
+}
+
+export class HealingResultWriteError extends Error {
+  public constructor(targetKey: string, cause: unknown) {
+    super(`Failed to record healed result for target "${targetKey}"`, { cause });
+    this.name = 'HealingResultWriteError';
+  }
+}

@@ -1,6 +1,6 @@
 import type { Locator, Page } from '@playwright/test';
 
-import type { TargetAction, TargetGeometry } from './types.js';
+import type { AriaRole, TargetAction, TargetGeometry } from './types.js';
 
 const ACTION_SELECTORS: Readonly<Record<TargetAction, string>> = {
   click: [
@@ -229,4 +229,34 @@ export async function collectCandidates(
   }
 
   return snapshots;
+}
+
+export async function resolveUniqueCandidateLocator(
+  page: Page,
+  candidate: CandidateSnapshot,
+): Promise<Locator | undefined> {
+  if (
+    candidate.role === undefined ||
+    candidate.accessibleName === undefined ||
+    !/^[a-z][a-z0-9-]*$/.test(candidate.tag)
+  ) {
+    return undefined;
+  }
+
+  try {
+    let locator = page
+      .getByRole(candidate.role as AriaRole, {
+        name: candidate.accessibleName,
+        exact: true,
+      })
+      .and(page.locator(candidate.tag));
+    const testId = candidate.stableAttributes['data-testid'];
+    if (testId !== undefined) {
+      locator = locator.and(page.getByTestId(testId));
+    }
+
+    return (await locator.count()) === 1 ? locator : undefined;
+  } catch {
+    return undefined;
+  }
 }

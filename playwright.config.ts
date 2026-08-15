@@ -6,7 +6,9 @@ export default defineConfig({
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 2 : 0,
   ...(process.env.CI ? { workers: 1 } : {}),
-  reporter: process.env.CI ? [['line'], ['html', { open: 'never' }]] : 'line',
+  reporter: process.env.CI
+    ? [['line'], ['./src/reporter.ts'], ['html', { open: 'never' }]]
+    : [['line'], ['./src/reporter.ts'], ['html', { open: 'never' }]],
   use: {
     baseURL: 'http://127.0.0.1:4173',
     screenshot: 'only-on-failure',

@@ -40,7 +40,6 @@ test('off mode runs only the primary action and emits no audit event', async ({ 
 
 const assessedModes: readonly [HealingMode, AuditModeDecision][] = [
   ['observe', 'observed'],
-  ['guarded', 'eligible'],
   ['strict-ci', 'strict-ci-failure'],
 ];
 

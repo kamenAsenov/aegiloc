@@ -16,10 +16,9 @@ The design optimizes for the failure mode that matters most: **a false-positive 
 failed heal**.
 
 > [!IMPORTANT]
-> Automatic healed actions are not enabled yet. The current implementation provides validated
-> target registries, primary-only actions, conservative missing-target classification, live
-> candidate collection, and deterministic ranking. It does not silently change source files or the
-> locator registry.
+> Automatic healed actions run only in `guarded` mode, after two independent candidate collections
+> agree, policy thresholds pass twice, and the winner resolves through one unique accessible
+> identity. Healwright never silently changes source files or the locator registry.
 
 ## Why this project exists
 
@@ -40,20 +39,21 @@ Healwright takes the narrow path:
 
 ## Current capabilities
 
-| Capability                                                   | Status                   |
-| ------------------------------------------------------------ | ------------------------ |
-| Strict TypeScript and Chromium-first Playwright Test setup   | Available                |
-| JSON registry with runtime validation and JSON Schema        | Available                |
-| Role, label, test-id, text, and CSS primary locators         | Available                |
-| `click`, `fill`, `check`, and `selectOption` wrapper actions | Available                |
-| Conservative missing-target classification                   | Available                |
-| Live action-compatible candidate collection                  | Available                |
-| Deterministic weighted scoring and ranked details            | Available                |
-| Confidence threshold and runner-up margin assessment         | Available                |
-| `off`, `observe`, `guarded`, and `strict-ci` modes           | Available                |
-| Versioned JSON events, JSONL history, and report attachments | Available                |
-| Screenshots and `PASSED_WITH_HEALING` result decoration      | Planned                  |
-| Executing a replacement candidate                            | Deliberately not enabled |
+| Capability                                                   | Status    |
+| ------------------------------------------------------------ | --------- |
+| Strict TypeScript and Chromium-first Playwright Test setup   | Available |
+| JSON registry with runtime validation and JSON Schema        | Available |
+| Role, label, test-id, text, and CSS primary locators         | Available |
+| `click`, `fill`, `check`, and `selectOption` wrapper actions | Available |
+| Conservative missing-target classification                   | Available |
+| Live action-compatible candidate collection                  | Available |
+| Deterministic weighted scoring and ranked details            | Available |
+| Confidence threshold and runner-up margin assessment         | Available |
+| `off`, `observe`, `guarded`, and `strict-ci` modes           | Available |
+| Versioned JSON events, JSONL history, and report attachments | Available |
+| Before/after screenshots and report attachments              | Available |
+| Visible `PASSED_WITH_HEALING` result decoration              | Available |
+| Guarded replacement execution with second-pass revalidation  | Available |
 
 ## Quick start
 
@@ -79,7 +79,12 @@ Playwright starts the deterministic fixture app automatically at `http://127.0.0
 ## Wrapper API
 
 ```ts
-import { createHealer, loadTargetRegistry } from './src/index.js';
+import {
+  FileScreenshotCapture,
+  PlaywrightHealingResultSink,
+  createHealer,
+  loadTargetRegistry,
+} from './src/index.js';
 
 const registry = await loadTargetRegistry(new URL('./registry/targets.json', import.meta.url));
 const healer = createHealer({
@@ -87,6 +92,8 @@ const healer = createHealer({
   registry,
   mode: 'guarded',
   primaryActionTimeoutMs: 2_000,
+  screenshotCapture: new FileScreenshotCapture(page, testInfo.outputPath('healwright-screenshots')),
+  resultSink: new PlaywrightHealingResultSink(testInfo),
 });
 
 await healer.target('checkout.cardholderName').fill('Ada Lovelace');
@@ -100,15 +107,17 @@ part of the wrapper and are never eligible for healing.
 
 ## Runtime modes
 
-| Mode        | Missing-locator behavior                                                                                       |
-| ----------- | -------------------------------------------------------------------------------------------------------------- |
-| `off`       | Runs only the primary Playwright action; no classification, collection, or audit event                         |
-| `observe`   | Classifies, ranks, and audits candidates, then preserves the missing-primary failure                           |
-| `guarded`   | Applies policy thresholds, records `eligible` or `rejected`, and currently fails without executing a candidate |
-| `strict-ci` | Ranks for diagnostics but always records a strict CI failure decision                                          |
+| Mode        | Missing-locator behavior                                                                             |
+| ----------- | ---------------------------------------------------------------------------------------------------- |
+| `off`       | Runs only the primary Playwright action; no classification, collection, or audit event               |
+| `observe`   | Classifies, ranks, and audits candidates, then preserves the missing-primary failure                 |
+| `guarded`   | Executes only after the candidate passes policy twice and resolves to one unique accessible identity |
+| `strict-ci` | Ranks for diagnostics but always records a strict CI failure decision                                |
 
-`guarded` is the default. Candidate execution remains disabled in every mode during the current
-stage, including when the audit decision is `eligible`.
+`guarded` is the default. A first-pass `eligible` decision is necessary but never sufficient to
+execute: Healwright recollects and reranks the live page, requires the same winner and safe margin,
+then resolves that candidate through an exact accessible role, name, and tag. A candidate test-id is
+also included when one exists. The resulting locator must match exactly one element.
 
 ## Target registry
 
@@ -146,8 +155,7 @@ actions, malformed fingerprints, and unsafe policy values.
 }
 ```
 
-Registry policy values are validated and used for ranking assessment, but a positive assessment does
-not yet execute the candidate.
+Registry policy values are validated and enforced during both assessment passes.
 
 ## Safety pipeline
 
@@ -162,8 +170,13 @@ flowchart LR
   C --> S["Deterministic weighted scoring"]
   S --> G{"Threshold and safe margin?"}
   G -->|"no"| SF["Fail closed"]
-  G -->|"yes, current stage"| RO["Audit eligible decision, then fail safely"]
-  G -.->|"future guarded mode"| H["Healed action + audit artifacts"]
+  G -->|"yes"| A["Write assessment audit"]
+  A --> V{"Fresh collection: same unique winner?"}
+  V -->|"no"| SF
+  V -->|"yes"| B["Before screenshot"]
+  B --> H["Execute original action on candidate"]
+  H --> E["After screenshot + execution audit"]
+  E --> PW["PASSED_WITH_HEALING"]
 ```
 
 ### Missing means genuinely missing
@@ -208,16 +221,19 @@ console.log(assessment.reason, assessment.margin, ranked[0]?.details);
 ```
 
 Possible assessment reasons are `eligible`, `disabled`, `no-candidates`, `low-confidence`, and
-`ambiguous`. `eligible` means the evidence passed the policy—it does not currently authorize an
-action.
+`ambiguous`. `eligible` means the first evidence pass cleared policy; execution still requires the
+same result from the immediate second pass and a unique accessible locator.
 
 ## Audit events and history
 
-Every assessed drift produces a versioned `locator-drift-assessed` JSON event. Events include the
-mode, semantic target, action, primary locator definition, sanitized failure category, collection
-status, threshold and margin decision, and ranked per-signal candidate details. Action values such
-as filled text are never serialized, raw error messages are omitted, and collected URL attributes
-are reduced to paths.
+Every assessed drift produces a versioned `locator-drift-assessed` JSON event before guarded
+execution can begin. A guarded decision then produces `locator-heal-execution` with `succeeded`,
+`failed`, or `rejected`, a reason, its parent assessment ID, and screenshot references. Events
+include the mode, semantic target, action, sanitized failure category, collection status, threshold
+and margin decision, and ranked per-signal candidate details. Action values such as filled text are
+never serialized, raw error messages are omitted, absolute screenshot paths are not audited, and
+collected URL attributes are reduced to paths. Text-like form controls are masked in screenshots by
+default so filled values do not become visual artifacts.
 
 The default sink appends JSONL history to:
 
@@ -245,20 +261,44 @@ const healer = createHealer({ page, registry, mode: 'observe', auditSink });
 ```
 
 An audit-write failure is surfaced as `AuditWriteError`; Healwright will not continue toward a
-future healed action without its required evidence trail.
+healed action without its required evidence trail. A pre-action screenshot failure also prevents
+execution. If the replacement itself has an actionability problem, its ordinary Playwright failure
+is preserved and no passing marker is emitted.
+
+## Visible healed results
+
+The default console result sink prints `PASSED_WITH_HEALING`. For richer evidence,
+`PlaywrightHealingResultSink` adds a structured marker and both screenshots to the Playwright test
+result. The included reporter prints an unmistakable line for each successful heal:
+
+```text
+PASSED_WITH_HEALING chromium › healing.browser.spec.ts › heals compatible checkbox locator drift · checkout.terms check
+```
+
+The reporter is enabled in `playwright.config.ts`. Run the focused demo with:
+
+```bash
+pnpm test:healing
+pnpm exec playwright show-report
+```
 
 ## Deterministic fixture and tests
 
 The local checkout fixture supports controlled query-string mutations:
 
-| Mutation                | Purpose                                                       |
-| ----------------------- | ------------------------------------------------------------- |
-| `missing-place-order`   | Genuine primary-locator absence                               |
-| `delayed-place-order`   | Normal Playwright waiting                                     |
-| `disabled-place-order`  | Actionability failure                                         |
-| `duplicate-place-order` | Strict-locator ambiguity                                      |
-| `detached-place-order`  | Target observed, then removed                                 |
-| `drifted-terms`         | Genuine test-id drift with a semantically identical candidate |
+| Mutation                  | Purpose                                                       |
+| ------------------------- | ------------------------------------------------------------- |
+| `missing-place-order`     | Genuine primary-locator absence                               |
+| `delayed-place-order`     | Normal Playwright waiting                                     |
+| `disabled-place-order`    | Actionability failure                                         |
+| `duplicate-place-order`   | Strict-locator ambiguity                                      |
+| `detached-place-order`    | Target observed, then removed                                 |
+| `drifted-terms`           | Genuine test-id drift with a semantically identical candidate |
+| `drifted-cardholder`      | Exact-label case drift for `fill`                             |
+| `drifted-country`         | CSS id drift for `selectOption`                               |
+| `drifted-discount`        | Exact-text case drift for `click`                             |
+| `ambiguous-drifted-terms` | Two indistinguishable checkbox candidates                     |
+| `drifted-disabled-terms`  | Compatible but non-actionable replacement                     |
 
 The suite contains baseline, registry-validation, wrapper, classification, adversarial mutation,
 candidate-collection, and scoring tests. GitHub Actions installs Chromium, runs every static gate and
@@ -272,6 +312,8 @@ pnpm test:classification
 pnpm test:audit
 pnpm test:modes
 pnpm test:modes:browser
+pnpm test:healing
+pnpm test:healing:adversarial
 pnpm test:missing
 pnpm test:candidates
 pnpm test:scoring
@@ -286,11 +328,14 @@ pnpm test:primary
 ├── playwright.unit.config.ts   # Fast browser-free policy and scoring tests
 ├── registry/                   # Versioned targets and JSON Schema
 ├── src/
+│   ├── artifacts.ts            # Before/after screenshot capture
 │   ├── candidates.ts           # Public-API live candidate snapshots
 │   ├── audit.ts                # Versioned events and local/Playwright sinks
 │   ├── classification.ts       # Conservative missing-target proof
 │   ├── healer.ts               # Explicit wrapper API
 │   ├── locator.ts              # Primary locator resolution
+│   ├── reporter.ts             # Visible PASSED_WITH_HEALING output
+│   ├── result.ts               # Playwright annotations and attachments
 │   ├── registry.ts             # Strict runtime registry validation
 │   ├── scoring.ts              # Pure weighted ranking and assessment
 │   └── types.ts                # Registry and policy types
@@ -323,10 +368,12 @@ cloud service, Docker container, database, OCR, or visual AI.
 - [x] Modes: `off`, `observe`, `guarded`, and `strict-ci`
 - [x] Versioned JSON audit events and JSONL history
 - [x] Playwright JSON attachment sink
-- [ ] Guarded candidate execution for all four actions
-- [ ] Screenshot artifacts for healed attempts
-- [ ] Visible `PASSED_WITH_HEALING` reporting
-- [ ] Positive healing and expanded adversarial negative suites
+- [x] Guarded candidate execution for all four actions
+- [x] Screenshot artifacts for healed attempts
+- [x] Visible `PASSED_WITH_HEALING` reporting
+- [x] Positive healing and expanded adversarial negative suites
+- [ ] JSON Schema/runtime-validator parity tests with Ajv
+- [ ] Seeded property-based scoring invariants
 
 ## Limitations
 
@@ -334,6 +381,7 @@ cloud service, Docker container, database, OCR, or visual AI.
 - Candidate collection currently targets common interactive HTML and ARIA patterns.
 - Accessible identity is read from Playwright's public ARIA snapshot representation.
 - Fingerprints are maintained manually; there is no recorder or approval workflow yet.
-- Candidate assessment is read-only. No replacement locator is executed in the current stage.
+- Guarded execution requires an exact, unique accessible role/name/tag identity; candidates without
+  one fail closed even if their weighted score is otherwise high.
 - JSONL appends are local and intentionally simple; cross-machine history aggregation is out of
   scope for the no-service MVP.

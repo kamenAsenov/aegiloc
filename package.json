@@ -18,12 +18,16 @@
     "test:baseline": "playwright test tests/baseline.spec.ts",
     "test:candidates": "playwright test tests/candidate-collection.spec.ts",
     "test:classification": "playwright test --config=playwright.unit.config.ts tests/classification.spec.ts",
+    "test:healing": "playwright test tests/healing.browser.spec.ts",
+    "test:healing:adversarial": "playwright test tests/healing-adversarial.browser.spec.ts",
     "test:missing": "playwright test tests/missing-classification.spec.ts",
     "test:modes": "playwright test --config=playwright.unit.config.ts tests/modes.spec.ts",
     "test:modes:browser": "playwright test tests/modes.browser.spec.ts",
     "test:primary": "playwright test tests/primary-wrapper.spec.ts",
     "test:registry": "playwright test --config=playwright.unit.config.ts tests/registry.spec.ts",
-    "test:scoring": "playwright test --config=playwright.unit.config.ts tests/scoring.spec.ts"
+    "test:reporter": "playwright test --config=playwright.unit.config.ts tests/reporter.spec.ts",
+    "test:scoring": "playwright test --config=playwright.unit.config.ts tests/scoring.spec.ts",
+    "test:unit": "playwright test --config=playwright.unit.config.ts tests/audit.spec.ts tests/classification.spec.ts tests/modes.spec.ts tests/registry.spec.ts tests/reporter.spec.ts tests/scoring.spec.ts"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

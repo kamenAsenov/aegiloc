@@ -3,25 +3,38 @@ import { join } from 'node:path';
 import type { Locator, Page } from '@playwright/test';
 
 import {
-  JsonlAuditSink,
   createHealingAuditEvent,
+  createHealingExecutionAuditEvent,
+  JsonlAuditSink,
   type AuditCollectionStatus,
   type AuditModeDecision,
   type AuditSink,
+  type HealingAuditEvent,
+  type HealingExecutionReason,
+  type HealwrightAuditEvent,
 } from './audit.js';
 import {
+  FileScreenshotCapture,
+  type CapturedScreenshot,
+  type ScreenshotCapture,
+} from './artifacts.js';
+import {
   collectCandidates as collectLiveCandidates,
+  resolveUniqueCandidateLocator,
   type CandidateSnapshot,
 } from './candidates.js';
 import { executePrimaryAction } from './classification.js';
 import {
+  ArtifactCaptureError,
   AuditWriteError,
+  HealingResultWriteError,
   MissingPrimaryLocatorError,
   TargetActionNotAllowedError,
   UnknownTargetError,
 } from './errors.js';
 import { resolvePrimaryLocator } from './locator.js';
-import { assessCandidates, rankCandidates } from './scoring.js';
+import { ConsoleHealingResultSink, PASSED_WITH_HEALING, type HealingResultSink } from './result.js';
+import { assessCandidates, rankCandidates, type CandidateAssessment } from './scoring.js';
 import {
   HEALING_MODES,
   type HealingMode,
@@ -45,7 +58,25 @@ interface HealingRuntime {
   readonly mode: HealingMode;
   readonly auditSink: AuditSink;
   readonly candidateCollector: CandidateCollector;
+  readonly screenshotCapture: ScreenshotCapture;
+  readonly resultSink: HealingResultSink;
 }
+
+interface MissingAssessment {
+  readonly event: HealingAuditEvent;
+  readonly assessment: CandidateAssessment;
+}
+
+type RevalidationResult =
+  | { readonly status: 'ready'; readonly locator: Locator }
+  | {
+      readonly status: 'rejected';
+      readonly reason: Extract<
+        HealingExecutionReason,
+        'revalidation-changed' | 'candidate-not-unique'
+      >;
+      readonly error?: unknown;
+    };
 
 function modeDecision(mode: Exclude<HealingMode, 'off'>, eligible: boolean): AuditModeDecision {
   switch (mode) {
@@ -74,8 +105,12 @@ class HealerTarget {
       ...options,
       timeout: options?.timeout ?? this.primaryActionTimeoutMs,
     };
-    await this.execute('click', locator, effectiveOptions.timeout, () =>
-      locator.click(effectiveOptions),
+    await this.execute(
+      'click',
+      locator,
+      effectiveOptions.timeout,
+      () => locator.click(effectiveOptions),
+      (candidate) => candidate.click(effectiveOptions),
     );
   }
 
@@ -86,8 +121,12 @@ class HealerTarget {
       ...options,
       timeout: options?.timeout ?? this.primaryActionTimeoutMs,
     };
-    await this.execute('fill', locator, effectiveOptions.timeout, () =>
-      locator.fill(value, effectiveOptions),
+    await this.execute(
+      'fill',
+      locator,
+      effectiveOptions.timeout,
+      () => locator.fill(value, effectiveOptions),
+      (candidate) => candidate.fill(value, effectiveOptions),
     );
   }
 
@@ -98,8 +137,12 @@ class HealerTarget {
       ...options,
       timeout: options?.timeout ?? this.primaryActionTimeoutMs,
     };
-    await this.execute('check', locator, effectiveOptions.timeout, () =>
-      locator.check(effectiveOptions),
+    await this.execute(
+      'check',
+      locator,
+      effectiveOptions.timeout,
+      () => locator.check(effectiveOptions),
+      (candidate) => candidate.check(effectiveOptions),
     );
   }
 
@@ -113,8 +156,12 @@ class HealerTarget {
       ...options,
       timeout: options?.timeout ?? this.primaryActionTimeoutMs,
     };
-    return this.execute('selectOption', locator, effectiveOptions.timeout, () =>
-      locator.selectOption(values, effectiveOptions),
+    return this.execute(
+      'selectOption',
+      locator,
+      effectiveOptions.timeout,
+      () => locator.selectOption(values, effectiveOptions),
+      (candidate) => candidate.selectOption(values, effectiveOptions),
     );
   }
 
@@ -122,10 +169,11 @@ class HealerTarget {
     action: TargetAction,
     locator: Locator,
     timeoutMs: number,
-    invoke: () => Promise<TResult>,
+    invokePrimary: () => Promise<TResult>,
+    invokeCandidate: (candidate: Locator) => Promise<TResult>,
   ): Promise<TResult> {
     if (this.runtime.mode === 'off') {
-      return invoke();
+      return invokePrimary();
     }
 
     try {
@@ -134,25 +182,39 @@ class HealerTarget {
         action,
         locator,
         timeoutMs,
-        invoke,
+        invoke: invokePrimary,
       });
     } catch (error) {
       if (!(error instanceof MissingPrimaryLocatorError)) {
         throw error;
       }
 
-      await this.auditMissingTarget(action, error);
-      throw error;
+      const assessed = await this.assessMissingTarget(action, error);
+      if (
+        this.runtime.mode !== 'guarded' ||
+        !assessed.assessment.eligible ||
+        assessed.assessment.topCandidate === undefined
+      ) {
+        throw error;
+      }
+
+      return this.executeGuardedHealing(
+        action,
+        error,
+        assessed.event,
+        assessed.assessment.topCandidate.candidate,
+        invokeCandidate,
+      );
     }
   }
 
-  private async auditMissingTarget(
+  private async assessMissingTarget(
     action: TargetAction,
     primaryError: MissingPrimaryLocatorError,
-  ): Promise<void> {
+  ): Promise<MissingAssessment> {
     const mode = this.runtime.mode;
     if (mode === 'off') {
-      return;
+      throw primaryError;
     }
 
     let candidates: readonly CandidateSnapshot[] = [];
@@ -184,6 +246,169 @@ class HealerTarget {
       rankedCandidates,
     });
 
+    await this.writeAudit(event);
+    return { event, assessment };
+  }
+
+  private async executeGuardedHealing<TResult>(
+    action: TargetAction,
+    primaryError: MissingPrimaryLocatorError,
+    assessmentEvent: HealingAuditEvent,
+    expectedCandidate: CandidateSnapshot,
+    invokeCandidate: (candidate: Locator) => Promise<TResult>,
+  ): Promise<TResult> {
+    const revalidation = await this.revalidateCandidate(action, expectedCandidate);
+    if (revalidation.status === 'rejected') {
+      await this.writeExecutionAudit({
+        parentEventId: assessmentEvent.eventId,
+        action,
+        candidateId: expectedCandidate.id,
+        status: 'rejected',
+        reason: revalidation.reason,
+        ...(revalidation.error === undefined ? {} : { error: revalidation.error }),
+        screenshots: [],
+      });
+      throw primaryError;
+    }
+
+    const screenshots: CapturedScreenshot[] = [];
+    try {
+      screenshots.push(
+        await this.runtime.screenshotCapture.capture({
+          eventId: assessmentEvent.eventId,
+          targetKey: this.key,
+          action,
+          phase: 'before',
+        }),
+      );
+    } catch (error) {
+      await this.writeExecutionAudit({
+        parentEventId: assessmentEvent.eventId,
+        action,
+        candidateId: expectedCandidate.id,
+        status: 'failed',
+        reason: 'artifact-capture-failed',
+        error,
+        screenshots,
+      });
+      throw new ArtifactCaptureError(this.key, error);
+    }
+
+    let result: TResult;
+    try {
+      result = await invokeCandidate(revalidation.locator);
+    } catch (error) {
+      try {
+        screenshots.push(
+          await this.runtime.screenshotCapture.capture({
+            eventId: assessmentEvent.eventId,
+            targetKey: this.key,
+            action,
+            phase: 'after',
+          }),
+        );
+      } catch {
+        // Preserve the action failure; the pre-action screenshot and audit remain available.
+      }
+      await this.writeExecutionAudit({
+        parentEventId: assessmentEvent.eventId,
+        action,
+        candidateId: expectedCandidate.id,
+        status: 'failed',
+        reason: 'action-failed',
+        error,
+        screenshots,
+      });
+      throw error;
+    }
+
+    try {
+      screenshots.push(
+        await this.runtime.screenshotCapture.capture({
+          eventId: assessmentEvent.eventId,
+          targetKey: this.key,
+          action,
+          phase: 'after',
+        }),
+      );
+    } catch (error) {
+      await this.writeExecutionAudit({
+        parentEventId: assessmentEvent.eventId,
+        action,
+        candidateId: expectedCandidate.id,
+        status: 'failed',
+        reason: 'artifact-capture-failed',
+        error,
+        screenshots,
+      });
+      throw new ArtifactCaptureError(this.key, error);
+    }
+
+    const executionEvent = await this.writeExecutionAudit({
+      parentEventId: assessmentEvent.eventId,
+      action,
+      candidateId: expectedCandidate.id,
+      status: 'succeeded',
+      reason: 'succeeded',
+      screenshots,
+    });
+
+    try {
+      await this.runtime.resultSink.record({
+        status: PASSED_WITH_HEALING,
+        targetKey: this.key,
+        action,
+        candidateId: expectedCandidate.id,
+        assessmentEventId: assessmentEvent.eventId,
+        executionEventId: executionEvent.eventId,
+        screenshots,
+      });
+    } catch (error) {
+      throw new HealingResultWriteError(this.key, error);
+    }
+
+    return result;
+  }
+
+  private async revalidateCandidate(
+    action: TargetAction,
+    expectedCandidate: CandidateSnapshot,
+  ): Promise<RevalidationResult> {
+    let candidates: readonly CandidateSnapshot[];
+    try {
+      candidates = await this.runtime.candidateCollector(this.page, action);
+    } catch (error) {
+      return { status: 'rejected', reason: 'revalidation-changed', error };
+    }
+
+    const rankedCandidates = rankCandidates(this.definition.fingerprint, candidates);
+    const assessment = assessCandidates(rankedCandidates, this.definition.policy.healing);
+    const revalidatedCandidate = assessment.topCandidate?.candidate;
+    if (!assessment.eligible || revalidatedCandidate?.id !== expectedCandidate.id) {
+      return { status: 'rejected', reason: 'revalidation-changed' };
+    }
+
+    const locator = await resolveUniqueCandidateLocator(this.page, revalidatedCandidate);
+    return locator === undefined
+      ? { status: 'rejected', reason: 'candidate-not-unique' }
+      : { status: 'ready', locator };
+  }
+
+  private async writeExecutionAudit(
+    options: Omit<
+      Parameters<typeof createHealingExecutionAuditEvent>[0],
+      'targetKey' | 'eventId' | 'timestamp'
+    >,
+  ) {
+    const event = createHealingExecutionAuditEvent({
+      ...options,
+      targetKey: this.key,
+    });
+    await this.writeAudit(event);
+    return event;
+  }
+
+  private async writeAudit(event: HealwrightAuditEvent): Promise<void> {
     try {
       await this.runtime.auditSink.write(event);
     } catch (error) {
@@ -232,6 +457,8 @@ export interface CreateHealerOptions<TTargetKey extends string = string> {
   readonly primaryActionTimeoutMs?: number;
   readonly auditSink?: AuditSink;
   readonly candidateCollector?: CandidateCollector;
+  readonly screenshotCapture?: ScreenshotCapture;
+  readonly resultSink?: HealingResultSink;
 }
 
 export function createHealer<TTargetKey extends string = string>({
@@ -243,6 +470,11 @@ export function createHealer<TTargetKey extends string = string>({
     join(process.cwd(), 'test-results', 'healwright', 'history.jsonl'),
   ),
   candidateCollector = collectLiveCandidates,
+  screenshotCapture = new FileScreenshotCapture(
+    page,
+    join(process.cwd(), 'test-results', 'healwright', 'screenshots'),
+  ),
+  resultSink = new ConsoleHealingResultSink(),
 }: CreateHealerOptions<TTargetKey>): Healer<TTargetKey> {
   if (!HEALING_MODES.includes(mode)) {
     throw new TypeError(`Unsupported Healwright mode: ${mode}`);
@@ -255,5 +487,7 @@ export function createHealer<TTargetKey extends string = string>({
     mode,
     auditSink,
     candidateCollector,
+    screenshotCapture,
+    resultSink,
   });
 }
