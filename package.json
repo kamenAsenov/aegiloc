@@ -14,7 +14,9 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "playwright test",
-    "test:baseline": "playwright test tests/baseline.spec.ts"
+    "test:baseline": "playwright test tests/baseline.spec.ts",
+    "test:registry": "playwright test tests/registry.spec.ts",
+    "test:primary": "playwright test tests/primary-wrapper.spec.ts"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

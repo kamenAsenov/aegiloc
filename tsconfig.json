@@ -3,6 +3,7 @@
     "target": "ES2022",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
+    "resolveJsonModule": true,
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
@@ -15,5 +16,5 @@
     "skipLibCheck": true,
     "types": ["node"]
   },
-  "include": ["playwright.config.ts", "tests/**/*.ts"]
+  "include": ["playwright.config.ts", "src/**/*.ts", "tests/**/*.ts"]
 }

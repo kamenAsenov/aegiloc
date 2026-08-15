@@ -10,9 +10,9 @@ await healer.target('checkout.placeOrder').click();
 The framework will try a version-controlled primary locator first and consider a replacement only
 when the target is genuinely missing. A false-positive heal is treated as worse than a failed heal.
 
-> **Current status:** foundation only. This stage contains the deterministic fixture app, one
-> ordinary (non-healing) Playwright test, and quality tooling. No healing behavior is implemented
-> yet.
+> **Current status:** primary-locator wrapper. The deterministic fixture can be driven through the
+> explicit target API, backed by a runtime-validated JSON registry. No healing behavior is
+> implemented yet; a missing primary locator still fails normally.
 
 ## Foundation demo
 
@@ -24,13 +24,29 @@ pnpm exec playwright install chromium
 pnpm test:baseline
 ```
 
+Primary-locator wrapper example:
+
+```ts
+const registry = await loadTargetRegistry(new URL('./registry/targets.json', import.meta.url));
+const healer = createHealer({ page, registry });
+
+await healer.target('checkout.cardholderName').fill('Ada Lovelace');
+await healer.target('checkout.shippingCountry').selectOption('GB');
+await healer.target('checkout.terms').check();
+await healer.target('checkout.placeOrder').click();
+```
+
+The registry supports role, label, test-id, text, and CSS primary locators. Every target also stores
+its semantic description, fingerprint, allowed actions, confidence threshold, and minimum score
+margin. Those healing fields are validated but intentionally unused in this stage.
+
 Run all local quality gates:
 
 ```bash
 pnpm format:check
 pnpm lint
 pnpm typecheck
-pnpm test:baseline
+pnpm test
 ```
 
 The Playwright configuration starts the deterministic fixture app automatically at
@@ -63,8 +79,9 @@ source or the locator registry. Low-confidence and ambiguous matches will fail.
 
 ## Current limitations
 
-- The healing wrapper, JSON registry, candidate scoring, audit history, and custom result reporting
-  are not part of this foundation stage.
+- Candidate collection, scoring, missing-target classification, audit history, and custom result
+  reporting are not implemented yet.
+- Healing policy values are stored and validated but are not executed; only primary locators run.
 - The fixture currently models only the stable baseline state; controlled mutations and adversarial
   cases will be added alongside healing behavior.
 - Only Chromium is configured.

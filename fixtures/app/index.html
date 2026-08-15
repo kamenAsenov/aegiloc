@@ -30,11 +30,21 @@
           <input id="cardholder-name" name="cardholderName" autocomplete="cc-name" required />
         </div>
 
+        <div class="field">
+          <label for="shipping-country">Shipping country</label>
+          <select id="shipping-country" name="shippingCountry">
+            <option value="US">United States</option>
+            <option value="GB">United Kingdom</option>
+            <option value="BG">Bulgaria</option>
+          </select>
+        </div>
+
         <label class="checkbox-row">
-          <input name="terms" type="checkbox" required />
+          <input data-testid="checkout-terms" name="terms" type="checkbox" required />
           <span>I agree to the store terms</span>
         </label>
 
+        <button class="secondary-action" type="button">Apply discount</button>
         <button type="submit">Place order</button>
       </form>
 

@@ -1,0 +1,133 @@
+{
+  "$schema": "./targets.schema.json",
+  "version": 1,
+  "defaults": {
+    "confidenceThreshold": 0.9,
+    "minimumScoreMargin": 0.15
+  },
+  "targets": {
+    "checkout.cardholderName": {
+      "description": "Cardholder name field in the checkout payment form",
+      "primary": {
+        "type": "label",
+        "value": "Cardholder name",
+        "exact": true
+      },
+      "fingerprint": {
+        "accessibleRole": "textbox",
+        "accessibleName": "Cardholder name",
+        "tag": "input",
+        "stableAttributes": {
+          "name": "cardholderName",
+          "autocomplete": "cc-name"
+        },
+        "ancestorText": ["Checkout"]
+      },
+      "policy": {
+        "allowedActions": ["fill"],
+        "healing": {
+          "enabled": true,
+          "confidenceThreshold": 0.92,
+          "minimumScoreMargin": 0.15
+        }
+      }
+    },
+    "checkout.shippingCountry": {
+      "description": "Shipping country selector in the checkout form",
+      "primary": {
+        "type": "css",
+        "value": "#shipping-country"
+      },
+      "fingerprint": {
+        "accessibleRole": "combobox",
+        "accessibleName": "Shipping country",
+        "tag": "select",
+        "stableAttributes": {
+          "name": "shippingCountry"
+        },
+        "ancestorText": ["Checkout"]
+      },
+      "policy": {
+        "allowedActions": ["selectOption"],
+        "healing": {
+          "enabled": true,
+          "confidenceThreshold": 0.92,
+          "minimumScoreMargin": 0.15
+        }
+      }
+    },
+    "checkout.terms": {
+      "description": "Store terms acceptance checkbox",
+      "primary": {
+        "type": "testId",
+        "value": "checkout-terms"
+      },
+      "fingerprint": {
+        "accessibleRole": "checkbox",
+        "accessibleName": "I agree to the store terms",
+        "tag": "input",
+        "stableAttributes": {
+          "name": "terms",
+          "type": "checkbox"
+        },
+        "neighborText": ["Place order"]
+      },
+      "policy": {
+        "allowedActions": ["check"],
+        "healing": {
+          "enabled": true,
+          "confidenceThreshold": 0.94,
+          "minimumScoreMargin": 0.18
+        }
+      }
+    },
+    "checkout.applyDiscount": {
+      "description": "Apply the deterministic fixture discount",
+      "primary": {
+        "type": "text",
+        "value": "Apply discount",
+        "exact": true
+      },
+      "fingerprint": {
+        "accessibleRole": "button",
+        "accessibleName": "Apply discount",
+        "visibleText": "Apply discount",
+        "tag": "button",
+        "ancestorText": ["Checkout"]
+      },
+      "policy": {
+        "allowedActions": ["click"],
+        "healing": {
+          "enabled": true,
+          "confidenceThreshold": 0.91,
+          "minimumScoreMargin": 0.15
+        }
+      }
+    },
+    "checkout.placeOrder": {
+      "description": "Final checkout submission button",
+      "primary": {
+        "type": "role",
+        "role": "button",
+        "name": "Place order",
+        "exact": true
+      },
+      "fingerprint": {
+        "accessibleRole": "button",
+        "accessibleName": "Place order",
+        "visibleText": "Place order",
+        "tag": "button",
+        "ancestorText": ["Checkout"],
+        "neighborText": ["I agree to the store terms"]
+      },
+      "policy": {
+        "allowedActions": ["click"],
+        "healing": {
+          "enabled": true,
+          "confidenceThreshold": 0.95,
+          "minimumScoreMargin": 0.2
+        }
+      }
+    }
+  }
+}

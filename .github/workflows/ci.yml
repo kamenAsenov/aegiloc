@@ -41,8 +41,8 @@ jobs:
       - name: Type-check
         run: pnpm typecheck
 
-      - name: Run baseline test
-        run: pnpm test:baseline
+      - name: Run test suite
+        run: pnpm test
 
       - name: Upload Playwright report
         if: ${{ !cancelled() }}

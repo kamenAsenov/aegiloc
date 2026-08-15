@@ -80,7 +80,8 @@ form {
 }
 
 input[type='text'],
-input:not([type]) {
+input:not([type]),
+select {
   width: 100%;
   padding: 0.75rem;
   border: 1px solid #9caaa1;
@@ -107,6 +108,16 @@ button {
 
 button:hover {
   background: #0e593e;
+}
+
+button.secondary-action {
+  border: 1px solid #176b4d;
+  color: #176b4d;
+  background: #fff;
+}
+
+button.secondary-action:hover {
+  background: #edf7f1;
 }
 
 #order-status {
