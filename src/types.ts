@@ -49,6 +49,14 @@ export interface TargetFingerprint {
   readonly tag?: string;
   readonly ancestorText?: readonly string[];
   readonly neighborText?: readonly string[];
+  readonly geometry?: TargetGeometry;
+}
+
+export interface TargetGeometry {
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
 }
 
 export interface HealingPolicy {

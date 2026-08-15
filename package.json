@@ -15,10 +15,12 @@
     "typecheck": "tsc --noEmit",
     "test": "playwright test",
     "test:baseline": "playwright test tests/baseline.spec.ts",
+    "test:candidates": "playwright test tests/candidate-collection.spec.ts",
     "test:classification": "playwright test tests/classification.spec.ts",
     "test:missing": "playwright test tests/missing-classification.spec.ts",
+    "test:primary": "playwright test tests/primary-wrapper.spec.ts",
     "test:registry": "playwright test tests/registry.spec.ts",
-    "test:primary": "playwright test tests/primary-wrapper.spec.ts"
+    "test:scoring": "playwright test tests/scoring.spec.ts"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

@@ -213,6 +213,7 @@ function parseFingerprint(value: unknown, path: string): TargetFingerprint {
       'tag',
       'ancestorText',
       'neighborText',
+      'geometry',
     ],
     path,
   );
@@ -235,6 +236,13 @@ function parseFingerprint(value: unknown, path: string): TargetFingerprint {
     for (const [name, attributeValue] of Object.entries(attributes)) {
       expectString(name, `${path}.stableAttributes key`);
       expectString(attributeValue, `${path}.stableAttributes.${name}`);
+    }
+  }
+  if (fingerprint.geometry !== undefined) {
+    const geometry = expectRecord(fingerprint.geometry, `${path}.geometry`);
+    expectOnlyKeys(geometry, ['x', 'y', 'width', 'height'], `${path}.geometry`);
+    for (const key of ['x', 'y', 'width', 'height'] as const) {
+      expectProbability(geometry[key], `${path}.geometry.${key}`);
     }
   }
 

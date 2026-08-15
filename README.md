@@ -1,54 +1,70 @@
 # Healwright
 
-Healwright is a small, safety-first self-healing layer for Playwright Test. Its intended API is
-explicit:
+[![CI](https://github.com/kamenAsenov/healwright/actions/workflows/ci.yml/badge.svg)](https://github.com/kamenAsenov/healwright/actions/workflows/ci.yml)
+
+**A conservative, deterministic self-healing layer for Playwright Test.**
+
+Healwright is an experimental TypeScript framework for UI locator drift. Tests address semantic
+targets through an explicit wrapper, while target definitions, primary locators, fingerprints, and
+safety policies live in version-controlled JSON.
 
 ```ts
 await healer.target('checkout.placeOrder').click();
 ```
 
-The framework will try a version-controlled primary locator first and consider a replacement only
-when the target is genuinely missing. A false-positive heal is treated as worse than a failed heal.
+The design optimizes for the failure mode that matters most: **a false-positive heal is worse than a
+failed heal**.
 
-> **Current status:** conservative missing-target classification. The deterministic fixture can be
-> driven through the explicit target API, backed by a runtime-validated JSON registry. Genuine
-> absence is distinguished from actionability and waiting failures, but no healing behavior is
-> implemented yet.
+> [!IMPORTANT]
+> Automatic healed actions are not enabled yet. The current implementation provides validated
+> target registries, primary-only actions, conservative missing-target classification, live
+> candidate collection, and deterministic ranking. It does not silently change source files or the
+> locator registry.
 
-## Foundation demo
+## Why this project exists
+
+Conventional UI tests fail when a locator changes, even if the user-facing control remains the same.
+Naive self-healing can be more dangerous: it may click a plausible but incorrect element and turn a
+real regression into a green build.
+
+Healwright takes the narrow path:
+
+- run the primary Playwright locator normally;
+- classify drift only when the locator was never attached and still resolves to zero elements;
+- preserve ordinary Playwright failures for disabled, hidden, ambiguous, delayed, or detached
+  elements;
+- collect only action-compatible candidates from the live page;
+- score candidates with fixed, inspectable weights;
+- require both a confidence threshold and a safe lead over the runner-up;
+- fail closed whenever the evidence is weak or ambiguous.
+
+## Current capabilities
+
+| Capability                                                   | Status                   |
+| ------------------------------------------------------------ | ------------------------ |
+| Strict TypeScript and Chromium-first Playwright Test setup   | Available                |
+| JSON registry with runtime validation and JSON Schema        | Available                |
+| Role, label, test-id, text, and CSS primary locators         | Available                |
+| `click`, `fill`, `check`, and `selectOption` wrapper actions | Available                |
+| Conservative missing-target classification                   | Available                |
+| Live action-compatible candidate collection                  | Available                |
+| Deterministic weighted scoring and ranked details            | Available                |
+| Confidence threshold and runner-up margin assessment         | Available                |
+| `off`, `observe`, `guarded`, and `strict-ci` modes           | Planned                  |
+| JSONL audit history, screenshots, and `PASSED_WITH_HEALING`  | Planned                  |
+| Executing a replacement candidate                            | Deliberately not enabled |
+
+## Quick start
 
 Requirements: Node.js 20+ and pnpm 11.
 
 ```bash
 pnpm install
 pnpm exec playwright install chromium
-pnpm test:baseline
+pnpm test
 ```
 
-Primary-locator wrapper example:
-
-```ts
-const registry = await loadTargetRegistry(new URL('./registry/targets.json', import.meta.url));
-const healer = createHealer({ page, registry });
-
-await healer.target('checkout.cardholderName').fill('Ada Lovelace');
-await healer.target('checkout.shippingCountry').selectOption('GB');
-await healer.target('checkout.terms').check();
-await healer.target('checkout.placeOrder').click();
-```
-
-The registry supports role, label, test-id, text, and CSS primary locators. Every target also stores
-its semantic description, fingerprint, allowed actions, confidence threshold, and minimum score
-margin. Those healing fields are validated but intentionally unused in this stage.
-
-Primary actions use a two-second classification timeout by default, configurable through
-`primaryActionTimeoutMs` or an individual action's Playwright `timeout` option. Healwright reports a
-`MissingPrimaryLocatorError` only when the action times out, the locator was never observed attached
-during that attempt, and the locator still resolves to zero elements afterward. If the locator was
-disabled, hidden, ambiguous, temporarily delayed, or detached after being observed, the original
-Playwright result is preserved.
-
-Run all local quality gates:
+Run the quality gates independently:
 
 ```bash
 pnpm format:check
@@ -57,39 +73,208 @@ pnpm typecheck
 pnpm test
 ```
 
-The Playwright configuration starts the deterministic fixture app automatically at
-`http://127.0.0.1:4173`.
+Playwright starts the deterministic fixture app automatically at `http://127.0.0.1:4173`.
 
-## Planned architecture
+## Wrapper API
+
+```ts
+import { createHealer, loadTargetRegistry } from './src/index.js';
+
+const registry = await loadTargetRegistry(new URL('./registry/targets.json', import.meta.url));
+const healer = createHealer({
+  page,
+  registry,
+  primaryActionTimeoutMs: 2_000,
+});
+
+await healer.target('checkout.cardholderName').fill('Ada Lovelace');
+await healer.target('checkout.shippingCountry').selectOption('GB');
+await healer.target('checkout.terms').check();
+await healer.target('checkout.placeOrder').click();
+```
+
+Every action checks the target's allowlist before resolving its primary locator. Assertions are not
+part of the wrapper and are never eligible for healing.
+
+## Target registry
+
+Targets are human-reviewable and version controlled in [`registry/targets.json`](registry/targets.json).
+The companion [`registry/targets.schema.json`](registry/targets.schema.json) provides editor support,
+while the runtime loader rejects unknown fields, invalid roles, unsupported actions, duplicate
+actions, malformed fingerprints, and unsafe policy values.
+
+```json
+{
+  "checkout.placeOrder": {
+    "description": "Final checkout submission button",
+    "primary": {
+      "type": "role",
+      "role": "button",
+      "name": "Place order",
+      "exact": true
+    },
+    "fingerprint": {
+      "accessibleRole": "button",
+      "accessibleName": "Place order",
+      "visibleText": "Place order",
+      "tag": "button",
+      "ancestorText": ["Checkout"]
+    },
+    "policy": {
+      "allowedActions": ["click"],
+      "healing": {
+        "enabled": true,
+        "confidenceThreshold": 0.95,
+        "minimumScoreMargin": 0.2
+      }
+    }
+  }
+}
+```
+
+Registry policy values are validated and used for ranking assessment, but a positive assessment does
+not yet execute the candidate.
+
+## Safety pipeline
 
 ```mermaid
 flowchart LR
-  T["Test: healer.target(key).action()"] --> R["Version-controlled JSON registry"]
+  T["healer.target(key).action()"] --> R["Validated JSON target"]
   R --> P["Primary Playwright locator"]
-  P -->|"resolves"| A["Normal Playwright actionability"]
-  P -->|"genuinely missing"| C["Live-page candidate collection"]
-  C --> S["Deterministic scoring"]
-  S --> G{"Threshold + safe margin?"}
-  G -->|"yes"| H["Guarded healed action + audit artifacts"]
-  G -->|"no"| F["Fail safely"]
+  P -->|"action succeeds"| OK["Normal pass"]
+  P -->|"action fails"| M{"Timeout + never attached + count = 0?"}
+  M -->|"no"| PF["Preserve original Playwright failure"]
+  M -->|"yes"| C["Collect compatible live candidates"]
+  C --> S["Deterministic weighted scoring"]
+  S --> G{"Threshold and safe margin?"}
+  G -->|"no"| SF["Fail closed"]
+  G -->|"yes, current stage"| RO["Return ranked assessment only"]
+  G -.->|"future guarded mode"| H["Healed action + audit artifacts"]
 ```
 
-Planned scoring signals are accessible role and name, stable attributes, visible text, tag,
-ancestor context, nearby text/elements, and low-weight geometry. Planned modes are `off`, `observe`,
-`guarded`, and `strict-ci`. The MVP will support `click`, `fill`, `check`, and `selectOption`, and
-role, label, test-id, text, and CSS locator definitions.
+### Missing means genuinely missing
 
-## Safety boundaries
+A failed primary action becomes `MissingPrimaryLocatorError` only when all three checks agree:
 
-Healwright will not heal assertions, expected results, business logic, authentication, test-data
-problems, API/network failures, or real product regressions. It will not silently rewrite test
-source or the locator registry. Low-confidence and ambiguous matches will fail.
+1. the normal Playwright action ended with a public `TimeoutError`;
+2. a concurrent public `locator.waitFor({ state: 'attached' })` never observed the target;
+3. a post-failure public `locator.count()` still returns zero.
 
-## Current limitations
+If the target was ever attached—or the failure is strictness, actionability, navigation, page
+closure, or another non-timeout error—Healwright preserves the original result.
 
-- Candidate collection, scoring, audit history, healing modes, and custom result reporting are not
-  implemented yet.
-- Healing policy values are stored and validated but are not executed; only primary locators run.
-- The fixture currently includes missing, delayed, disabled, duplicated, and detached target
-  mutations; candidate-similarity mutations will be added alongside scoring.
-- Only Chromium is configured.
+## Deterministic scoring
+
+The scoring engine is pure: identical fingerprints and candidate snapshots always produce the same
+ranking. Equal scores are ordered by a stable candidate identifier.
+
+| Signal            | Weight | Notes                                   |
+| ----------------- | -----: | --------------------------------------- |
+| Accessible name   |    24% | Token and edit similarity               |
+| Accessible role   |    22% | Exact normalized match                  |
+| Stable attributes |    20% | Per-attribute similarity                |
+| Visible text      |    12% | Token and edit similarity               |
+| Ancestor context  |     7% | Best match for expected context         |
+| Neighbor context  |     6% | Best match for expected nearby text     |
+| Element tag       |     6% | Exact normalized match                  |
+| Geometry          |     3% | Low-weight normalized position and size |
+
+Only signals present in the stored fingerprint participate in normalization. Geometry is
+intentionally too weak to overcome a semantic mismatch.
+
+```ts
+import { assessCandidates, collectCandidates, rankCandidates } from './src/index.js';
+
+const definition = registry.targets['checkout.placeOrder'];
+const candidates = await collectCandidates(page, 'click');
+const ranked = rankCandidates(definition.fingerprint, candidates);
+const assessment = assessCandidates(ranked, definition.policy.healing);
+
+console.log(assessment.reason, assessment.margin, ranked[0]?.details);
+```
+
+Possible assessment reasons are `eligible`, `disabled`, `no-candidates`, `low-confidence`, and
+`ambiguous`. `eligible` means the evidence passed the policy—it does not currently authorize an
+action.
+
+## Deterministic fixture and tests
+
+The local checkout fixture supports controlled query-string mutations:
+
+| Mutation                | Purpose                         |
+| ----------------------- | ------------------------------- |
+| `missing-place-order`   | Genuine primary-locator absence |
+| `delayed-place-order`   | Normal Playwright waiting       |
+| `disabled-place-order`  | Actionability failure           |
+| `duplicate-place-order` | Strict-locator ambiguity        |
+| `detached-place-order`  | Target observed, then removed   |
+
+The suite contains baseline, registry-validation, wrapper, classification, adversarial mutation,
+candidate-collection, and scoring tests. GitHub Actions installs Chromium, runs every static gate and
+test, and uploads the Playwright HTML report.
+
+Useful focused commands:
+
+```bash
+pnpm test:registry
+pnpm test:classification
+pnpm test:missing
+pnpm test:candidates
+pnpm test:scoring
+pnpm test:primary
+```
+
+## Project structure
+
+```text
+.
+├── fixtures/app/               # Deterministic checkout UI and controlled mutations
+├── registry/                   # Versioned targets and JSON Schema
+├── src/
+│   ├── candidates.ts           # Public-API live candidate snapshots
+│   ├── classification.ts       # Conservative missing-target proof
+│   ├── healer.ts               # Explicit wrapper API
+│   ├── locator.ts              # Primary locator resolution
+│   ├── registry.ts             # Strict runtime registry validation
+│   ├── scoring.ts              # Pure weighted ranking and assessment
+│   └── types.ts                # Registry and policy types
+├── tests/                      # Unit, integration, and adversarial Playwright tests
+└── .github/workflows/ci.yml    # Chromium-first quality pipeline
+```
+
+## Non-negotiable safety boundaries
+
+Healwright will not heal:
+
+- assertions or expected results;
+- business logic or real product regressions;
+- authentication or authorization failures;
+- test-data setup problems;
+- API, network, or backend failures;
+- ambiguous or low-confidence matches.
+
+It will not silently rewrite test source or the locator registry. The MVP requires no LLM, API key,
+cloud service, Docker container, database, OCR, or visual AI.
+
+## Roadmap
+
+- [x] Strict Playwright Test + TypeScript foundation
+- [x] Version-controlled semantic target registry
+- [x] Primary-only wrapper actions
+- [x] Conservative missing-target classification
+- [x] Live candidate collection
+- [x] Deterministic scoring, ranking, threshold, and margin assessment
+- [ ] Modes: `off`, `observe`, `guarded`, and `strict-ci`
+- [ ] Guarded candidate execution for all four actions
+- [ ] JSON audit events and JSONL history
+- [ ] Ranked candidate artifacts and screenshots
+- [ ] Visible `PASSED_WITH_HEALING` reporting
+- [ ] Positive healing and expanded adversarial negative suites
+
+## Limitations
+
+- Chromium is the only configured browser.
+- Candidate collection currently targets common interactive HTML and ARIA patterns.
+- Accessible identity is read from Playwright's public ARIA snapshot representation.
+- Fingerprints are maintained manually; there is no recorder or approval workflow yet.
+- Candidate assessment is read-only. No replacement locator is executed in the current stage.

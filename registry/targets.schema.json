@@ -94,6 +94,17 @@
         "neighborText": {
           "type": "array",
           "items": { "type": "string", "minLength": 1 }
+        },
+        "geometry": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["x", "y", "width", "height"],
+          "properties": {
+            "x": { "$ref": "#/$defs/probability" },
+            "y": { "$ref": "#/$defs/probability" },
+            "width": { "$ref": "#/$defs/probability" },
+            "height": { "$ref": "#/$defs/probability" }
+          }
         }
       }
     },
