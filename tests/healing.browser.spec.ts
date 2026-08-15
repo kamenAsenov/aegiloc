@@ -7,6 +7,7 @@ import {
   PASSED_WITH_HEALING,
   PlaywrightAttachmentAuditSink,
   PlaywrightHealingResultSink,
+  createPlaywrightAuditProvenance,
   createHealer,
   loadTargetRegistry,
 } from '../src/index.js';
@@ -25,6 +26,10 @@ async function guardedHealer(page: Page, testInfo: TestInfo) {
       testInfo.outputPath('healwright-screenshots'),
     ),
     resultSink: new PlaywrightHealingResultSink(testInfo),
+    auditProvenance: createPlaywrightAuditProvenance(testInfo, {
+      runId: `fixture-run-${testInfo.testId}`,
+      commitSha: 'abcdef0123456789',
+    }),
   });
 
   return { healer, memory };
@@ -37,12 +42,14 @@ function expectSuccessfulHealing(memory: InMemoryAuditSink, testInfo: TestInfo):
     mode: 'guarded',
     modeDecision: 'eligible',
     assessment: { eligible: true, reason: 'eligible' },
+    provenance: { version: 1, projectName: 'chromium', retry: 0 },
   });
   expect(memory.events[1]).toMatchObject({
     eventType: 'locator-heal-execution',
     status: 'succeeded',
     reason: 'succeeded',
     screenshots: [{ phase: 'before' }, { phase: 'after' }],
+    provenance: { version: 1, projectName: 'chromium', retry: 0 },
   });
   expect(testInfo.annotations).toContainEqual(
     expect.objectContaining({ type: PASSED_WITH_HEALING }),

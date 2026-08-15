@@ -26,7 +26,7 @@ Options:
   --registry <path>          Target registry input (default: ${defaults.registry})
   --json <path>              JSON proposal output (default: ${defaults.json})
   --markdown <path>          Markdown report output (default: ${defaults.markdown})
-  --min-observations <count> Required successful observations (default: ${defaults.minimumObservations})
+  --min-observations <count> Required independent run observations (default: ${defaults.minimumObservations})
   --help                     Show this help
 
 This command never modifies the registry or test source.

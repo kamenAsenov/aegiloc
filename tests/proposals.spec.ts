@@ -4,15 +4,19 @@ import { expect, test } from '@playwright/test';
 import { Ajv2020 } from 'ajv/dist/2020.js';
 
 import {
+  ProposalBundleValidationError,
   ProposalHistoryError,
   assessCandidates,
   createHealingAuditEvent,
   createHealingExecutionAuditEvent,
   generateHealingProposals,
   parseAuditHistory,
+  parseHealingProposalBundle,
   rankCandidates,
   renderHealingProposalReport,
   verifyHealingProposal,
+  verifyHealingProposalBundle,
+  type AuditProvenanceInput,
   type HealwrightAuditEvent,
   type HealingAuditEvent,
   type HealingExecutionAuditEvent,
@@ -48,6 +52,13 @@ interface PairOptions {
   readonly primaryLocator?: PrimaryLocatorDefinition;
   readonly parentEventId?: string;
   readonly executionStatus?: 'succeeded' | 'failed' | 'rejected';
+  readonly runId?: string;
+  readonly testId?: string;
+  readonly projectName?: string;
+  readonly retry?: number;
+  readonly commitSha?: string | null;
+  readonly omitProvenance?: boolean;
+  readonly executionProvenance?: AuditProvenanceInput;
 }
 
 function eventPair(
@@ -57,6 +68,13 @@ function eventPair(
   const targetKey = options.targetKey ?? 'checkout.terms';
   const action = options.action ?? 'check';
   const candidateId = options.candidateId ?? `input:accept-terms:${index}`;
+  const provenance = {
+    runId: options.runId ?? `run-${index}`,
+    testId: options.testId ?? 'checkout accepts terms',
+    projectName: options.projectName ?? 'chromium',
+    retry: options.retry ?? 0,
+    ...(options.commitSha === null ? {} : { commitSha: options.commitSha ?? 'abcdef0123456789' }),
+  } satisfies AuditProvenanceInput;
   const ranked = rankCandidates(registry.targets['checkout.terms'].fingerprint, [
     {
       id: candidateId,
@@ -80,6 +98,7 @@ function eventPair(
   const assessmentEvent = createHealingAuditEvent({
     eventId: assessmentEventId,
     timestamp: `2026-08-15T00:${String(index).padStart(2, '0')}:00.000Z`,
+    ...(options.omitProvenance ? {} : { provenance }),
     mode: 'guarded',
     modeDecision: 'eligible',
     targetKey,
@@ -94,6 +113,7 @@ function eventPair(
   const executionEvent = createHealingExecutionAuditEvent({
     eventId: `execution-${index}`,
     timestamp: `2026-08-15T00:${String(index).padStart(2, '0')}:01.000Z`,
+    ...(options.omitProvenance ? {} : { provenance: options.executionProvenance ?? provenance }),
     parentEventId: options.parentEventId ?? assessmentEventId,
     targetKey,
     action,
@@ -160,6 +180,20 @@ test('rejects duplicate event IDs instead of inflating evidence', () => {
   );
 });
 
+test('rejects malformed or extended provenance objects from imported history', () => {
+  const [assessment] = eventPair(1);
+  for (const provenance of [
+    { ...assessment.provenance, version: 2 },
+    { ...assessment.provenance, retry: -1 },
+    { ...assessment.provenance, commitSha: 'not-a-sha' },
+    { ...assessment.provenance, unexpected: 'field' },
+  ]) {
+    expect(() => parseAuditHistory(JSON.stringify({ ...assessment, provenance }))).toThrow(
+      /assessment provenance is malformed/,
+    );
+  }
+});
+
 test('rejects malformed screenshot records', () => {
   const [, execution] = eventPair(1);
   expect(() =>
@@ -193,7 +227,7 @@ test('requires repeated evidence before creating a proposal', () => {
     {
       targetKey: 'checkout.terms',
       action: 'check',
-      reason: 'insufficient-evidence',
+      reason: 'insufficient-independent-runs',
       occurrenceCount: 1,
     },
   ]);
@@ -219,6 +253,13 @@ test('creates a review-required proposal after three successful agreements', () 
     },
     evidence: {
       occurrenceCount: 3,
+      distinctRunCount: 3,
+      ignoredLegacyCount: 0,
+      runIds: ['run-1', 'run-2', 'run-3'],
+      testIds: ['checkout accepts terms'],
+      projectNames: ['chromium'],
+      retryIndices: [0],
+      commitShas: ['abcdef0123456789'],
       candidateIds: ['input:accept-terms:1', 'input:accept-terms:2', 'input:accept-terms:3'],
       screenshotPaths: [
         'test-results/healwright/after-1.png',
@@ -231,6 +272,84 @@ test('creates a review-required proposal after three successful agreements', () 
     },
   });
   expect(bundle.proposals[0]?.proposalId).toMatch(/^sha256:[a-f0-9]{64}$/);
+});
+
+test('keeps legacy history readable but excludes it from proposal confidence', () => {
+  const legacyEvents = threeSuccessfulPairs({ omitProvenance: true });
+  const parsed = parseAuditHistory(legacyEvents.map((event) => JSON.stringify(event)).join('\n'));
+  const bundle = generateHealingProposals(parsed, registry);
+
+  expect(parsed).toEqual(legacyEvents);
+  expect(bundle.proposals).toEqual([]);
+  expect(bundle.rejections[0]).toEqual({
+    targetKey: 'checkout.terms',
+    action: 'check',
+    reason: 'missing-provenance',
+    occurrenceCount: 3,
+  });
+});
+
+test('ignores legacy observations once enough independent runs exist', () => {
+  const bundle = generateHealingProposals(
+    [...eventPair(0, { omitProvenance: true }), ...threeSuccessfulPairs()],
+    registry,
+  );
+
+  expect(bundle.proposals[0]?.evidence).toMatchObject({
+    occurrenceCount: 3,
+    distinctRunCount: 3,
+    ignoredLegacyCount: 1,
+  });
+});
+
+test('does not let retries or repeated actions in one run inflate confidence', () => {
+  const events = [1, 2, 3].flatMap((index) =>
+    eventPair(index, {
+      runId: 'github-run-100',
+      retry: index - 1,
+      testId: `checkout-test-${index}`,
+    }),
+  );
+  const bundle = generateHealingProposals(events, registry);
+
+  expect(bundle.proposals).toEqual([]);
+  expect(bundle.rejections[0]?.reason).toBe('insufficient-independent-runs');
+});
+
+test('rejects assessment and execution events with mismatched provenance', () => {
+  const events = threeSuccessfulPairs({
+    executionProvenance: {
+      runId: 'different-run',
+      testId: 'checkout accepts terms',
+      projectName: 'chromium',
+      retry: 0,
+      commitSha: 'abcdef0123456789',
+    },
+  });
+
+  expect(generateHealingProposals(events, registry).rejections[0]?.reason).toBe(
+    'inconsistent-provenance',
+  );
+});
+
+test('rejects mixed commit revisions across otherwise independent runs', () => {
+  const events = [
+    ...eventPair(1, { commitSha: 'aaaaaaa' }),
+    ...eventPair(2, { commitSha: 'bbbbbbb' }),
+    ...eventPair(3, { commitSha: 'aaaaaaa' }),
+  ];
+
+  expect(generateHealingProposals(events, registry).rejections[0]?.reason).toBe('mixed-commits');
+});
+
+test('rejects partially recorded commit provenance', () => {
+  const events = [
+    ...eventPair(1, { commitSha: 'aaaaaaa' }),
+    ...eventPair(2, { commitSha: null }),
+    ...eventPair(3, { commitSha: 'aaaaaaa' }),
+  ];
+
+  expect(generateHealingProposals(events, registry).rejections[0]?.reason).toBe('mixed-commits');
 });
 
 test('uses semantic identity consensus even when live candidate IDs change', () => {
@@ -491,4 +610,128 @@ test('generated bundles satisfy the checked-in JSON Schema', async () => {
   });
 
   expect(validate(bundle), JSON.stringify(validate.errors)).toBe(true);
+});
+
+test('round-trips generated proposal bundles through strict runtime validation', () => {
+  const generated = generateHealingProposals(threeSuccessfulPairs(), registry, {
+    generatedAt: '2026-08-15T01:00:00.000Z',
+  });
+  const parsed = parseHealingProposalBundle(JSON.stringify(generated));
+
+  expect(parsed).toEqual(generated);
+  expect(verifyHealingProposalBundle(parsed, registry)).toEqual({
+    valid: true,
+    proposalCount: 1,
+  });
+});
+
+test('rejects malformed, obsolete, and extended proposal bundles', () => {
+  const generated = generateHealingProposals(threeSuccessfulPairs(), registry, {
+    generatedAt: '2026-08-15T01:00:00.000Z',
+  });
+  for (const value of [
+    [],
+    { ...generated, schemaVersion: 1 },
+    { ...generated, unexpected: true },
+    { ...generated, proposals: 'not-an-array' },
+  ]) {
+    expect(() => parseHealingProposalBundle(JSON.stringify(value))).toThrow(
+      ProposalBundleValidationError,
+    );
+  }
+});
+
+test('rejects internally inconsistent proposal evidence counts', () => {
+  const generated = generateHealingProposals(threeSuccessfulPairs(), registry, {
+    generatedAt: '2026-08-15T01:00:00.000Z',
+  });
+  const proposal = generated.proposals[0];
+  expect(proposal).toBeDefined();
+  if (proposal !== undefined) {
+    const malformed = {
+      ...generated,
+      proposals: [
+        {
+          ...proposal,
+          evidence: { ...proposal.evidence, distinctRunCount: 4 },
+        },
+      ],
+    };
+    expect(() => parseHealingProposalBundle(JSON.stringify(malformed))).toThrow(
+      /inconsistent evidence counts/,
+    );
+  }
+});
+
+test('strict proposal parsing rejects unsafe screenshot references', () => {
+  const generated = generateHealingProposals(threeSuccessfulPairs(), registry, {
+    generatedAt: '2026-08-15T01:00:00.000Z',
+  });
+  const proposal = generated.proposals[0];
+  expect(proposal).toBeDefined();
+  if (proposal !== undefined) {
+    const malformed = {
+      ...generated,
+      proposals: [
+        {
+          ...proposal,
+          evidence: {
+            ...proposal.evidence,
+            screenshotPaths: ['/private/evidence.png', 'test-results/healwright/after.png'],
+          },
+        },
+      ],
+    };
+    expect(() => parseHealingProposalBundle(JSON.stringify(malformed))).toThrow(
+      /unsafe screenshot path/,
+    );
+  }
+});
+
+test('strict proposal parsing rejects candidate and suggested locator disagreement', () => {
+  const generated = generateHealingProposals(threeSuccessfulPairs(), registry, {
+    generatedAt: '2026-08-15T01:00:00.000Z',
+  });
+  const proposal = generated.proposals[0];
+  expect(proposal).toBeDefined();
+  if (proposal !== undefined) {
+    const malformed = {
+      ...generated,
+      proposals: [
+        {
+          ...proposal,
+          candidate: { ...proposal.candidate, accessibleName: 'Different candidate' },
+        },
+      ],
+    };
+    expect(() => parseHealingProposalBundle(JSON.stringify(malformed))).toThrow(
+      /candidate identity must match/,
+    );
+  }
+});
+
+test('bundle verification reports proposal tampering without mutating inputs', () => {
+  const generated = generateHealingProposals(threeSuccessfulPairs(), registry, {
+    generatedAt: '2026-08-15T01:00:00.000Z',
+  });
+  const proposal = generated.proposals[0];
+  expect(proposal).toBeDefined();
+  if (proposal !== undefined) {
+    const tampered = parseHealingProposalBundle(
+      JSON.stringify({
+        ...generated,
+        proposals: [
+          {
+            ...proposal,
+            suggestedPrimary: { ...proposal.suggestedPrimary, name: 'Tampered name' },
+            candidate: { ...proposal.candidate, accessibleName: 'Tampered name' },
+          },
+        ],
+      }),
+    );
+    expect(verifyHealingProposalBundle(tampered, registry)).toMatchObject({
+      valid: false,
+      issues: [{ targetKey: 'checkout.terms', reason: 'hash-mismatch' }],
+    });
+  }
 });

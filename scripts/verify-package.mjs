@@ -1,4 +1,4 @@
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { access, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 
 const expectedRuntimeExports = [
   'AUDIT_SCHEMA_VERSION',
+  'AUDIT_PROVENANCE_VERSION',
   'ArtifactCaptureError',
   'AuditWriteError',
   'CompositeAuditSink',
@@ -26,6 +27,7 @@ const expectedRuntimeExports = [
   'PlaywrightAttachmentAuditSink',
   'PlaywrightHealingResultSink',
   'ProposalHistoryError',
+  'ProposalBundleValidationError',
   'RegistryValidationError',
   'SCORE_WEIGHTS',
   'SUPPORTED_ARIA_ROLES',
@@ -35,20 +37,26 @@ const expectedRuntimeExports = [
   'assessCandidates',
   'collectCandidates',
   'createHealer',
+  'createAuditProvenance',
   'createHealingAuditEvent',
   'createHealingExecutionAuditEvent',
+  'createPlaywrightAuditProvenance',
   'executePrimaryAction',
   'generateHealingProposals',
   'loadAuditHistory',
+  'loadHealingProposalBundle',
   'loadTargetRegistry',
   'parseAriaIdentity',
   'parseAuditHistory',
+  'parseAuditProvenance',
+  'parseHealingProposalBundle',
   'parseTargetRegistry',
   'rankCandidates',
   'resolvePrimaryLocator',
   'renderHealingProposalReport',
   'scoreCandidate',
   'verifyHealingProposal',
+  'verifyHealingProposalBundle',
 ];
 
 const publicApi = await import('healwright');
@@ -77,8 +85,11 @@ const artifactPaths = [
   packageJson.exports['./registry-schema'],
   packageJson.exports['./proposal-schema'],
   './scripts/propose-heals.mjs',
+  './scripts/verify-proposals.mjs',
   './dist/index.js.map',
   './dist/index.d.ts.map',
+  './dist/proposal-validation.js',
+  './dist/proposal-validation.d.ts',
   './dist/reporter.js.map',
   './dist/reporter.d.ts.map',
 ];
@@ -95,17 +106,33 @@ const cliHelp = execFileSync(process.execPath, ['scripts/propose-heals.mjs', '--
 if (!cliHelp.includes('never modifies the registry or test source')) {
   throw new Error('Proposal CLI help is missing its non-mutation safety contract');
 }
+const verifyCliHelp = execFileSync(process.execPath, ['scripts/verify-proposals.mjs', '--help'], {
+  cwd: repositoryPath,
+  encoding: 'utf8',
+});
+if (!verifyCliHelp.includes('exits nonzero')) {
+  throw new Error('Proposal verification CLI help is missing its failure contract');
+}
 
 function proposalAuditEvents(index) {
   const candidateId = `input:accept-terms:${index}`;
   const assessmentId = `assessment-${index}`;
   const timestampPrefix = `2026-08-15T00:0${index}`;
+  const provenance = {
+    version: 1,
+    runId: `package-check-run-${index}`,
+    testId: 'package-check-test',
+    projectName: 'chromium',
+    retry: 0,
+    commitSha: 'abcdef0123456789',
+  };
   return [
     {
       schemaVersion: 1,
       eventType: 'locator-drift-assessed',
       eventId: assessmentId,
       timestamp: `${timestampPrefix}:00.000Z`,
+      provenance,
       mode: 'guarded',
       modeDecision: 'eligible',
       targetKey: 'checkout.terms',
@@ -138,6 +165,7 @@ function proposalAuditEvents(index) {
       eventType: 'locator-heal-execution',
       eventId: `execution-${index}`,
       timestamp: `${timestampPrefix}:01.000Z`,
+      provenance,
       parentEventId: assessmentId,
       mode: 'guarded',
       targetKey: 'checkout.terms',
@@ -190,18 +218,48 @@ try {
   );
   const bundle = JSON.parse(await readFile(jsonPath, 'utf8'));
   const report = await readFile(markdownPath, 'utf8');
+  const verifyOutput = execFileSync(
+    process.execPath,
+    [
+      'scripts/verify-proposals.mjs',
+      '--proposal',
+      jsonPath,
+      '--registry',
+      join(repositoryPath, 'registry', 'targets.json'),
+    ],
+    { cwd: repositoryPath, encoding: 'utf8' },
+  );
   if (
     bundle.proposals?.length !== 1 ||
     bundle.proposals[0]?.status !== 'review-required' ||
     !report.includes('Review required') ||
-    !cliOutput.includes('Registry and test source were not modified')
+    !cliOutput.includes('Registry and test source were not modified') ||
+    !verifyOutput.includes('hashes and current registry state are valid')
   ) {
     throw new Error('Proposal CLI end-to-end verification failed');
+  }
+  const tamperedPath = join(cliDirectory, 'tampered.json');
+  bundle.proposals[0].suggestedPrimary.name = 'Tampered after generation';
+  bundle.proposals[0].candidate.accessibleName = 'Tampered after generation';
+  await writeFile(tamperedPath, `${JSON.stringify(bundle)}\n`, 'utf8');
+  const tamperedVerification = spawnSync(
+    process.execPath,
+    [
+      'scripts/verify-proposals.mjs',
+      '--proposal',
+      tamperedPath,
+      '--registry',
+      join(repositoryPath, 'registry', 'targets.json'),
+    ],
+    { cwd: repositoryPath, encoding: 'utf8' },
+  );
+  if (tamperedVerification.status === 0 || !tamperedVerification.stderr.includes('hash-mismatch')) {
+    throw new Error('Proposal verification CLI did not reject tampering');
   }
 } finally {
   await rm(cliDirectory, { recursive: true, force: true });
 }
 
 process.stdout.write(
-  `Verified ${expectedRuntimeExports.length} runtime exports, reporter and schema subpaths, the proposal CLI end to end, and ${new Set(artifactPaths).size} build artifacts.\n`,
+  `Verified ${expectedRuntimeExports.length} runtime exports, reporter and schema subpaths, proposal generation and verification CLIs end to end, and ${new Set(artifactPaths).size} build artifacts.\n`,
 );

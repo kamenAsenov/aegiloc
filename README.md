@@ -55,7 +55,8 @@ Healwright takes the narrow path:
 | Visible `PASSED_WITH_HEALING` result decoration              | Available |
 | Guarded replacement execution with second-pass revalidation  | Available |
 | Typed ESM build with explicit package exports                | Available |
-| Review-only locator proposals with integrity verification    | Available |
+| Provenance-backed, review-only locator proposals             | Available |
+| Strict proposal parsing, stale-state, and tamper detection   | Available |
 
 ## Quick start
 
@@ -92,9 +93,9 @@ entry points:
 - `healwright/proposal-schema` for the review-proposal JSON Schema.
 
 `pnpm package:check` compiles an external-style TypeScript consumer, self-imports both JavaScript
-entry points through Node's package resolution, and verifies the expected artifacts. `pnpm pack
---dry-run --json` additionally shows the exact files that would enter a tarball without creating or
-publishing one.
+entry points through Node's package resolution, verifies the expected artifacts, and exercises both
+proposal CLIs—including a deliberate tampering failure. `pnpm pack --dry-run --json` additionally
+shows the exact files that would enter a tarball without creating or publishing one.
 
 ## Wrapper API
 
@@ -102,11 +103,13 @@ publishing one.
 import {
   FileScreenshotCapture,
   PlaywrightHealingResultSink,
+  createPlaywrightAuditProvenance,
   createHealer,
   loadTargetRegistry,
 } from 'healwright';
 
 const registry = await loadTargetRegistry(new URL('./registry/targets.json', import.meta.url));
+const runId = process.env.GITHUB_RUN_ID ?? process.env.HEALWRIGHT_RUN_ID;
 const healer = createHealer({
   page,
   registry,
@@ -114,6 +117,14 @@ const healer = createHealer({
   primaryActionTimeoutMs: 2_000,
   screenshotCapture: new FileScreenshotCapture(page, testInfo.outputPath('healwright-screenshots')),
   resultSink: new PlaywrightHealingResultSink(testInfo),
+  ...(runId === undefined
+    ? {}
+    : {
+        auditProvenance: createPlaywrightAuditProvenance(testInfo, {
+          runId,
+          ...(process.env.GITHUB_SHA === undefined ? {} : { commitSha: process.env.GITHUB_SHA }),
+        }),
+      }),
 });
 
 await healer.target('checkout.cardholderName').fill('Ada Lovelace');
@@ -190,7 +201,7 @@ flowchart LR
   C --> S["Deterministic weighted scoring"]
   S --> G{"Threshold and safe margin?"}
   G -->|"no"| SF["Fail closed"]
-  G -->|"yes"| A["Write assessment audit"]
+  G -->|"yes"| A["Write assessment audit + provenance"]
   A --> V{"Fresh collection: same unique winner?"}
   V -->|"no"| SF
   V -->|"yes"| B["Before screenshot"]
@@ -250,10 +261,11 @@ Every assessed drift produces a versioned `locator-drift-assessed` JSON event be
 execution can begin. A guarded decision then produces `locator-heal-execution` with `succeeded`,
 `failed`, or `rejected`, a reason, its parent assessment ID, and screenshot references. Events
 include the mode, semantic target, action, sanitized failure category, collection status, threshold
-and margin decision, and ranked per-signal candidate details. Action values such as filled text are
-never serialized, raw error messages are omitted, absolute screenshot paths are not audited, and
-collected URL attributes are reduced to paths. Text-like form controls are masked in screenshots by
-default so filled values do not become visual artifacts.
+and margin decision, and ranked per-signal candidate details. Optional versioned provenance records
+the run, Playwright test ID, project, retry index, and commit SHA. Action values such as filled text
+are never serialized, raw error messages are omitted, absolute screenshot paths are not audited,
+and collected URL attributes are reduced to paths. Text-like form controls are masked in screenshots
+by default so filled values do not become visual artifacts.
 
 The default sink appends JSONL history to:
 
@@ -269,6 +281,7 @@ import {
   CompositeAuditSink,
   JsonlAuditSink,
   PlaywrightAttachmentAuditSink,
+  createPlaywrightAuditProvenance,
   createHealer,
 } from 'healwright';
 
@@ -277,8 +290,22 @@ const auditSink = new CompositeAuditSink([
   new PlaywrightAttachmentAuditSink(testInfo),
 ]);
 
-const healer = createHealer({ page, registry, mode: 'observe', auditSink });
+const healer = createHealer({
+  page,
+  registry,
+  mode: 'observe',
+  auditSink,
+  auditProvenance: createPlaywrightAuditProvenance(testInfo, {
+    runId: process.env.GITHUB_RUN_ID ?? process.env.HEALWRIGHT_RUN_ID ?? testInfo.testId,
+  }),
+});
 ```
+
+For proposal-quality evidence, set one run ID for the entire suite and reuse it across retries. In
+GitHub Actions, `GITHUB_RUN_ID` provides that identity. Locally, start each independent run with a
+new value, for example `HEALWRIGHT_RUN_ID="$(uuidgen)" pnpm test:healing`. Falling back to
+`testInfo.testId` is safe for ordinary auditing, but repeated executions will intentionally not
+count as independent proposal evidence.
 
 An audit-write failure is surfaced as `AuditWriteError`; Healwright will not continue toward a
 healed action without its required evidence trail. A pre-action screenshot failure also prevents
@@ -298,9 +325,11 @@ pnpm proposal:generate -- \
   --markdown test-results/healwright/proposals.md
 ```
 
-The command defaults to those paths and requires three distinct successful audit chains for the
-same target, action, and exact accessible role/name identity. Each chain must connect an eligible
-assessment to its successful guarded execution. Reused events, orphaned executions, unsupported
+The command defaults to those paths and requires three distinct provenance run IDs for the same
+target, action, and exact accessible role/name identity. Retried tests and repeated actions from one
+run cannot inflate confidence. Each chain must connect an eligible assessment to its successful
+guarded execution with identical provenance. Legacy events remain readable but do not count toward
+consensus. Reused events, orphaned executions, mixed or partially recorded commits, unsupported
 roles, missing screenshot phases, disabled or changed policies, no-longer-allowed actions, stale
 primary locators, and conflicting candidates all fail closed.
 
@@ -308,14 +337,25 @@ Every proposal contains:
 
 - the current primary locator and a suggested exact role locator;
 - minimum and maximum observed scores plus the minimum runner-up margin;
+- distinct run, test, project, retry, and optional commit provenance;
 - assessment, execution, candidate, and screenshot references;
 - a target-definition digest that makes later fingerprint or policy changes stale;
 - a deterministic SHA-256 proposal ID covering all review-sensitive content;
 - an explicit `review-required` status.
 
 The generator verifies each proposal against the current registry immediately before writing. The
-public `verifyHealingProposal()` API detects later content tampering and registry drift. Output
-paths are also prevented from overwriting the input history or registry.
+public `parseHealingProposalBundle()` and `verifyHealingProposalBundle()` APIs strictly reject
+malformed, extended, tampered, stale, and unknown-target bundles. The same checks are available as a
+separate quality gate:
+
+```bash
+pnpm proposal:verify -- \
+  --proposal test-results/healwright/proposals.json \
+  --registry registry/targets.json
+```
+
+Both proposal commands are read-only with respect to the registry and test source. Output paths are
+also prevented from overwriting the input history or registry.
 
 > [!CAUTION]
 > Proposal generation never changes `registry/targets.json`, test source, or application code. A
@@ -366,10 +406,11 @@ The local checkout fixture supports controlled query-string mutations:
 | `drifted-disabled-terms`  | Compatible but non-actionable replacement                     |
 
 The suite contains baseline, registry-validation, wrapper, classification, adversarial mutation,
-candidate-collection, and scoring tests. Ajv verifies that the checked-in JSON Schema and strict
-runtime parser agree on safety-sensitive boundaries. Fast-check exercises scoring and policy
-invariants with the fixed seed `20260815`, making every failure reproducible. GitHub Actions installs
-Chromium, runs every static gate and test, and uploads the Playwright HTML report.
+candidate-collection, scoring, audit-provenance, and proposal-integrity tests. Ajv verifies that the
+checked-in JSON Schema and strict runtime parser agree on safety-sensitive boundaries. Fast-check
+exercises scoring and policy invariants with the fixed seed `20260815`, making every failure
+reproducible. GitHub Actions installs Chromium, runs every static gate and test, and uploads the
+Playwright HTML report.
 
 An additional 50-test contract layer covers the less obvious failure surfaces that matter for safe
 healing:
@@ -410,7 +451,9 @@ pnpm test:proposals
 ├── package-tests/              # External-consumer TypeScript contract
 ├── playwright.unit.config.ts   # Fast browser-free policy and scoring tests
 ├── registry/                   # Targets plus registry/proposal JSON Schemas
-├── scripts/propose-heals.mjs   # Local review-artifact generator
+├── scripts/
+│   ├── propose-heals.mjs       # Local review-artifact generator
+│   └── verify-proposals.mjs    # Proposal integrity and registry-state gate
 ├── src/
 │   ├── artifacts.ts            # Before/after screenshot capture
 │   ├── candidates.ts           # Public-API live candidate snapshots
@@ -418,6 +461,7 @@ pnpm test:proposals
 │   ├── classification.ts       # Conservative missing-target proof
 │   ├── healer.ts               # Explicit wrapper API
 │   ├── locator.ts              # Primary locator resolution
+│   ├── proposal-validation.ts  # Strict proposal parser and bundle verification
 │   ├── proposals.ts            # Consensus, integrity checks, and Markdown reports
 │   ├── reporter.ts             # Visible PASSED_WITH_HEALING output
 │   ├── result.ts               # Playwright annotations and attachments
@@ -463,6 +507,8 @@ cloud service, Docker container, database, OCR, or visual AI.
 - [x] Seeded property-based scoring invariants
 - [x] Typed ESM distribution build and package export verification
 - [x] Review-only locator proposal workflow with stale/tamper detection
+- [x] Versioned audit provenance and independent-run consensus
+- [x] Strict proposal-bundle verification API and CLI quality gate
 
 ## Limitations
 
@@ -471,6 +517,10 @@ cloud service, Docker container, database, OCR, or visual AI.
 - Candidate collection currently targets common interactive HTML and ARIA patterns.
 - Accessible identity is read from Playwright's public ARIA snapshot representation.
 - Fingerprints and registry changes remain manual; proposals intentionally have no auto-apply path.
+- Proposal consensus requires explicitly configured run provenance; legacy history is readable but
+  intentionally excluded from confidence counts.
+- Commit SHA provenance is optional, but a proposal fails closed if qualifying runs mix commits or
+  only some of them record a commit.
 - Proposal hashes detect changes after generation but do not authenticate the local JSONL history;
   teams must protect and review their evidence source.
 - Guarded execution requires an exact, unique accessible role/name/tag identity; candidates without

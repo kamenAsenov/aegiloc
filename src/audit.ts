@@ -9,6 +9,24 @@ import type { CandidateAssessment, RankedCandidate, ScoreDetail } from './scorin
 import type { HealingMode, PrimaryLocatorDefinition, TargetAction } from './types.js';
 
 export const AUDIT_SCHEMA_VERSION = 1 as const;
+export const AUDIT_PROVENANCE_VERSION = 1 as const;
+
+export interface AuditProvenanceInput {
+  readonly runId: string;
+  readonly testId: string;
+  readonly projectName: string;
+  readonly retry: number;
+  readonly commitSha?: string;
+}
+
+export interface AuditProvenance extends AuditProvenanceInput {
+  readonly version: typeof AUDIT_PROVENANCE_VERSION;
+}
+
+export interface PlaywrightAuditProvenanceOptions {
+  readonly runId: string;
+  readonly commitSha?: string;
+}
 
 export type AuditCollectionStatus = 'completed' | 'failed' | 'skipped-policy-disabled';
 export type AuditModeDecision = 'observed' | 'eligible' | 'rejected' | 'strict-ci-failure';
@@ -35,6 +53,7 @@ export interface HealingAuditEvent {
   readonly eventType: 'locator-drift-assessed';
   readonly eventId: string;
   readonly timestamp: string;
+  readonly provenance?: AuditProvenance;
   readonly mode: Exclude<HealingMode, 'off'>;
   readonly modeDecision: AuditModeDecision;
   readonly targetKey: string;
@@ -66,6 +85,7 @@ export interface HealingExecutionAuditEvent {
   readonly eventType: 'locator-heal-execution';
   readonly eventId: string;
   readonly timestamp: string;
+  readonly provenance?: AuditProvenance;
   readonly parentEventId: string;
   readonly mode: 'guarded';
   readonly targetKey: string;
@@ -87,6 +107,7 @@ export type HealwrightAuditEvent = HealingAuditEvent | HealingExecutionAuditEven
 export interface CreateHealingAuditEventOptions {
   readonly eventId?: string;
   readonly timestamp?: string;
+  readonly provenance?: AuditProvenanceInput;
   readonly mode: Exclude<HealingMode, 'off'>;
   readonly modeDecision: AuditModeDecision;
   readonly targetKey: string;
@@ -102,6 +123,7 @@ export interface CreateHealingAuditEventOptions {
 export interface CreateHealingExecutionAuditEventOptions {
   readonly eventId?: string;
   readonly timestamp?: string;
+  readonly provenance?: AuditProvenanceInput;
   readonly parentEventId: string;
   readonly targetKey: string;
   readonly action: TargetAction;
@@ -116,9 +138,81 @@ function errorName(error: unknown): string {
   return error instanceof Error ? error.name : 'UnknownError';
 }
 
+function expectProvenanceText(value: unknown, field: string, maximumLength: number): string {
+  if (
+    typeof value !== 'string' ||
+    value.trim() === '' ||
+    value.length > maximumLength ||
+    [...value].some((character) => {
+      const codePoint = character.codePointAt(0) ?? 0;
+      return codePoint <= 0x1f || codePoint === 0x7f;
+    })
+  ) {
+    throw new TypeError(
+      `Audit provenance ${field} must be a non-empty, control-free string of at most ${maximumLength} characters`,
+    );
+  }
+  return value;
+}
+
+export function parseAuditProvenance(value: unknown): AuditProvenance {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    throw new TypeError('Audit provenance must be an object');
+  }
+  const input = value as Record<string, unknown>;
+  const allowedKeys = new Set(['version', 'runId', 'testId', 'projectName', 'retry', 'commitSha']);
+  const unexpectedKey = Object.keys(input).find((key) => !allowedKeys.has(key));
+  if (unexpectedKey !== undefined) {
+    throw new TypeError(`Audit provenance contains unexpected property "${unexpectedKey}"`);
+  }
+  if (input.version !== AUDIT_PROVENANCE_VERSION) {
+    throw new TypeError('Audit provenance version is unsupported');
+  }
+  const runId = expectProvenanceText(input.runId, 'runId', 200);
+  const testId = expectProvenanceText(input.testId, 'testId', 300);
+  const projectName = expectProvenanceText(input.projectName, 'projectName', 100);
+  if (typeof input.retry !== 'number' || !Number.isInteger(input.retry) || input.retry < 0) {
+    throw new TypeError('Audit provenance retry must be a non-negative integer');
+  }
+  const commitSha =
+    input.commitSha === undefined
+      ? undefined
+      : expectProvenanceText(input.commitSha, 'commitSha', 64).toLowerCase();
+  if (commitSha !== undefined && !/^[a-f0-9]{7,64}$/.test(commitSha)) {
+    throw new TypeError('Audit provenance commitSha must contain 7 to 64 hexadecimal characters');
+  }
+
+  return {
+    version: AUDIT_PROVENANCE_VERSION,
+    runId,
+    testId,
+    projectName,
+    retry: input.retry,
+    ...(commitSha === undefined ? {} : { commitSha }),
+  };
+}
+
+export function createAuditProvenance(input: AuditProvenanceInput): AuditProvenance {
+  return parseAuditProvenance({ version: AUDIT_PROVENANCE_VERSION, ...input });
+}
+
+export function createPlaywrightAuditProvenance(
+  testInfo: Pick<TestInfo, 'testId' | 'project' | 'retry'>,
+  options: PlaywrightAuditProvenanceOptions,
+): AuditProvenance {
+  return createAuditProvenance({
+    runId: options.runId,
+    testId: testInfo.testId,
+    projectName: testInfo.project.name.trim() === '' ? 'default' : testInfo.project.name,
+    retry: testInfo.retry,
+    ...(options.commitSha === undefined ? {} : { commitSha: options.commitSha }),
+  });
+}
+
 export function createHealingAuditEvent({
   eventId = randomUUID(),
   timestamp = new Date().toISOString(),
+  provenance,
   mode,
   modeDecision,
   targetKey,
@@ -135,6 +229,7 @@ export function createHealingAuditEvent({
     eventType: 'locator-drift-assessed',
     eventId,
     timestamp,
+    ...(provenance === undefined ? {} : { provenance: createAuditProvenance(provenance) }),
     mode,
     modeDecision,
     targetKey,
@@ -179,6 +274,7 @@ export function createHealingAuditEvent({
 export function createHealingExecutionAuditEvent({
   eventId = randomUUID(),
   timestamp = new Date().toISOString(),
+  provenance,
   parentEventId,
   targetKey,
   action,
@@ -193,6 +289,7 @@ export function createHealingExecutionAuditEvent({
     eventType: 'locator-heal-execution',
     eventId,
     timestamp,
+    ...(provenance === undefined ? {} : { provenance: createAuditProvenance(provenance) }),
     parentEventId,
     mode: 'guarded',
     targetKey,

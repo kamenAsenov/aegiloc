@@ -204,6 +204,13 @@ test('guarded mode revalidates, executes, audits, and records a healed result', 
     auditSink,
     resultSink,
     screenshotCapture,
+    auditProvenance: {
+      runId: 'run-guarded-1',
+      testId: 'guarded-healing-test',
+      projectName: 'chromium',
+      retry: 0,
+      commitSha: 'abcdef0123456789',
+    },
     primaryActionTimeoutMs: 300,
     candidateCollector: () => {
       collectionCalls += 1;
@@ -220,12 +227,14 @@ test('guarded mode revalidates, executes, audits, and records a healed result', 
   expect(auditSink.events[0]).toMatchObject({
     eventType: 'locator-drift-assessed',
     modeDecision: 'eligible',
+    provenance: { runId: 'run-guarded-1', testId: 'guarded-healing-test' },
   });
   expect(auditSink.events[1]).toMatchObject({
     eventType: 'locator-heal-execution',
     parentEventId: auditSink.events[0]?.eventId,
     status: 'succeeded',
     reason: 'succeeded',
+    provenance: { runId: 'run-guarded-1', testId: 'guarded-healing-test' },
     screenshots: [{ phase: 'before' }, { phase: 'after' }],
   });
   expect(resultSink.results[0]).toMatchObject({

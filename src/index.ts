@@ -6,6 +6,7 @@ export {
 } from './healer.js';
 export {
   AUDIT_SCHEMA_VERSION,
+  AUDIT_PROVENANCE_VERSION,
   CompositeAuditSink,
   InMemoryAuditSink,
   JsonlAuditSink,
@@ -13,10 +14,16 @@ export {
   PlaywrightAttachmentAuditSink,
   createHealingAuditEvent,
   createHealingExecutionAuditEvent,
+  createAuditProvenance,
+  createPlaywrightAuditProvenance,
+  parseAuditProvenance,
+  type AuditProvenance,
+  type AuditProvenanceInput,
   type AuditCollectionStatus,
   type AuditModeDecision,
   type AuditRankedCandidate,
   type AuditSink,
+  type PlaywrightAuditProvenanceOptions,
   type HealwrightAuditEvent,
   type HealingAuditEvent,
   type HealingExecutionAuditEvent,
@@ -44,6 +51,7 @@ export {
   MissingPrimaryLocatorError,
   RegistryValidationError,
   ProposalHistoryError,
+  ProposalBundleValidationError,
   TargetActionNotAllowedError,
   UnknownTargetError,
 } from './errors.js';
@@ -64,6 +72,13 @@ export {
   type HealingProposalRejectionReason,
   type HealingProposalVerification,
 } from './proposals.js';
+export {
+  loadHealingProposalBundle,
+  parseHealingProposalBundle,
+  verifyHealingProposalBundle,
+  type HealingProposalBundleVerification,
+  type HealingProposalVerificationIssue,
+} from './proposal-validation.js';
 export {
   ConsoleHealingResultSink,
   InMemoryHealingResultSink,

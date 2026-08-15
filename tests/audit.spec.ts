@@ -8,8 +8,11 @@ import {
   JsonlAuditSink,
   PlaywrightAttachmentAuditSink,
   assessCandidates,
+  createAuditProvenance,
   createHealingAuditEvent,
   createHealingExecutionAuditEvent,
+  createPlaywrightAuditProvenance,
+  parseAuditProvenance,
   type HealingAuditEvent,
 } from '../src/index.js';
 
@@ -110,4 +113,49 @@ test('execution events reference safe screenshot paths without serializing absol
     ],
   });
   expect(JSON.stringify(event)).not.toContain('/Users/example/private');
+});
+
+test('creates bounded Playwright provenance without serializing test titles or paths', ({
+  browserName,
+}, testInfo) => {
+  const provenance = createPlaywrightAuditProvenance(testInfo, {
+    runId: 'github-run-31906948301',
+    commitSha: 'ABCDEF0123456789',
+  });
+
+  expect(provenance).toEqual({
+    version: 1,
+    runId: 'github-run-31906948301',
+    testId: testInfo.testId,
+    projectName: testInfo.project.name === '' ? 'default' : testInfo.project.name,
+    retry: testInfo.retry,
+    commitSha: 'abcdef0123456789',
+  });
+  expect(browserName).toBe('chromium');
+  expect(JSON.stringify(provenance)).not.toContain(testInfo.file);
+  expect(JSON.stringify(provenance)).not.toContain(testInfo.title);
+});
+
+test('validates provenance strictly at API and imported-data boundaries', () => {
+  expect(() =>
+    createAuditProvenance({ runId: '', testId: 'test', projectName: 'chromium', retry: 0 }),
+  ).toThrow(/runId/);
+  expect(() =>
+    createAuditProvenance({
+      runId: 'run',
+      testId: 'test',
+      projectName: 'chromium',
+      retry: -1,
+    }),
+  ).toThrow(/non-negative integer/);
+  expect(() =>
+    parseAuditProvenance({
+      version: 1,
+      runId: 'run',
+      testId: 'test',
+      projectName: 'chromium',
+      retry: 0,
+      extra: true,
+    }),
+  ).toThrow(/unexpected property/);
 });

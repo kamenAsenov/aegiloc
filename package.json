@@ -1,6 +1,6 @@
 {
   "name": "healwright",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "A guarded, deterministic self-healing layer for Playwright Test.",
   "type": "module",
@@ -23,6 +23,7 @@
     "src",
     "registry/*.schema.json",
     "scripts/propose-heals.mjs",
+    "scripts/verify-proposals.mjs",
     "README.md"
   ],
   "sideEffects": false,
@@ -38,6 +39,7 @@
     "package:check": "tsc -p tsconfig.package-test.json && node scripts/verify-package.mjs",
     "prepack": "pnpm build && pnpm package:check",
     "proposal:generate": "pnpm build && node scripts/propose-heals.mjs",
+    "proposal:verify": "pnpm build && node scripts/verify-proposals.mjs",
     "typecheck": "tsc --noEmit",
     "test": "playwright test",
     "test:audit": "playwright test --config=playwright.unit.config.ts tests/audit.spec.ts",

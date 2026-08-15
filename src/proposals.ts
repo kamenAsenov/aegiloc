@@ -4,6 +4,8 @@ import { posix, win32 } from 'node:path';
 
 import {
   AUDIT_SCHEMA_VERSION,
+  parseAuditProvenance,
+  type AuditProvenance,
   type AuditRankedCandidate,
   type HealingAuditEvent,
   type HealingExecutionAuditEvent,
@@ -20,7 +22,7 @@ import {
   type TargetRegistry,
 } from './types.js';
 
-export const HEALING_PROPOSAL_SCHEMA_VERSION = 1 as const;
+export const HEALING_PROPOSAL_SCHEMA_VERSION = 2 as const;
 export const DEFAULT_PROPOSAL_MINIMUM_OBSERVATIONS = 3;
 export const HEALING_PROPOSAL_SCHEMA_URL =
   'https://github.com/kamenAsenov/healwright/registry/healing-proposals.schema.json';
@@ -29,6 +31,10 @@ export type HealingProposalRejectionReason =
   | 'insufficient-evidence'
   | 'conflicting-candidates'
   | 'inconsistent-audit-chain'
+  | 'inconsistent-provenance'
+  | 'missing-provenance'
+  | 'insufficient-independent-runs'
+  | 'mixed-commits'
   | 'stale-primary'
   | 'stale-policy'
   | 'unknown-target'
@@ -37,6 +43,13 @@ export type HealingProposalRejectionReason =
 
 export interface HealingProposalEvidence {
   readonly occurrenceCount: number;
+  readonly distinctRunCount: number;
+  readonly ignoredLegacyCount: number;
+  readonly runIds: readonly string[];
+  readonly testIds: readonly string[];
+  readonly projectNames: readonly string[];
+  readonly retryIndices: readonly number[];
+  readonly commitShas: readonly string[];
   readonly candidateIds: readonly string[];
   readonly assessmentEventIds: readonly string[];
   readonly executionEventIds: readonly string[];
@@ -102,6 +115,8 @@ interface ProposalObservation {
   readonly score: number;
   readonly margin: number;
   readonly screenshotPaths: readonly string[];
+  readonly provenance: AuditProvenance;
+  readonly ignoredLegacyCount: number;
 }
 
 interface ObservationGroup {
@@ -110,6 +125,7 @@ interface ObservationGroup {
   readonly observations: ProposalObservation[];
   readonly rejectionReasons: Set<HealingProposalRejectionReason>;
   occurrenceCount: number;
+  legacyOccurrenceCount: number;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -172,6 +188,13 @@ function requireAssessmentEvent(
   value: Record<string, unknown>,
   line: number,
 ): asserts value is Record<string, unknown> & HealingAuditEvent {
+  if (value.provenance !== undefined) {
+    try {
+      parseAuditProvenance(value.provenance);
+    } catch (error) {
+      throw new ProposalHistoryError(line, 'assessment provenance is malformed', error);
+    }
+  }
   if (!isRecord(value.primaryLocator)) {
     throw new ProposalHistoryError(line, 'assessment primaryLocator must be an object');
   }
@@ -229,6 +252,13 @@ function requireExecutionEvent(
   value: Record<string, unknown>,
   line: number,
 ): asserts value is Record<string, unknown> & HealingExecutionAuditEvent {
+  if (value.provenance !== undefined) {
+    try {
+      parseAuditProvenance(value.provenance);
+    } catch (error) {
+      throw new ProposalHistoryError(line, 'execution provenance is malformed', error);
+    }
+  }
   if (!isNonEmptyString(value.parentEventId)) {
     throw new ProposalHistoryError(line, 'execution parentEventId must be a non-empty string');
   }
@@ -356,6 +386,10 @@ function sortedUnique(values: readonly string[]): readonly string[] {
   return [...new Set(values)].sort();
 }
 
+function sortedUniqueNumbers(values: readonly number[]): readonly number[] {
+  return [...new Set(values)].sort((left, right) => left - right);
+}
+
 function primaryEquals(left: PrimaryLocatorDefinition, right: PrimaryLocatorDefinition): boolean {
   return canonicalJson(left) === canonicalJson(right);
 }
@@ -374,6 +408,7 @@ function getGroup(
       observations: [],
       rejectionReasons: new Set(),
       occurrenceCount: 0,
+      legacyOccurrenceCount: 0,
     };
     groups.set(key, group);
   }
@@ -419,6 +454,22 @@ function createProposal(observations: readonly ProposalObservation[]): HealingPr
     candidate: first.candidate,
     evidence: {
       occurrenceCount: observations.length,
+      distinctRunCount: new Set(observations.map((observation) => observation.provenance.runId))
+        .size,
+      ignoredLegacyCount: first.ignoredLegacyCount,
+      runIds: sortedUnique(observations.map((observation) => observation.provenance.runId)),
+      testIds: sortedUnique(observations.map((observation) => observation.provenance.testId)),
+      projectNames: sortedUnique(
+        observations.map((observation) => observation.provenance.projectName),
+      ),
+      retryIndices: sortedUniqueNumbers(
+        observations.map((observation) => observation.provenance.retry),
+      ),
+      commitShas: sortedUnique(
+        observations.flatMap((observation) =>
+          observation.provenance.commitSha === undefined ? [] : [observation.provenance.commitSha],
+        ),
+      ),
       candidateIds: sortedUnique(observations.map((observation) => observation.candidateId)),
       assessmentEventIds: sortedUnique(
         observations.map((observation) => observation.assessmentEventId),
@@ -445,6 +496,7 @@ function rejectionPriority(
 ): HealingProposalRejectionReason | undefined {
   const priority: readonly HealingProposalRejectionReason[] = [
     'inconsistent-audit-chain',
+    'inconsistent-provenance',
     'unknown-target',
     'stale-primary',
     'stale-policy',
@@ -532,6 +584,21 @@ export function generateHealingProposals(
       continue;
     }
 
+    const assessmentProvenance = assessment.provenance;
+    const executionProvenance = execution.provenance;
+    if (assessmentProvenance === undefined && executionProvenance === undefined) {
+      group.legacyOccurrenceCount += 1;
+      continue;
+    }
+    if (
+      assessmentProvenance === undefined ||
+      executionProvenance === undefined ||
+      canonicalJson(assessmentProvenance) !== canonicalJson(executionProvenance)
+    ) {
+      group.rejectionReasons.add('inconsistent-provenance');
+      continue;
+    }
+
     const candidate = candidateFromAssessment(assessment, execution);
     if (
       candidate?.role === undefined ||
@@ -580,6 +647,8 @@ export function generateHealingProposals(
       score: candidate.score,
       margin: assessment.assessment.margin,
       screenshotPaths: execution.screenshots.map((screenshot) => screenshot.path),
+      provenance: assessmentProvenance,
+      ignoredLegacyCount: 0,
     });
   }
 
@@ -603,6 +672,15 @@ export function generateHealingProposals(
       continue;
     }
 
+    if (group.observations.length === 0 && group.legacyOccurrenceCount > 0) {
+      rejections.push({
+        targetKey: group.targetKey,
+        action: group.action,
+        reason: 'missing-provenance',
+        occurrenceCount: group.occurrenceCount,
+      });
+      continue;
+    }
     const identities = new Set(
       group.observations.map((observation) => canonicalJson(observation.suggestedPrimary)),
     );
@@ -615,16 +693,43 @@ export function generateHealingProposals(
       });
       continue;
     }
-    if (group.observations.length < minimumObservations) {
+    const commitShas = new Set(
+      group.observations.flatMap((observation) =>
+        observation.provenance.commitSha === undefined ? [] : [observation.provenance.commitSha],
+      ),
+    );
+    const hasMissingCommit = group.observations.some(
+      (observation) => observation.provenance.commitSha === undefined,
+    );
+    if (commitShas.size > 1 || (commitShas.size === 1 && hasMissingCommit)) {
       rejections.push({
         targetKey: group.targetKey,
         action: group.action,
-        reason: 'insufficient-evidence',
-        occurrenceCount: group.observations.length,
+        reason: 'mixed-commits',
+        occurrenceCount: group.occurrenceCount,
       });
       continue;
     }
-    proposals.push(createProposal(group.observations));
+    const distinctRunCount = new Set(
+      group.observations.map((observation) => observation.provenance.runId),
+    ).size;
+    if (group.observations.length < minimumObservations || distinctRunCount < minimumObservations) {
+      rejections.push({
+        targetKey: group.targetKey,
+        action: group.action,
+        reason: 'insufficient-independent-runs',
+        occurrenceCount: group.occurrenceCount,
+      });
+      continue;
+    }
+    proposals.push(
+      createProposal(
+        group.observations.map((observation) => ({
+          ...observation,
+          ignoredLegacyCount: group.legacyOccurrenceCount,
+        })),
+      ),
+    );
   }
 
   return {
@@ -673,7 +778,7 @@ export function renderHealingProposalReport(bundle: HealingProposalBundle): stri
     '> Review required: this report never edits test source or the locator registry.',
     '',
     `Generated: ${bundle.generatedAt}`,
-    `Minimum observations: ${bundle.minimumObservations}`,
+    `Minimum distinct runs: ${bundle.minimumObservations}`,
     '',
     '## Proposals',
     '',
@@ -683,12 +788,12 @@ export function renderHealingProposalReport(bundle: HealingProposalBundle): stri
     lines.push('No proposal met every safety gate.', '');
   } else {
     lines.push(
-      '| Target | Action | Suggested locator | Observations | Min score | Min margin | Proposal ID |',
-      '| --- | --- | --- | ---: | ---: | ---: | --- |',
+      '| Target | Action | Suggested locator | Runs | Observations | Min score | Min margin | Proposal ID |',
+      '| --- | --- | --- | ---: | ---: | ---: | ---: | --- |',
     );
     for (const proposal of bundle.proposals) {
       lines.push(
-        `| ${markdownCell(proposal.targetKey)} | ${proposal.action} | role=${markdownCell(proposal.suggestedPrimary.role)} name=${markdownCell(proposal.suggestedPrimary.name ?? '')} | ${proposal.evidence.occurrenceCount} | ${proposal.evidence.minimumScore.toFixed(6)} | ${proposal.evidence.minimumMargin.toFixed(6)} | \`${proposal.proposalId}\` |`,
+        `| ${markdownCell(proposal.targetKey)} | ${proposal.action} | role=${markdownCell(proposal.suggestedPrimary.role)} name=${markdownCell(proposal.suggestedPrimary.name ?? '')} | ${proposal.evidence.distinctRunCount} | ${proposal.evidence.occurrenceCount} | ${proposal.evidence.minimumScore.toFixed(6)} | ${proposal.evidence.minimumMargin.toFixed(6)} | \`${proposal.proposalId}\` |`,
       );
     }
     lines.push('');
@@ -699,6 +804,11 @@ export function renderHealingProposalReport(bundle: HealingProposalBundle): stri
         `### ${markdownCell(proposal.targetKey)} · ${proposal.action}`,
         '',
         `- Target definition: \`${proposal.targetDefinitionHash}\``,
+        `- Run IDs: ${proposal.evidence.runIds.map((id) => `\`${markdownCell(id)}\``).join(', ')}`,
+        `- Test IDs: ${proposal.evidence.testIds.map((id) => `\`${markdownCell(id)}\``).join(', ')}`,
+        `- Projects: ${proposal.evidence.projectNames.map((name) => `\`${markdownCell(name)}\``).join(', ')}`,
+        `- Commit: ${proposal.evidence.commitShas.length === 0 ? 'not recorded' : `\`${proposal.evidence.commitShas[0]}\``}`,
+        `- Ignored legacy observations: ${proposal.evidence.ignoredLegacyCount}`,
         `- Current primary: \`${markdownCell(JSON.stringify(proposal.currentPrimary))}\``,
         `- Suggested primary: \`${markdownCell(JSON.stringify(proposal.suggestedPrimary))}\``,
         `- Assessment events: ${proposal.evidence.assessmentEventIds.map((id) => `\`${markdownCell(id)}\``).join(', ')}`,

@@ -63,3 +63,12 @@ export class ProposalHistoryError extends Error {
     this.name = 'ProposalHistoryError';
   }
 }
+
+export class ProposalBundleValidationError extends Error {
+  public constructor(path: string, message: string, cause?: unknown) {
+    super(`Invalid Healwright proposal bundle at ${path}: ${message}`, {
+      ...(cause === undefined ? {} : { cause }),
+    });
+    this.name = 'ProposalBundleValidationError';
+  }
+}

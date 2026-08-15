@@ -5,6 +5,9 @@ import type { Locator, Page } from '@playwright/test';
 import {
   createHealingAuditEvent,
   createHealingExecutionAuditEvent,
+  createAuditProvenance,
+  type AuditProvenance,
+  type AuditProvenanceInput,
   JsonlAuditSink,
   type AuditCollectionStatus,
   type AuditModeDecision,
@@ -60,6 +63,7 @@ interface HealingRuntime {
   readonly candidateCollector: CandidateCollector;
   readonly screenshotCapture: ScreenshotCapture;
   readonly resultSink: HealingResultSink;
+  readonly auditProvenance?: AuditProvenance;
 }
 
 interface MissingAssessment {
@@ -234,6 +238,9 @@ class HealerTarget {
     const rankedCandidates = rankCandidates(this.definition.fingerprint, candidates);
     const assessment = assessCandidates(rankedCandidates, this.definition.policy.healing);
     const event = createHealingAuditEvent({
+      ...(this.runtime.auditProvenance === undefined
+        ? {}
+        : { provenance: this.runtime.auditProvenance }),
       mode,
       modeDecision: modeDecision(mode, assessment.eligible),
       targetKey: this.key,
@@ -403,6 +410,9 @@ class HealerTarget {
     const event = createHealingExecutionAuditEvent({
       ...options,
       targetKey: this.key,
+      ...(this.runtime.auditProvenance === undefined
+        ? {}
+        : { provenance: this.runtime.auditProvenance }),
     });
     await this.writeAudit(event);
     return event;
@@ -459,6 +469,7 @@ export interface CreateHealerOptions<TTargetKey extends string = string> {
   readonly candidateCollector?: CandidateCollector;
   readonly screenshotCapture?: ScreenshotCapture;
   readonly resultSink?: HealingResultSink;
+  readonly auditProvenance?: AuditProvenanceInput;
 }
 
 export function createHealer<TTargetKey extends string = string>({
@@ -475,6 +486,7 @@ export function createHealer<TTargetKey extends string = string>({
     join(process.cwd(), 'test-results', 'healwright', 'screenshots'),
   ),
   resultSink = new ConsoleHealingResultSink(),
+  auditProvenance,
 }: CreateHealerOptions<TTargetKey>): Healer<TTargetKey> {
   if (!HEALING_MODES.includes(mode)) {
     throw new TypeError(`Unsupported Healwright mode: ${mode}`);
@@ -489,5 +501,8 @@ export function createHealer<TTargetKey extends string = string>({
     candidateCollector,
     screenshotCapture,
     resultSink,
+    ...(auditProvenance === undefined
+      ? {}
+      : { auditProvenance: createAuditProvenance(auditProvenance) }),
   });
 }

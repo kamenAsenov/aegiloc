@@ -4,9 +4,12 @@ import {
   InMemoryAuditSink,
   NoopHealingResultSink,
   createHealer,
+  createAuditProvenance,
   generateHealingProposals,
   renderHealingProposalReport,
+  parseHealingProposalBundle,
   verifyHealingProposal,
+  verifyHealingProposalBundle,
   type HealwrightAuditEvent,
   type HealingProposal,
   type TargetRegistry,
@@ -37,6 +40,12 @@ const healer = createHealer({
   mode: 'guarded',
   auditSink: new InMemoryAuditSink(),
   resultSink: new NoopHealingResultSink(),
+  auditProvenance: createAuditProvenance({
+    runId: 'consumer-run',
+    testId: 'consumer-test',
+    projectName: 'chromium',
+    retry: 0,
+  }),
 });
 
 const target = healer.target('checkout.submit');
@@ -53,3 +62,5 @@ void renderHealingProposalReport(proposalBundle);
 if (proposal !== undefined) {
   void verifyHealingProposal(proposal, registry);
 }
+const parsedBundle = parseHealingProposalBundle(JSON.stringify(proposalBundle));
+void verifyHealingProposalBundle(parsedBundle, registry);
