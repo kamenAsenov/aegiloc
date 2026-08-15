@@ -2,7 +2,12 @@ const checkoutForm = document.querySelector('#checkout-form');
 const orderStatus = document.querySelector('#order-status');
 const discountButton = document.querySelector('.secondary-action');
 const placeOrderButton = document.querySelector('[data-target="place-order"]');
+const termsCheckbox = document.querySelector('[data-testid="checkout-terms"]');
 const mutation = new URLSearchParams(window.location.search).get('mutation');
+
+if (mutation === 'drifted-terms') {
+  termsCheckbox?.setAttribute('data-testid', 'accept-terms');
+}
 
 if (placeOrderButton instanceof HTMLButtonElement) {
   switch (mutation) {

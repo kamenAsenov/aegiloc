@@ -33,3 +33,10 @@ export class MissingPrimaryLocatorError extends Error {
     this.name = 'MissingPrimaryLocatorError';
   }
 }
+
+export class AuditWriteError extends Error {
+  public constructor(targetKey: string, cause: unknown) {
+    super(`Failed to write Healwright audit event for target "${targetKey}"`, { cause });
+    this.name = 'AuditWriteError';
+  }
+}

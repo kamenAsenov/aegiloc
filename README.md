@@ -50,8 +50,9 @@ Healwright takes the narrow path:
 | Live action-compatible candidate collection                  | Available                |
 | Deterministic weighted scoring and ranked details            | Available                |
 | Confidence threshold and runner-up margin assessment         | Available                |
-| `off`, `observe`, `guarded`, and `strict-ci` modes           | Planned                  |
-| JSONL audit history, screenshots, and `PASSED_WITH_HEALING`  | Planned                  |
+| `off`, `observe`, `guarded`, and `strict-ci` modes           | Available                |
+| Versioned JSON events, JSONL history, and report attachments | Available                |
+| Screenshots and `PASSED_WITH_HEALING` result decoration      | Planned                  |
 | Executing a replacement candidate                            | Deliberately not enabled |
 
 ## Quick start
@@ -84,6 +85,7 @@ const registry = await loadTargetRegistry(new URL('./registry/targets.json', imp
 const healer = createHealer({
   page,
   registry,
+  mode: 'guarded',
   primaryActionTimeoutMs: 2_000,
 });
 
@@ -95,6 +97,18 @@ await healer.target('checkout.placeOrder').click();
 
 Every action checks the target's allowlist before resolving its primary locator. Assertions are not
 part of the wrapper and are never eligible for healing.
+
+## Runtime modes
+
+| Mode        | Missing-locator behavior                                                                                       |
+| ----------- | -------------------------------------------------------------------------------------------------------------- |
+| `off`       | Runs only the primary Playwright action; no classification, collection, or audit event                         |
+| `observe`   | Classifies, ranks, and audits candidates, then preserves the missing-primary failure                           |
+| `guarded`   | Applies policy thresholds, records `eligible` or `rejected`, and currently fails without executing a candidate |
+| `strict-ci` | Ranks for diagnostics but always records a strict CI failure decision                                          |
+
+`guarded` is the default. Candidate execution remains disabled in every mode during the current
+stage, including when the audit decision is `eligible`.
 
 ## Target registry
 
@@ -148,7 +162,7 @@ flowchart LR
   C --> S["Deterministic weighted scoring"]
   S --> G{"Threshold and safe margin?"}
   G -->|"no"| SF["Fail closed"]
-  G -->|"yes, current stage"| RO["Return ranked assessment only"]
+  G -->|"yes, current stage"| RO["Audit eligible decision, then fail safely"]
   G -.->|"future guarded mode"| H["Healed action + audit artifacts"]
 ```
 
@@ -197,17 +211,54 @@ Possible assessment reasons are `eligible`, `disabled`, `no-candidates`, `low-co
 `ambiguous`. `eligible` means the evidence passed the policy—it does not currently authorize an
 action.
 
+## Audit events and history
+
+Every assessed drift produces a versioned `locator-drift-assessed` JSON event. Events include the
+mode, semantic target, action, primary locator definition, sanitized failure category, collection
+status, threshold and margin decision, and ranked per-signal candidate details. Action values such
+as filled text are never serialized, raw error messages are omitted, and collected URL attributes
+are reduced to paths.
+
+The default sink appends JSONL history to:
+
+```text
+test-results/healwright/history.jsonl
+```
+
+Sinks are composable. A test can keep JSONL history and attach the same structured event to the
+Playwright report through the public [`testInfo.attach()` API](https://playwright.dev/docs/api/class-testinfo#test-info-attach):
+
+```ts
+import {
+  CompositeAuditSink,
+  JsonlAuditSink,
+  PlaywrightAttachmentAuditSink,
+  createHealer,
+} from './src/index.js';
+
+const auditSink = new CompositeAuditSink([
+  new JsonlAuditSink(testInfo.outputPath('healwright-history.jsonl')),
+  new PlaywrightAttachmentAuditSink(testInfo),
+]);
+
+const healer = createHealer({ page, registry, mode: 'observe', auditSink });
+```
+
+An audit-write failure is surfaced as `AuditWriteError`; Healwright will not continue toward a
+future healed action without its required evidence trail.
+
 ## Deterministic fixture and tests
 
 The local checkout fixture supports controlled query-string mutations:
 
-| Mutation                | Purpose                         |
-| ----------------------- | ------------------------------- |
-| `missing-place-order`   | Genuine primary-locator absence |
-| `delayed-place-order`   | Normal Playwright waiting       |
-| `disabled-place-order`  | Actionability failure           |
-| `duplicate-place-order` | Strict-locator ambiguity        |
-| `detached-place-order`  | Target observed, then removed   |
+| Mutation                | Purpose                                                       |
+| ----------------------- | ------------------------------------------------------------- |
+| `missing-place-order`   | Genuine primary-locator absence                               |
+| `delayed-place-order`   | Normal Playwright waiting                                     |
+| `disabled-place-order`  | Actionability failure                                         |
+| `duplicate-place-order` | Strict-locator ambiguity                                      |
+| `detached-place-order`  | Target observed, then removed                                 |
+| `drifted-terms`         | Genuine test-id drift with a semantically identical candidate |
 
 The suite contains baseline, registry-validation, wrapper, classification, adversarial mutation,
 candidate-collection, and scoring tests. GitHub Actions installs Chromium, runs every static gate and
@@ -218,6 +269,9 @@ Useful focused commands:
 ```bash
 pnpm test:registry
 pnpm test:classification
+pnpm test:audit
+pnpm test:modes
+pnpm test:modes:browser
 pnpm test:missing
 pnpm test:candidates
 pnpm test:scoring
@@ -229,9 +283,11 @@ pnpm test:primary
 ```text
 .
 ├── fixtures/app/               # Deterministic checkout UI and controlled mutations
+├── playwright.unit.config.ts   # Fast browser-free policy and scoring tests
 ├── registry/                   # Versioned targets and JSON Schema
 ├── src/
 │   ├── candidates.ts           # Public-API live candidate snapshots
+│   ├── audit.ts                # Versioned events and local/Playwright sinks
 │   ├── classification.ts       # Conservative missing-target proof
 │   ├── healer.ts               # Explicit wrapper API
 │   ├── locator.ts              # Primary locator resolution
@@ -264,10 +320,11 @@ cloud service, Docker container, database, OCR, or visual AI.
 - [x] Conservative missing-target classification
 - [x] Live candidate collection
 - [x] Deterministic scoring, ranking, threshold, and margin assessment
-- [ ] Modes: `off`, `observe`, `guarded`, and `strict-ci`
+- [x] Modes: `off`, `observe`, `guarded`, and `strict-ci`
+- [x] Versioned JSON audit events and JSONL history
+- [x] Playwright JSON attachment sink
 - [ ] Guarded candidate execution for all four actions
-- [ ] JSON audit events and JSONL history
-- [ ] Ranked candidate artifacts and screenshots
+- [ ] Screenshot artifacts for healed attempts
 - [ ] Visible `PASSED_WITH_HEALING` reporting
 - [ ] Positive healing and expanded adversarial negative suites
 
@@ -278,3 +335,5 @@ cloud service, Docker container, database, OCR, or visual AI.
 - Accessible identity is read from Playwright's public ARIA snapshot representation.
 - Fingerprints are maintained manually; there is no recorder or approval workflow yet.
 - Candidate assessment is read-only. No replacement locator is executed in the current stage.
+- JSONL appends are local and intentionally simple; cross-machine history aggregation is out of
+  scope for the no-service MVP.

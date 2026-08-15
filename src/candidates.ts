@@ -118,12 +118,27 @@ async function snapshotDomCandidate(locator: Locator): Promise<DomCandidateSnaps
     const stableAttributes: Record<string, string> = {};
     for (const attribute of element.attributes) {
       if (
-        attribute.name.startsWith('data-') ||
-        ['autocomplete', 'href', 'id', 'name', 'placeholder', 'title', 'type', 'value'].includes(
-          attribute.name,
-        )
+        [
+          'autocomplete',
+          'data-cy',
+          'data-qa',
+          'data-target',
+          'data-test',
+          'data-testid',
+          'id',
+          'name',
+          'placeholder',
+          'title',
+          'type',
+        ].includes(attribute.name)
       ) {
         stableAttributes[attribute.name] = attribute.value;
+      } else if (attribute.name === 'href') {
+        try {
+          stableAttributes.href = new URL(attribute.value, window.location.href).pathname;
+        } catch {
+          // Ignore malformed or non-URL href values rather than auditing them verbatim.
+        }
       }
     }
 

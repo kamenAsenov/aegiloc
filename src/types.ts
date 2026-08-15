@@ -1,8 +1,10 @@
 import type { Page } from '@playwright/test';
 
 export const TARGET_ACTIONS = ['click', 'fill', 'check', 'selectOption'] as const;
+export const HEALING_MODES = ['off', 'observe', 'guarded', 'strict-ci'] as const;
 
 export type TargetAction = (typeof TARGET_ACTIONS)[number];
+export type HealingMode = (typeof HEALING_MODES)[number];
 export type AriaRole = Parameters<Page['getByRole']>[0];
 
 export interface RoleLocatorDefinition {
