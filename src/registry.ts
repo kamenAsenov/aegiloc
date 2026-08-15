@@ -12,7 +12,7 @@ import {
   type TargetRegistry,
 } from './types.js';
 
-const ARIA_ROLES = new Set<string>([
+export const SUPPORTED_ARIA_ROLES = [
   'alert',
   'alertdialog',
   'application',
@@ -95,7 +95,9 @@ const ARIA_ROLES = new Set<string>([
   'tree',
   'treegrid',
   'treeitem',
-]);
+] as const satisfies readonly AriaRole[];
+
+const ARIA_ROLES = new Set<string>(SUPPORTED_ARIA_ROLES);
 
 const TARGET_ACTION_SET = new Set<string>(TARGET_ACTIONS);
 

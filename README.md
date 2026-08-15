@@ -301,13 +301,16 @@ The local checkout fixture supports controlled query-string mutations:
 | `drifted-disabled-terms`  | Compatible but non-actionable replacement                     |
 
 The suite contains baseline, registry-validation, wrapper, classification, adversarial mutation,
-candidate-collection, and scoring tests. GitHub Actions installs Chromium, runs every static gate and
-test, and uploads the Playwright HTML report.
+candidate-collection, and scoring tests. Ajv verifies that the checked-in JSON Schema and strict
+runtime parser agree on safety-sensitive boundaries. Fast-check exercises scoring and policy
+invariants with the fixed seed `20260815`, making every failure reproducible. GitHub Actions installs
+Chromium, runs every static gate and test, and uploads the Playwright HTML report.
 
 Useful focused commands:
 
 ```bash
 pnpm test:registry
+pnpm test:registry:parity
 pnpm test:classification
 pnpm test:audit
 pnpm test:modes
@@ -317,6 +320,7 @@ pnpm test:healing:adversarial
 pnpm test:missing
 pnpm test:candidates
 pnpm test:scoring
+pnpm test:scoring:property
 pnpm test:primary
 ```
 
@@ -372,8 +376,8 @@ cloud service, Docker container, database, OCR, or visual AI.
 - [x] Screenshot artifacts for healed attempts
 - [x] Visible `PASSED_WITH_HEALING` reporting
 - [x] Positive healing and expanded adversarial negative suites
-- [ ] JSON Schema/runtime-validator parity tests with Ajv
-- [ ] Seeded property-based scoring invariants
+- [x] JSON Schema/runtime-validator parity tests with Ajv
+- [x] Seeded property-based scoring invariants
 
 ## Limitations
 

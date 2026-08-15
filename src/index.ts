@@ -67,7 +67,7 @@ export {
   type ScoreDetail,
   type ScoreSignal,
 } from './scoring.js';
-export { loadTargetRegistry, parseTargetRegistry } from './registry.js';
+export { SUPPORTED_ARIA_ROLES, loadTargetRegistry, parseTargetRegistry } from './registry.js';
 export { HEALING_MODES, TARGET_ACTIONS } from './types.js';
 export type {
   AriaRole,

@@ -6,12 +6,13 @@
   "additionalProperties": false,
   "required": ["version", "defaults", "targets"],
   "properties": {
-    "$schema": { "type": "string" },
+    "$schema": { "$ref": "#/$defs/nonEmptyString" },
     "version": { "const": 1 },
     "defaults": { "$ref": "#/$defs/thresholds" },
     "targets": {
       "type": "object",
       "minProperties": 1,
+      "propertyNames": { "$ref": "#/$defs/nonEmptyString" },
       "additionalProperties": { "$ref": "#/$defs/target" }
     }
   },
@@ -20,6 +21,96 @@
       "type": "number",
       "minimum": 0,
       "maximum": 1
+    },
+    "nonEmptyString": {
+      "type": "string",
+      "pattern": "\\S"
+    },
+    "ariaRole": {
+      "enum": [
+        "alert",
+        "alertdialog",
+        "application",
+        "article",
+        "banner",
+        "blockquote",
+        "button",
+        "caption",
+        "cell",
+        "checkbox",
+        "code",
+        "columnheader",
+        "combobox",
+        "complementary",
+        "contentinfo",
+        "definition",
+        "deletion",
+        "dialog",
+        "directory",
+        "document",
+        "emphasis",
+        "feed",
+        "figure",
+        "form",
+        "generic",
+        "grid",
+        "gridcell",
+        "group",
+        "heading",
+        "img",
+        "insertion",
+        "link",
+        "list",
+        "listbox",
+        "listitem",
+        "log",
+        "main",
+        "marquee",
+        "math",
+        "meter",
+        "menu",
+        "menubar",
+        "menuitem",
+        "menuitemcheckbox",
+        "menuitemradio",
+        "navigation",
+        "none",
+        "note",
+        "option",
+        "paragraph",
+        "presentation",
+        "progressbar",
+        "radio",
+        "radiogroup",
+        "region",
+        "row",
+        "rowgroup",
+        "rowheader",
+        "scrollbar",
+        "search",
+        "searchbox",
+        "separator",
+        "slider",
+        "spinbutton",
+        "status",
+        "strong",
+        "subscript",
+        "superscript",
+        "switch",
+        "tab",
+        "table",
+        "tablist",
+        "tabpanel",
+        "term",
+        "textbox",
+        "time",
+        "timer",
+        "toolbar",
+        "tooltip",
+        "tree",
+        "treegrid",
+        "treeitem"
+      ]
     },
     "thresholds": {
       "type": "object",
@@ -35,7 +126,7 @@
       "additionalProperties": false,
       "required": ["description", "primary", "fingerprint", "policy"],
       "properties": {
-        "description": { "type": "string", "minLength": 1 },
+        "description": { "$ref": "#/$defs/nonEmptyString" },
         "primary": { "$ref": "#/$defs/primary" },
         "fingerprint": { "$ref": "#/$defs/fingerprint" },
         "policy": { "$ref": "#/$defs/policy" }
@@ -49,8 +140,8 @@
           "required": ["type", "role"],
           "properties": {
             "type": { "const": "role" },
-            "role": { "type": "string", "minLength": 1 },
-            "name": { "type": "string", "minLength": 1 },
+            "role": { "$ref": "#/$defs/ariaRole" },
+            "name": { "$ref": "#/$defs/nonEmptyString" },
             "exact": { "type": "boolean" }
           }
         },
@@ -60,7 +151,7 @@
           "required": ["type", "value"],
           "properties": {
             "type": { "enum": ["label", "text"] },
-            "value": { "type": "string", "minLength": 1 },
+            "value": { "$ref": "#/$defs/nonEmptyString" },
             "exact": { "type": "boolean" }
           }
         },
@@ -70,7 +161,7 @@
           "required": ["type", "value"],
           "properties": {
             "type": { "enum": ["testId", "css"] },
-            "value": { "type": "string", "minLength": 1 }
+            "value": { "$ref": "#/$defs/nonEmptyString" }
           }
         }
       ]
@@ -79,21 +170,22 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "accessibleRole": { "type": "string", "minLength": 1 },
-        "accessibleName": { "type": "string", "minLength": 1 },
+        "accessibleRole": { "$ref": "#/$defs/ariaRole" },
+        "accessibleName": { "$ref": "#/$defs/nonEmptyString" },
         "stableAttributes": {
           "type": "object",
-          "additionalProperties": { "type": "string", "minLength": 1 }
+          "propertyNames": { "$ref": "#/$defs/nonEmptyString" },
+          "additionalProperties": { "$ref": "#/$defs/nonEmptyString" }
         },
-        "visibleText": { "type": "string", "minLength": 1 },
-        "tag": { "type": "string", "minLength": 1 },
+        "visibleText": { "$ref": "#/$defs/nonEmptyString" },
+        "tag": { "$ref": "#/$defs/nonEmptyString" },
         "ancestorText": {
           "type": "array",
-          "items": { "type": "string", "minLength": 1 }
+          "items": { "$ref": "#/$defs/nonEmptyString" }
         },
         "neighborText": {
           "type": "array",
-          "items": { "type": "string", "minLength": 1 }
+          "items": { "$ref": "#/$defs/nonEmptyString" }
         },
         "geometry": {
           "type": "object",
