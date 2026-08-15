@@ -29,9 +29,6 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Install Chromium
-        run: pnpm exec playwright install --with-deps chromium
-
       - name: Check formatting
         run: pnpm format:check
 
@@ -40,6 +37,15 @@ jobs:
 
       - name: Type-check
         run: pnpm typecheck
+
+      - name: Build package
+        run: pnpm build
+
+      - name: Verify package exports
+        run: pnpm package:check
+
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
 
       - name: Run test suite
         run: pnpm test

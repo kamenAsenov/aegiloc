@@ -54,6 +54,7 @@ Healwright takes the narrow path:
 | Before/after screenshots and report attachments              | Available |
 | Visible `PASSED_WITH_HEALING` result decoration              | Available |
 | Guarded replacement execution with second-pass revalidation  | Available |
+| Typed ESM build with explicit package exports                | Available |
 
 ## Quick start
 
@@ -71,10 +72,27 @@ Run the quality gates independently:
 pnpm format:check
 pnpm lint
 pnpm typecheck
+pnpm build
+pnpm package:check
 pnpm test
 ```
 
 Playwright starts the deterministic fixture app automatically at `http://127.0.0.1:4173`.
+
+## Package contract
+
+The repository remains private and unpublished. `pnpm build` emits ESM, source maps, declarations,
+and declaration maps to the ignored `dist/` directory. The package exposes only three intentional
+entry points:
+
+- `healwright` for the public framework API;
+- `healwright/reporter` for the Playwright reporter;
+- `healwright/registry-schema` for the versioned JSON Schema.
+
+`pnpm package:check` compiles an external-style TypeScript consumer, self-imports both JavaScript
+entry points through Node's package resolution, and verifies the expected artifacts. `pnpm pack
+--dry-run --json` additionally shows the exact files that would enter a tarball without creating or
+publishing one.
 
 ## Wrapper API
 
@@ -84,7 +102,7 @@ import {
   PlaywrightHealingResultSink,
   createHealer,
   loadTargetRegistry,
-} from './src/index.js';
+} from 'healwright';
 
 const registry = await loadTargetRegistry(new URL('./registry/targets.json', import.meta.url));
 const healer = createHealer({
@@ -210,7 +228,7 @@ Only signals present in the stored fingerprint participate in normalization. Geo
 intentionally too weak to overcome a semantic mismatch.
 
 ```ts
-import { assessCandidates, collectCandidates, rankCandidates } from './src/index.js';
+import { assessCandidates, collectCandidates, rankCandidates } from 'healwright';
 
 const definition = registry.targets['checkout.placeOrder'];
 const candidates = await collectCandidates(page, 'click');
@@ -250,7 +268,7 @@ import {
   JsonlAuditSink,
   PlaywrightAttachmentAuditSink,
   createHealer,
-} from './src/index.js';
+} from 'healwright';
 
 const auditSink = new CompositeAuditSink([
   new JsonlAuditSink(testInfo.outputPath('healwright-history.jsonl')),
@@ -275,7 +293,16 @@ result. The included reporter prints an unmistakable line for each successful he
 PASSED_WITH_HEALING chromium › healing.browser.spec.ts › heals compatible checkbox locator drift · checkout.terms check
 ```
 
-The reporter is enabled in `playwright.config.ts`. Run the focused demo with:
+The reporter is enabled locally in `playwright.config.ts`. Consumer configuration uses the exported
+reporter subpath:
+
+```ts
+export default defineConfig({
+  reporter: [['line'], ['healwright/reporter'], ['html', { open: 'never' }]],
+});
+```
+
+Run the focused demo with:
 
 ```bash
 pnpm test:healing
@@ -341,6 +368,7 @@ pnpm test:primary
 ```text
 .
 ├── fixtures/app/               # Deterministic checkout UI and controlled mutations
+├── package-tests/              # External-consumer TypeScript contract
 ├── playwright.unit.config.ts   # Fast browser-free policy and scoring tests
 ├── registry/                   # Versioned targets and JSON Schema
 ├── src/
@@ -356,6 +384,8 @@ pnpm test:primary
 │   ├── scoring.ts              # Pure weighted ranking and assessment
 │   └── types.ts                # Registry and policy types
 ├── tests/                      # Unit, integration, and adversarial Playwright tests
+├── tsconfig.build.json         # ESM and declaration build
+├── tsconfig.package-test.json  # Built-package consumer type-check
 └── .github/workflows/ci.yml    # Chromium-first quality pipeline
 ```
 
@@ -390,10 +420,12 @@ cloud service, Docker container, database, OCR, or visual AI.
 - [x] Positive healing and expanded adversarial negative suites
 - [x] JSON Schema/runtime-validator parity tests with Ajv
 - [x] Seeded property-based scoring invariants
+- [x] Typed ESM distribution build and package export verification
 
 ## Limitations
 
 - Chromium is the only configured browser.
+- The package is intentionally private and has not been published to a registry.
 - Candidate collection currently targets common interactive HTML and ARIA patterns.
 - Accessible identity is read from Playwright's public ARIA snapshot representation.
 - Fingerprints are maintained manually; there is no recorder or approval workflow yet.
