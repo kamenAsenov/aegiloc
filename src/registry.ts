@@ -3,9 +3,11 @@ import { readFile } from 'node:fs/promises';
 import { RegistryValidationError } from './errors.js';
 import {
   TARGET_ACTIONS,
+  EXECUTION_RISKS,
   type AriaRole,
   type PrimaryLocatorDefinition,
   type TargetAction,
+  type ExecutionRisk,
   type TargetDefinition,
   type TargetFingerprint,
   type TargetPolicy,
@@ -100,6 +102,7 @@ export const SUPPORTED_ARIA_ROLES = [
 const ARIA_ROLES = new Set<string>(SUPPORTED_ARIA_ROLES);
 
 const TARGET_ACTION_SET = new Set<string>(TARGET_ACTIONS);
+const EXECUTION_RISK_SET = new Set<string>(EXECUTION_RISKS);
 
 function expectRecord(value: unknown, path: string): Record<string, unknown> {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) {
@@ -253,7 +256,7 @@ function parseFingerprint(value: unknown, path: string): TargetFingerprint {
 
 function parsePolicy(value: unknown, path: string): TargetPolicy {
   const policy = expectRecord(value, path);
-  expectOnlyKeys(policy, ['allowedActions', 'healing'], path);
+  expectOnlyKeys(policy, ['allowedActions', 'executionRisk', 'healing'], path);
 
   const actionValues = expectStringArray(policy.allowedActions, `${path}.allowedActions`);
   if (actionValues.length === 0) {
@@ -280,8 +283,21 @@ function parsePolicy(value: unknown, path: string): TargetPolicy {
     `${path}.healing`,
   );
 
+  let executionRisk: ExecutionRisk | undefined;
+  if (policy.executionRisk !== undefined) {
+    const value = expectString(policy.executionRisk, `${path}.executionRisk`);
+    if (!EXECUTION_RISK_SET.has(value)) {
+      throw new RegistryValidationError(
+        `${path}.executionRisk`,
+        `unsupported execution risk "${value}"`,
+      );
+    }
+    executionRisk = value as ExecutionRisk;
+  }
+
   return {
     allowedActions: actions,
+    ...(executionRisk === undefined ? {} : { executionRisk }),
     healing: {
       enabled: expectBoolean(healing.enabled, `${path}.healing.enabled`),
       confidenceThreshold: expectProbability(

@@ -58,6 +58,10 @@ Healwright takes the narrow path:
 | Provenance-backed, review-only locator proposals             | Available |
 | Strict proposal parsing, stale-state, and tamper detection   | Available |
 | Parallel-safe reporter aggregation and run summaries         | Available |
+| Explicit `automatic` / `proposal-only` execution risk        | Available |
+| Run budgets, expiring waivers, and baseline regression gates | Available |
+| Deterministic JSON and Markdown health summaries             | Available |
+| Provider-neutral governance CLI and CI artifact integration  | Available |
 
 ## Quick start
 
@@ -80,6 +84,7 @@ pnpm package:check
 pnpm test:reporter:parallel
 pnpm test
 pnpm evidence:verify
+pnpm governance:evaluate
 ```
 
 Playwright starts the deterministic fixture app automatically at `http://127.0.0.1:4173`.
@@ -87,7 +92,7 @@ Playwright starts the deterministic fixture app automatically at `http://127.0.0
 ## Package contract
 
 The package remains marked private and unpublished. `pnpm build` emits ESM, source maps,
-declarations, and declaration maps to the ignored `dist/` directory. The package exposes five intentional
+declarations, and declaration maps to the ignored `dist/` directory. The package exposes seven intentional
 entry points:
 
 - `healwright` for the public framework API;
@@ -95,6 +100,8 @@ entry points:
 - `healwright/registry-schema` for the target-registry JSON Schema;
 - `healwright/proposal-schema` for the review-proposal JSON Schema;
 - `healwright/evidence-summary-schema` for the run-summary JSON Schema.
+- `healwright/governance-policy-schema` for governance configuration;
+- `healwright/health-summary-schema` for machine-readable policy results.
 
 `pnpm package:check` compiles an external-style TypeScript consumer, self-imports both JavaScript
 entry points through Node's package resolution, verifies the expected artifacts, and exercises the
@@ -181,6 +188,7 @@ actions, malformed fingerprints, and unsafe policy values.
     },
     "policy": {
       "allowedActions": ["click"],
+      "executionRisk": "proposal-only",
       "healing": {
         "enabled": true,
         "confidenceThreshold": 0.95,
@@ -191,7 +199,12 @@ actions, malformed fingerprints, and unsafe policy values.
 }
 ```
 
-Registry policy values are validated and enforced during both assessment passes.
+Registry policy values are validated and enforced during both assessment passes. `automatic` permits
+guarded execution after every locator safety gate passes. `proposal-only` still collects and ranks
+evidence but can never execute a replacement. Risk is explicit per target: both
+`checkout.applyDiscount` and `checkout.placeOrder` use `click`, while only the latter is protected.
+Older v0.3 registries without `executionRisk` retain `automatic` behavior; v0.4 registries should
+declare every target explicitly. See the [v0.4 migration guide](docs/MIGRATION-v0.4.md).
 
 ## Safety pipeline
 
@@ -209,7 +222,9 @@ flowchart LR
   S --> G{"Threshold and safe margin?"}
   G -->|"no"| SF
   G -->|"yes"| A["Write assessment audit + provenance"]
-  A --> V{"Fresh collection: same unique winner?"}
+  A --> Q{"Execution risk is automatic?"}
+  Q -->|"no"| SF
+  Q -->|"yes"| V{"Fresh collection: same unique winner?"}
   V -->|"no"| SF
   V -->|"yes"| B["Before screenshot"]
   B --> H["Execute original action on candidate"]
@@ -277,7 +292,8 @@ reasons without executing anything.
 Every assessed drift produces a versioned `locator-drift-assessed` JSON event before guarded
 execution can begin. A guarded decision then produces `locator-heal-execution` with `succeeded`,
 `failed`, or `rejected`, a reason, its parent assessment ID, and screenshot references. Events
-include the mode, semantic target, action, sanitized failure category, collection status, threshold
+include the mode, semantic target, action, execution risk, retry-stable operation index, sanitized
+failure category, collection status, threshold
 and margin decision, and ranked per-signal candidate details. Optional versioned provenance records
 the run, Playwright test ID, project, retry index, and commit SHA. Action values such as filled text
 are never serialized, raw error messages are omitted, absolute screenshot paths are not audited,
@@ -346,6 +362,58 @@ with Playwright's supported custom-reporter and merged-report workflows. Direct 
 instances remain useful for isolated processes and per-test files. If a default JSONL history is
 already present, the reporter validates and merges it with attached events; malformed history or a
 conflicting event ID fails the run instead of being overwritten.
+
+## Governance and healing budgets
+
+Governance is a post-run consumer of canonical evidence. It cannot make an ineligible locator
+eligible and is deliberately separate from the runtime healer. The checked-in
+[`governance/policy.json`](governance/policy.json) demonstrates run, target, target/action, unknown
+identity, and baseline limits:
+
+```json
+{
+  "version": 1,
+  "failOnUnknownTargets": true,
+  "limits": {
+    "maxSuccessfulHealsPerRun": 10,
+    "maxRejectedAttemptsPerRun": 10,
+    "targets": {
+      "checkout.placeOrder": {
+        "maxSuccessfulHeals": 0,
+        "actions": { "click": { "maxSuccessfulHeals": 0 } }
+      }
+    }
+  },
+  "baseline": { "successfulHeals": 10, "rejectedAttempts": 10 }
+}
+```
+
+Evaluate the canonical reporter output locally or in any CI system:
+
+```bash
+pnpm governance:evaluate -- \
+  --history test-results/healwright/history.jsonl \
+  --registry registry/targets.json \
+  --policy governance/policy.json \
+  --json test-results/healwright/health-summary.json \
+  --markdown test-results/healwright/health-summary.md
+```
+
+The CLI returns `0` for a pass, `1` for policy violations, and `2` for malformed, conflicting,
+non-canonical, or unreadable inputs. `--no-policy` produces a backward-compatible health summary
+without optional budgets. It reads no provider-specific environment variables.
+
+Health output is deterministically ordered by target, action, project, and outcome. It reports
+successful, rejected, protected, failed, observed, waived, and discarded-retry counts without raw
+page content or error messages. GitHub Actions is only one consumer: CI runs the same CLI and uploads
+the JSON, Markdown, canonical evidence, and policy as ordinary artifacts.
+
+Temporary waivers require an exact target, optional exact action, non-empty reason, and future UTC
+expiry. Wildcards, duplicates, overlaps, malformed dates, and expired waivers fail closed. An active
+waiver changes only budget accounting; it cannot override drift proof, action allowlists, target
+risk, semantic eligibility, confidence, margin, uniqueness, second-pass agreement, or evidence
+validation. The full configuration contract is in the [policy reference](docs/POLICY.md). Small
+executable examples live in [`examples/governance`](examples/governance).
 
 An audit-write failure is surfaced as `AuditWriteError`; Healwright will not continue toward a
 healed action without its required evidence trail. A pre-action screenshot failure also prevents
@@ -431,19 +499,21 @@ pnpm exec playwright show-report
 
 The local checkout fixture supports controlled query-string mutations:
 
-| Mutation                  | Purpose                                                       |
-| ------------------------- | ------------------------------------------------------------- |
-| `missing-place-order`     | Genuine primary-locator absence                               |
-| `delayed-place-order`     | Normal Playwright waiting                                     |
-| `disabled-place-order`    | Actionability failure                                         |
-| `duplicate-place-order`   | Strict-locator ambiguity                                      |
-| `detached-place-order`    | Target observed, then removed                                 |
-| `drifted-terms`           | Genuine test-id drift with a semantically identical candidate |
-| `drifted-cardholder`      | Exact-label case drift for `fill`                             |
-| `drifted-country`         | CSS id drift for `selectOption`                               |
-| `drifted-discount`        | Exact-text case drift for `click`                             |
-| `ambiguous-drifted-terms` | Two indistinguishable checkbox candidates                     |
-| `drifted-disabled-terms`  | Compatible but non-actionable replacement                     |
+| Mutation                   | Purpose                                                       |
+| -------------------------- | ------------------------------------------------------------- |
+| `missing-place-order`      | Genuine primary-locator absence                               |
+| `delayed-place-order`      | Normal Playwright waiting                                     |
+| `disabled-place-order`     | Actionability failure                                         |
+| `duplicate-place-order`    | Strict-locator ambiguity                                      |
+| `detached-place-order`     | Target observed, then removed                                 |
+| `drifted-terms`            | Genuine test-id drift with a semantically identical candidate |
+| `drifted-cardholder`       | Exact-label case drift for `fill`                             |
+| `drifted-country`          | CSS id drift for `selectOption`                               |
+| `drifted-discount`         | Exact-text case drift for `click`                             |
+| `drifted-place-order`      | Protected final-action accessible-name drift                  |
+| `ambiguous-drifted-terms`  | Two indistinguishable checkbox candidates                     |
+| `drifted-disabled-terms`   | Compatible but non-actionable replacement                     |
+| `drifted-wrong-role-terms` | Same control data with a contradictory accessible role        |
 
 The suite contains baseline, registry-validation, wrapper, classification, adversarial mutation,
 candidate-collection, scoring, audit-provenance, and proposal-integrity tests. Ajv verifies that the
@@ -481,6 +551,8 @@ pnpm test:scoring
 pnpm test:scoring:property
 pnpm test:primary
 pnpm test:proposals
+pnpm test:governance
+pnpm governance:evaluate
 ```
 
 ## Project structure
@@ -488,12 +560,16 @@ pnpm test:proposals
 ```text
 .
 ├── fixtures/app/               # Deterministic checkout UI and controlled mutations
+├── governance/                 # Checked-in run policy
+├── examples/governance/        # Minimal and intentionally failing policies
+├── docs/                       # Policy reference and migration guidance
 ├── CHANGELOG.md                # Versioned release notes and security-relevant changes
 ├── package-tests/              # External-consumer TypeScript contract
 ├── playwright.unit.config.ts   # Fast browser-free policy and scoring tests
-├── registry/                   # Target, proposal, and evidence-summary JSON Schemas
+├── registry/                   # Target, evidence, proposal, policy, and health JSON Schemas
 ├── scripts/
 │   ├── propose-heals.mjs       # Local review-artifact generator
+│   ├── evaluate-governance.mjs # Provider-neutral budget and health gate
 │   ├── verify-evidence.mjs     # Canonical history and summary consistency gate
 │   └── verify-proposals.mjs    # Proposal integrity and registry-state gate
 ├── src/
@@ -503,6 +579,7 @@ pnpm test:proposals
 │   ├── classification.ts       # Conservative missing-target proof
 │   ├── evidence.ts             # Canonical aggregation, summaries, and atomic output
 │   ├── healer.ts               # Explicit wrapper API
+│   ├── governance.ts           # Policies, waivers, evaluation, and health summaries
 │   ├── locator.ts              # Primary locator resolution
 │   ├── proposal-validation.ts  # Strict proposal parser and bundle verification
 │   ├── proposals.ts            # Consensus, integrity checks, and Markdown reports
@@ -555,6 +632,8 @@ cloud service, Docker container, database, OCR, or visual AI.
 - [x] Strict proposal-bundle verification API and CLI quality gate
 - [x] Parallel-safe reporter aggregation and canonical evidence summaries
 - [x] Unicode-safe scoring and mandatory semantic execution gates
+- [x] Explicit target execution risk with proposal-only protection
+- [x] Provider-neutral budgets, baselines, strict temporary waivers, and health summaries
 
 The staged plan from reliable evidence through policy governance, cross-browser qualification,
 stronger integrity, and a stable `v1.0` contract is maintained in [`ROADMAP.md`](ROADMAP.md).
@@ -570,6 +649,13 @@ stronger integrity, and a stable `v1.0` contract is maintained in [`ROADMAP.md`]
   intentionally excluded from confidence counts.
 - Evidence created before `v0.3.1` remains readable but is excluded from locator proposals when it
   lacks explicit semantic-eligibility proof.
+- v0.3 evidence without operation indexes uses a conservative retry fallback keyed by run, project,
+  test, target, and action; repeated same-target actions in one legacy test cannot be distinguished.
+- `proposal-only` evidence is observable and reviewable but never executes automatically; the
+  current proposal generator still requires successful guarded execution and therefore will not
+  generate a locator proposal from protected attempts alone.
+- Waivers are evaluated against the configured UTC time and are intentionally budget-only; teams
+  remain responsible for reviewing reasons and removing expired entries.
 - Commit SHA provenance is optional, but a proposal fails closed if qualifying runs mix commits or
   only some of them record a commit.
 - Proposal hashes detect changes after generation but do not authenticate the local JSONL history;

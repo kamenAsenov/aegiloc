@@ -103,6 +103,7 @@ test('semantic rejection is serialized deterministically in audit evidence', () 
     modeDecision: 'observed' as const,
     targetKey: 'checkout.placeOrder',
     action: 'click' as const,
+    executionRisk: 'proposal-only' as const,
     primaryLocator: { type: 'role' as const, role: 'button' as const, name: 'Place order' },
     primaryError: new Error('not serialized'),
     collectionStatus: 'completed' as const,

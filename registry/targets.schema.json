@@ -211,6 +211,7 @@
           "uniqueItems": true,
           "items": { "enum": ["click", "fill", "check", "selectOption"] }
         },
+        "executionRisk": { "enum": ["automatic", "proposal-only"] },
         "healing": {
           "type": "object",
           "additionalProperties": false,

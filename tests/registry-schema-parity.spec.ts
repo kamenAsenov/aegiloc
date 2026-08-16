@@ -38,6 +38,7 @@ const validTarget = {
   },
   policy: {
     allowedActions: ['click'],
+    executionRisk: 'automatic',
     healing: {
       enabled: true,
       confidenceThreshold: 0.9,
@@ -207,6 +208,35 @@ test('JSON Schema and runtime validation agree on safety-sensitive boundaries', 
         },
       },
       valid: false,
+    },
+    {
+      name: 'unsupported execution risk',
+      value: {
+        ...validRegistry,
+        targets: {
+          target: {
+            ...validTarget,
+            policy: { ...validTarget.policy, executionRisk: 'business-critical' },
+          },
+        },
+      },
+      valid: false,
+    },
+    {
+      name: 'legacy v0.3 policy without execution risk',
+      value: {
+        ...validRegistry,
+        targets: {
+          target: {
+            ...validTarget,
+            policy: {
+              allowedActions: validTarget.policy.allowedActions,
+              healing: validTarget.policy.healing,
+            },
+          },
+        },
+      },
+      valid: true,
     },
     {
       name: 'unknown target property',

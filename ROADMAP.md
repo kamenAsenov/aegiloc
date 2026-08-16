@@ -77,12 +77,16 @@ Status: implemented in `v0.3.1`.
 
 ### v0.4 — Policy governance and healing budgets
 
-- Add optional run-level policies such as maximum successful heals, maximum rejected attempts, and
-  target-specific temporary waivers with expiry dates.
-- Provide a CI gate that can allow a small reviewed healing budget while failing on growth, unknown
-  targets, or expired waivers.
-- Produce concise JSON and Markdown health summaries grouped by target, action, project, and outcome.
-- Keep policies diagnostic and fail-closed; they will never override target-level confidence gates.
+Status: implemented in `v0.4.0`.
+
+- Explicit `automatic` and `proposal-only` target execution risk, with protected evidence collection
+  and enforcement before both initial execution and second-pass resolution.
+- Optional run, target, and target/action budgets plus successful/rejected baselines.
+- Exact-scope, reasoned, UTC-expiring waivers that affect budget accounting only.
+- Retry-aware, deterministic JSON and Markdown health summaries grouped by target, action, project,
+  and outcome.
+- Provider-neutral CLI exit codes for pass, policy failure, and malformed input, consumed by CI with
+  uploaded health artifacts.
 
 ### v0.5 — Cross-browser qualification
 

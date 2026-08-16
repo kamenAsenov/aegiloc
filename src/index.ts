@@ -53,11 +53,36 @@ export {
   HealingResultWriteError,
   MissingPrimaryLocatorError,
   RegistryValidationError,
+  GovernanceEvidenceError,
+  GovernancePolicyError,
   ProposalHistoryError,
   ProposalBundleValidationError,
   TargetActionNotAllowedError,
   UnknownTargetError,
 } from './errors.js';
+export {
+  GOVERNANCE_POLICY_SCHEMA_VERSION,
+  HEALTH_SUMMARY_SCHEMA_VERSION,
+  evaluateGovernance,
+  loadGovernancePolicy,
+  parseGovernancePolicy,
+  renderHealthSummary,
+  writeHealthSummary,
+  type EvaluateGovernanceOptions,
+  type GovernanceBaseline,
+  type GovernanceBudget,
+  type GovernanceLimits,
+  type GovernancePolicy,
+  type GovernanceTargetBudget,
+  type GovernanceViolation,
+  type GovernanceViolationCode,
+  type GovernanceWaiver,
+  type HealthOutcome,
+  type HealthSummary,
+  type HealthSummaryGroup,
+  type HealthSummaryWaiver,
+  type WriteHealthSummaryOptions,
+} from './governance.js';
 export {
   AUDIT_EVIDENCE_SUMMARY_SCHEMA_VERSION,
   auditEventsFromAttachments,
@@ -120,9 +145,10 @@ export {
   type ScoreSignal,
 } from './scoring.js';
 export { SUPPORTED_ARIA_ROLES, loadTargetRegistry, parseTargetRegistry } from './registry.js';
-export { HEALING_MODES, TARGET_ACTIONS } from './types.js';
+export { EXECUTION_RISKS, HEALING_MODES, TARGET_ACTIONS, resolveExecutionRisk } from './types.js';
 export type {
   AriaRole,
+  ExecutionRisk,
   HealingPolicy,
   HealingMode,
   PrimaryLocatorDefinition,

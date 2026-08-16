@@ -40,6 +40,8 @@ import { ConsoleHealingResultSink, PASSED_WITH_HEALING, type HealingResultSink }
 import { assessCandidates, rankCandidates, type CandidateAssessment } from './scoring.js';
 import {
   HEALING_MODES,
+  resolveExecutionRisk,
+  type ExecutionRisk,
   type HealingMode,
   type TargetAction,
   type TargetDefinition,
@@ -77,17 +79,24 @@ type RevalidationResult =
       readonly status: 'rejected';
       readonly reason: Extract<
         HealingExecutionReason,
-        'revalidation-changed' | 'semantic-revalidation-failed' | 'candidate-not-unique'
+        | 'revalidation-changed'
+        | 'semantic-revalidation-failed'
+        | 'execution-risk-protected'
+        | 'candidate-not-unique'
       >;
       readonly error?: unknown;
     };
 
-function modeDecision(mode: Exclude<HealingMode, 'off'>, eligible: boolean): AuditModeDecision {
+function modeDecision(
+  mode: Exclude<HealingMode, 'off'>,
+  eligible: boolean,
+  executionRisk: ExecutionRisk,
+): AuditModeDecision {
   switch (mode) {
     case 'observe':
       return 'observed';
     case 'guarded':
-      return eligible ? 'eligible' : 'rejected';
+      return eligible && executionRisk === 'automatic' ? 'eligible' : 'rejected';
     case 'strict-ci':
       return 'strict-ci-failure';
   }
@@ -100,6 +109,7 @@ class HealerTarget {
     private readonly definition: TargetDefinition,
     private readonly primaryActionTimeoutMs: number,
     private readonly runtime: HealingRuntime,
+    private readonly nextOperationIndex: (action: TargetAction) => number,
   ) {}
 
   public async click(options?: ClickOptions): Promise<void> {
@@ -193,9 +203,12 @@ class HealerTarget {
         throw error;
       }
 
-      const assessed = await this.assessMissingTarget(action, error);
+      const operationIndex = this.nextOperationIndex(action);
+      const executionRisk = resolveExecutionRisk(this.definition.policy);
+      const assessed = await this.assessMissingTarget(action, error, operationIndex, executionRisk);
       if (
         this.runtime.mode !== 'guarded' ||
+        executionRisk !== 'automatic' ||
         !assessed.assessment.eligible ||
         assessed.assessment.topCandidate === undefined
       ) {
@@ -207,6 +220,8 @@ class HealerTarget {
         error,
         assessed.event,
         assessed.assessment.topCandidate.candidate,
+        operationIndex,
+        executionRisk,
         invokeCandidate,
       );
     }
@@ -215,6 +230,8 @@ class HealerTarget {
   private async assessMissingTarget(
     action: TargetAction,
     primaryError: MissingPrimaryLocatorError,
+    operationIndex: number,
+    executionRisk: ExecutionRisk,
   ): Promise<MissingAssessment> {
     const mode = this.runtime.mode;
     if (mode === 'off') {
@@ -242,9 +259,11 @@ class HealerTarget {
         ? {}
         : { provenance: this.runtime.auditProvenance }),
       mode,
-      modeDecision: modeDecision(mode, assessment.eligible),
+      modeDecision: modeDecision(mode, assessment.eligible, executionRisk),
+      operationIndex,
       targetKey: this.key,
       action,
+      executionRisk,
       primaryLocator: this.definition.primary,
       primaryError: primaryError.cause ?? primaryError,
       collectionStatus,
@@ -262,13 +281,17 @@ class HealerTarget {
     primaryError: MissingPrimaryLocatorError,
     assessmentEvent: HealingAuditEvent,
     expectedCandidate: CandidateSnapshot,
+    operationIndex: number,
+    executionRisk: ExecutionRisk,
     invokeCandidate: (candidate: Locator) => Promise<TResult>,
   ): Promise<TResult> {
     const revalidation = await this.revalidateCandidate(action, expectedCandidate);
     if (revalidation.status === 'rejected') {
       await this.writeExecutionAudit({
         parentEventId: assessmentEvent.eventId,
+        operationIndex,
         action,
+        executionRisk,
         candidateId: expectedCandidate.id,
         status: 'rejected',
         reason: revalidation.reason,
@@ -291,7 +314,9 @@ class HealerTarget {
     } catch (error) {
       await this.writeExecutionAudit({
         parentEventId: assessmentEvent.eventId,
+        operationIndex,
         action,
+        executionRisk,
         candidateId: expectedCandidate.id,
         status: 'failed',
         reason: 'artifact-capture-failed',
@@ -319,7 +344,9 @@ class HealerTarget {
       }
       await this.writeExecutionAudit({
         parentEventId: assessmentEvent.eventId,
+        operationIndex,
         action,
+        executionRisk,
         candidateId: expectedCandidate.id,
         status: 'failed',
         reason: 'action-failed',
@@ -341,7 +368,9 @@ class HealerTarget {
     } catch (error) {
       await this.writeExecutionAudit({
         parentEventId: assessmentEvent.eventId,
+        operationIndex,
         action,
+        executionRisk,
         candidateId: expectedCandidate.id,
         status: 'failed',
         reason: 'artifact-capture-failed',
@@ -353,7 +382,9 @@ class HealerTarget {
 
     const executionEvent = await this.writeExecutionAudit({
       parentEventId: assessmentEvent.eventId,
+      operationIndex,
       action,
+      executionRisk,
       candidateId: expectedCandidate.id,
       status: 'succeeded',
       reason: 'succeeded',
@@ -381,6 +412,9 @@ class HealerTarget {
     action: TargetAction,
     expectedCandidate: CandidateSnapshot,
   ): Promise<RevalidationResult> {
+    if (resolveExecutionRisk(this.definition.policy) !== 'automatic') {
+      return { status: 'rejected', reason: 'execution-risk-protected' };
+    }
     let candidates: readonly CandidateSnapshot[];
     try {
       candidates = await this.runtime.candidateCollector(this.page, action);
@@ -441,6 +475,8 @@ class HealerTarget {
 }
 
 export class Healer<TTargetKey extends string = string> {
+  readonly #operationCounts = new Map<string, number>();
+
   public constructor(
     private readonly page: Page,
     private readonly registry: TargetRegistry<TTargetKey>,
@@ -459,6 +495,12 @@ export class Healer<TTargetKey extends string = string> {
       this.registry.targets[key],
       this.primaryActionTimeoutMs,
       this.runtime,
+      (action) => {
+        const operationKey = `${key}\u0000${action}`;
+        const index = this.#operationCounts.get(operationKey) ?? 0;
+        this.#operationCounts.set(operationKey, index + 1);
+        return index;
+      },
     );
   }
 }

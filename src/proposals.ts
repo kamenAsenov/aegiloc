@@ -15,6 +15,7 @@ import { ProposalHistoryError } from './errors.js';
 import { SUPPORTED_ARIA_ROLES } from './registry.js';
 import { CANDIDATE_ELIGIBILITY_REASONS } from './scoring.js';
 import {
+  EXECUTION_RISKS,
   TARGET_ACTIONS,
   type PrimaryLocatorDefinition,
   type RoleLocatorDefinition,
@@ -183,6 +184,14 @@ function requireCommonEvent(value: Record<string, unknown>, line: number): void 
   if (!isTargetAction(value.action)) {
     throw new ProposalHistoryError(line, 'action is unsupported');
   }
+  if (
+    value.operationIndex !== undefined &&
+    (typeof value.operationIndex !== 'number' ||
+      !Number.isInteger(value.operationIndex) ||
+      value.operationIndex < 0)
+  ) {
+    throw new ProposalHistoryError(line, 'operationIndex must be a non-negative integer');
+  }
 }
 
 function requireAssessmentEvent(
@@ -258,6 +267,24 @@ function requireAssessmentEvent(
   }
   if (!Array.isArray(value.rankedCandidates)) {
     throw new ProposalHistoryError(line, 'rankedCandidates must be an array');
+  }
+  if (value.executionPolicy !== undefined) {
+    if (
+      !isRecord(value.executionPolicy) ||
+      !EXECUTION_RISKS.includes(value.executionPolicy.risk as (typeof EXECUTION_RISKS)[number]) ||
+      typeof value.executionPolicy.automaticExecutionAllowed !== 'boolean' ||
+      value.executionPolicy.automaticExecutionAllowed !==
+        (value.executionPolicy.risk === 'automatic')
+    ) {
+      throw new ProposalHistoryError(line, 'assessment execution policy is malformed');
+    }
+    if (
+      value.mode === 'guarded' &&
+      value.executionPolicy.risk === 'proposal-only' &&
+      value.modeDecision === 'eligible'
+    ) {
+      throw new ProposalHistoryError(line, 'protected assessment cannot be execution-eligible');
+    }
   }
   const rankedCandidates: readonly unknown[] = value.rankedCandidates;
   for (const candidate of rankedCandidates) {
@@ -346,12 +373,22 @@ function requireExecutionEvent(
       'succeeded',
       'revalidation-changed',
       'semantic-revalidation-failed',
+      'execution-risk-protected',
       'candidate-not-unique',
       'artifact-capture-failed',
       'action-failed',
     ].includes(String(value.reason))
   ) {
     throw new ProposalHistoryError(line, 'execution reason is unsupported');
+  }
+  if (
+    value.executionRisk !== undefined &&
+    !EXECUTION_RISKS.includes(value.executionRisk as (typeof EXECUTION_RISKS)[number])
+  ) {
+    throw new ProposalHistoryError(line, 'execution risk is unsupported');
+  }
+  if (value.executionRisk === 'proposal-only') {
+    throw new ProposalHistoryError(line, 'protected target cannot have an execution event');
   }
   if (!Array.isArray(value.screenshots)) {
     throw new ProposalHistoryError(line, 'execution screenshots must be an array');

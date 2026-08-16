@@ -56,12 +56,17 @@ jobs:
       - name: Verify canonical Healwright evidence
         run: pnpm evidence:verify
 
+      - name: Evaluate Healwright governance policy
+        run: pnpm governance:evaluate
+
       - name: Upload Healwright evidence
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v7
         with:
           name: healwright-evidence
-          path: test-results/healwright/
+          path: |
+            test-results/healwright/
+            governance/policy.json
           if-no-files-found: warn
           retention-days: 14
 

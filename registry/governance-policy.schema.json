@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/kamenAsenov/healwright/registry/governance-policy.schema.json",
+  "title": "Healwright governance policy",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version"],
+  "properties": {
+    "$schema": { "$ref": "#/$defs/nonEmptyString" },
+    "version": { "const": 1 },
+    "failOnUnknownTargets": { "type": "boolean" },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "maxSuccessfulHealsPerRun": { "$ref": "#/$defs/budget" },
+        "maxRejectedAttemptsPerRun": { "$ref": "#/$defs/budget" },
+        "targets": {
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": { "$ref": "#/$defs/targetIdentity" },
+          "additionalProperties": { "$ref": "#/$defs/targetBudget" }
+        }
+      }
+    },
+    "baseline": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "successfulHeals": { "$ref": "#/$defs/budget" },
+        "rejectedAttempts": { "$ref": "#/$defs/budget" }
+      }
+    },
+    "waivers": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/waiver" }
+    }
+  },
+  "$defs": {
+    "budget": { "type": "integer", "minimum": 0 },
+    "nonEmptyString": { "type": "string", "pattern": "\\S" },
+    "targetIdentity": {
+      "type": "string",
+      "pattern": "^(?!.*[?*])\\S(?:.*\\S)?$"
+    },
+    "action": { "enum": ["click", "fill", "check", "selectOption"] },
+    "actionBudget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["maxSuccessfulHeals"],
+      "properties": {
+        "maxSuccessfulHeals": { "$ref": "#/$defs/budget" }
+      }
+    },
+    "targetBudget": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "maxSuccessfulHeals": { "$ref": "#/$defs/budget" },
+        "actions": {
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": { "$ref": "#/$defs/action" },
+          "additionalProperties": { "$ref": "#/$defs/actionBudget" }
+        }
+      }
+    },
+    "waiver": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["targetKey", "reason", "expiresAt"],
+      "properties": {
+        "targetKey": { "$ref": "#/$defs/targetIdentity" },
+        "action": { "$ref": "#/$defs/action" },
+        "reason": { "$ref": "#/$defs/nonEmptyString" },
+        "expiresAt": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{3})?Z$"
+        }
+      }
+    }
+  }
+}

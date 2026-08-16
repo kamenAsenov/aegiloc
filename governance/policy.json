@@ -1,0 +1,28 @@
+{
+  "$schema": "../registry/governance-policy.schema.json",
+  "version": 1,
+  "failOnUnknownTargets": true,
+  "limits": {
+    "maxSuccessfulHealsPerRun": 10,
+    "maxRejectedAttemptsPerRun": 10,
+    "targets": {
+      "checkout.applyDiscount": {
+        "maxSuccessfulHeals": 6,
+        "actions": {
+          "click": { "maxSuccessfulHeals": 6 }
+        }
+      },
+      "checkout.placeOrder": {
+        "maxSuccessfulHeals": 0,
+        "actions": {
+          "click": { "maxSuccessfulHeals": 0 }
+        }
+      }
+    }
+  },
+  "baseline": {
+    "successfulHeals": 10,
+    "rejectedAttempts": 10
+  },
+  "waivers": []
+}

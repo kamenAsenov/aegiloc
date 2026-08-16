@@ -1,6 +1,6 @@
 {
   "name": "healwright",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "private": true,
   "description": "A guarded, deterministic self-healing layer for Playwright Test.",
   "type": "module",
@@ -17,16 +17,22 @@
     },
     "./registry-schema": "./registry/targets.schema.json",
     "./proposal-schema": "./registry/healing-proposals.schema.json",
-    "./evidence-summary-schema": "./registry/evidence-summary.schema.json"
+    "./evidence-summary-schema": "./registry/evidence-summary.schema.json",
+    "./governance-policy-schema": "./registry/governance-policy.schema.json",
+    "./health-summary-schema": "./registry/health-summary.schema.json"
   },
   "files": [
     "dist",
     "src",
     "registry/*.schema.json",
+    "governance/policy.json",
+    "examples/governance/*.json",
     "scripts/verify-evidence.mjs",
     "scripts/propose-heals.mjs",
     "scripts/verify-proposals.mjs",
+    "scripts/evaluate-governance.mjs",
     "README.md",
+    "docs/*.md",
     "CHANGELOG.md",
     "ROADMAP.md"
   ],
@@ -38,6 +44,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "evidence:verify": "pnpm build && node scripts/verify-evidence.mjs",
+    "governance:evaluate": "pnpm build && node scripts/evaluate-governance.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint .",
@@ -65,7 +72,8 @@
     "test:reporter:parallel": "playwright test tests/healing.browser.spec.ts --workers=4",
     "test:scoring": "playwright test --config=playwright.unit.config.ts tests/scoring.spec.ts",
     "test:scoring:property": "playwright test --config=playwright.unit.config.ts tests/scoring.property.spec.ts",
-    "test:unit": "playwright test --config=playwright.unit.config.ts tests/audit.spec.ts tests/classification.spec.ts tests/evidence.spec.ts tests/modes.spec.ts tests/proposals.spec.ts tests/registry.spec.ts tests/registry-schema-parity.spec.ts tests/registry-validation.expanded.spec.ts tests/reporter.spec.ts tests/safety-contracts.expanded.spec.ts tests/scoring.spec.ts tests/scoring.property.spec.ts tests/scoring-boundaries.expanded.spec.ts tests/scoring-unicode.spec.ts tests/semantic-eligibility.spec.ts"
+    "test:governance": "pnpm build && playwright test --config=playwright.unit.config.ts tests/governance.spec.ts tests/governance-cli.spec.ts tests/governance-ci-contract.spec.ts",
+    "test:unit": "playwright test --config=playwright.unit.config.ts tests/audit.spec.ts tests/classification.spec.ts tests/evidence.spec.ts tests/governance.spec.ts tests/governance-cli.spec.ts tests/governance-ci-contract.spec.ts tests/modes.spec.ts tests/proposals.spec.ts tests/registry.spec.ts tests/registry-schema-parity.spec.ts tests/registry-validation.expanded.spec.ts tests/reporter.spec.ts tests/safety-contracts.expanded.spec.ts tests/scoring.spec.ts tests/scoring.property.spec.ts tests/scoring-boundaries.expanded.spec.ts tests/scoring-unicode.spec.ts tests/semantic-eligibility.spec.ts"
   },
   "peerDependencies": {
     "@playwright/test": ">=1.50.0 <2"

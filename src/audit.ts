@@ -12,7 +12,13 @@ import type {
   RankedCandidate,
   ScoreDetail,
 } from './scoring.js';
-import type { HealingMode, PrimaryLocatorDefinition, TargetAction } from './types.js';
+import {
+  EXECUTION_RISKS,
+  type ExecutionRisk,
+  type HealingMode,
+  type PrimaryLocatorDefinition,
+  type TargetAction,
+} from './types.js';
 
 export const AUDIT_SCHEMA_VERSION = 1 as const;
 export const AUDIT_PROVENANCE_VERSION = 1 as const;
@@ -43,6 +49,7 @@ export type HealingExecutionReason =
   | 'succeeded'
   | 'revalidation-changed'
   | 'semantic-revalidation-failed'
+  | 'execution-risk-protected'
   | 'candidate-not-unique'
   | 'artifact-capture-failed'
   | 'action-failed';
@@ -64,10 +71,15 @@ export interface HealingAuditEvent {
   readonly eventId: string;
   readonly timestamp: string;
   readonly provenance?: AuditProvenance;
+  readonly operationIndex?: number;
   readonly mode: Exclude<HealingMode, 'off'>;
   readonly modeDecision: AuditModeDecision;
   readonly targetKey: string;
   readonly action: TargetAction;
+  readonly executionPolicy?: {
+    readonly risk: ExecutionRisk;
+    readonly automaticExecutionAllowed: boolean;
+  };
   readonly primaryLocator: PrimaryLocatorDefinition;
   readonly primaryFailure: {
     readonly category: 'missing';
@@ -97,10 +109,12 @@ export interface HealingExecutionAuditEvent {
   readonly eventId: string;
   readonly timestamp: string;
   readonly provenance?: AuditProvenance;
+  readonly operationIndex?: number;
   readonly parentEventId: string;
   readonly mode: 'guarded';
   readonly targetKey: string;
   readonly action: TargetAction;
+  readonly executionRisk?: ExecutionRisk;
   readonly candidateId: string;
   readonly status: HealingExecutionStatus;
   readonly reason: HealingExecutionReason;
@@ -119,10 +133,12 @@ export interface CreateHealingAuditEventOptions {
   readonly eventId?: string;
   readonly timestamp?: string;
   readonly provenance?: AuditProvenanceInput;
+  readonly operationIndex?: number;
   readonly mode: Exclude<HealingMode, 'off'>;
   readonly modeDecision: AuditModeDecision;
   readonly targetKey: string;
   readonly action: TargetAction;
+  readonly executionRisk?: ExecutionRisk;
   readonly primaryLocator: PrimaryLocatorDefinition;
   readonly primaryError: unknown;
   readonly collectionStatus: AuditCollectionStatus;
@@ -135,9 +151,11 @@ export interface CreateHealingExecutionAuditEventOptions {
   readonly eventId?: string;
   readonly timestamp?: string;
   readonly provenance?: AuditProvenanceInput;
+  readonly operationIndex?: number;
   readonly parentEventId: string;
   readonly targetKey: string;
   readonly action: TargetAction;
+  readonly executionRisk?: ExecutionRisk;
   readonly candidateId: string;
   readonly status: HealingExecutionStatus;
   readonly reason: HealingExecutionReason;
@@ -224,10 +242,12 @@ export function createHealingAuditEvent({
   eventId = randomUUID(),
   timestamp = new Date().toISOString(),
   provenance,
+  operationIndex,
   mode,
   modeDecision,
   targetKey,
   action,
+  executionRisk = 'automatic',
   primaryLocator,
   primaryError,
   collectionStatus,
@@ -235,16 +255,30 @@ export function createHealingAuditEvent({
   assessment,
   rankedCandidates,
 }: CreateHealingAuditEventOptions): HealingAuditEvent {
+  if (operationIndex !== undefined && (!Number.isInteger(operationIndex) || operationIndex < 0)) {
+    throw new TypeError('Audit operationIndex must be a non-negative integer');
+  }
+  if (!EXECUTION_RISKS.includes(executionRisk)) {
+    throw new TypeError('Audit executionRisk is unsupported');
+  }
+  if (mode === 'guarded' && executionRisk === 'proposal-only' && modeDecision === 'eligible') {
+    throw new TypeError('A proposal-only assessment cannot be execution-eligible');
+  }
   return {
     schemaVersion: AUDIT_SCHEMA_VERSION,
     eventType: 'locator-drift-assessed',
     eventId,
     timestamp,
     ...(provenance === undefined ? {} : { provenance: createAuditProvenance(provenance) }),
+    ...(operationIndex === undefined ? {} : { operationIndex }),
     mode,
     modeDecision,
     targetKey,
     action,
+    executionPolicy: {
+      risk: executionRisk,
+      automaticExecutionAllowed: executionRisk === 'automatic',
+    },
     primaryLocator,
     primaryFailure: {
       category: 'missing',
@@ -290,25 +324,38 @@ export function createHealingExecutionAuditEvent({
   eventId = randomUUID(),
   timestamp = new Date().toISOString(),
   provenance,
+  operationIndex,
   parentEventId,
   targetKey,
   action,
+  executionRisk = 'automatic',
   candidateId,
   status,
   reason,
   error,
   screenshots,
 }: CreateHealingExecutionAuditEventOptions): HealingExecutionAuditEvent {
+  if (operationIndex !== undefined && (!Number.isInteger(operationIndex) || operationIndex < 0)) {
+    throw new TypeError('Audit operationIndex must be a non-negative integer');
+  }
+  if (!EXECUTION_RISKS.includes(executionRisk)) {
+    throw new TypeError('Audit executionRisk is unsupported');
+  }
+  if (executionRisk === 'proposal-only') {
+    throw new TypeError('A proposal-only target cannot have an execution event');
+  }
   return {
     schemaVersion: AUDIT_SCHEMA_VERSION,
     eventType: 'locator-heal-execution',
     eventId,
     timestamp,
     ...(provenance === undefined ? {} : { provenance: createAuditProvenance(provenance) }),
+    ...(operationIndex === undefined ? {} : { operationIndex }),
     parentEventId,
     mode: 'guarded',
     targetKey,
     action,
+    executionRisk,
     candidateId,
     status,
     reason,

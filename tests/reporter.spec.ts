@@ -54,6 +54,7 @@ test('aggregates typed audit attachments into canonical run evidence', async ({
     modeDecision: 'observed',
     targetKey: 'checkout.placeOrder',
     action: 'click',
+    executionRisk: 'proposal-only',
     primaryLocator: { type: 'role', role: 'button', name: 'Place order', exact: true },
     primaryError: new Error('not serialized'),
     collectionStatus: 'completed',

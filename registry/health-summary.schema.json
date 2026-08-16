@@ -1,0 +1,138 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/kamenAsenov/healwright/registry/health-summary.schema.json",
+  "title": "Healwright governance health summary",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "evaluatedAt",
+    "policyConfigured",
+    "status",
+    "totals",
+    "runIds",
+    "projects",
+    "groups",
+    "waivers",
+    "violations"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "evaluatedAt": { "type": "string", "format": "date-time" },
+    "policyConfigured": { "type": "boolean" },
+    "status": { "enum": ["pass", "fail"] },
+    "totals": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "attempts",
+        "successfulHeals",
+        "rejectedAttempts",
+        "protectedAttempts",
+        "failedAttempts",
+        "observedAttempts",
+        "waivedAttempts",
+        "discardedRetryAttempts"
+      ],
+      "properties": {
+        "attempts": { "$ref": "#/$defs/count" },
+        "successfulHeals": { "$ref": "#/$defs/count" },
+        "rejectedAttempts": { "$ref": "#/$defs/count" },
+        "protectedAttempts": { "$ref": "#/$defs/count" },
+        "failedAttempts": { "$ref": "#/$defs/count" },
+        "observedAttempts": { "$ref": "#/$defs/count" },
+        "waivedAttempts": { "$ref": "#/$defs/count" },
+        "discardedRetryAttempts": { "$ref": "#/$defs/count" }
+      }
+    },
+    "runIds": { "$ref": "#/$defs/stringArray" },
+    "projects": { "$ref": "#/$defs/stringArray" },
+    "groups": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "targetKey",
+          "action",
+          "projectName",
+          "outcome",
+          "attemptCount",
+          "successfulHeals",
+          "rejectedAttempts",
+          "protectedAttempts",
+          "waivedCount",
+          "policyStatus",
+          "waiverStatus"
+        ],
+        "properties": {
+          "targetKey": { "$ref": "#/$defs/nonEmptyString" },
+          "action": { "$ref": "#/$defs/action" },
+          "projectName": { "$ref": "#/$defs/nonEmptyString" },
+          "outcome": { "enum": ["successful", "rejected", "protected", "failed", "observed"] },
+          "attemptCount": { "$ref": "#/$defs/count" },
+          "successfulHeals": { "$ref": "#/$defs/count" },
+          "rejectedAttempts": { "$ref": "#/$defs/count" },
+          "protectedAttempts": { "$ref": "#/$defs/count" },
+          "waivedCount": { "$ref": "#/$defs/count" },
+          "policyStatus": { "enum": ["pass", "fail"] },
+          "waiverStatus": { "enum": ["none", "active"] }
+        }
+      }
+    },
+    "waivers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["targetKey", "reason", "expiresAt", "status", "matchedAttempts"],
+        "properties": {
+          "targetKey": { "$ref": "#/$defs/nonEmptyString" },
+          "action": { "$ref": "#/$defs/action" },
+          "reason": { "$ref": "#/$defs/nonEmptyString" },
+          "expiresAt": { "type": "string", "format": "date-time" },
+          "status": { "enum": ["active", "expired"] },
+          "matchedAttempts": { "$ref": "#/$defs/count" }
+        }
+      }
+    },
+    "violations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "scope", "message"],
+        "properties": {
+          "code": {
+            "enum": [
+              "successful-heals-per-run-exceeded",
+              "rejected-attempts-per-run-exceeded",
+              "target-successful-heals-exceeded",
+              "target-action-successful-heals-exceeded",
+              "successful-heals-baseline-regression",
+              "rejected-attempts-baseline-regression",
+              "unknown-target",
+              "execution-risk-mismatch",
+              "protected-target-executed",
+              "expired-waiver"
+            ]
+          },
+          "scope": { "$ref": "#/$defs/nonEmptyString" },
+          "actual": { "$ref": "#/$defs/count" },
+          "limit": { "$ref": "#/$defs/count" },
+          "message": { "$ref": "#/$defs/nonEmptyString" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "count": { "type": "integer", "minimum": 0 },
+    "nonEmptyString": { "type": "string", "pattern": "\\S" },
+    "stringArray": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/nonEmptyString" }
+    },
+    "action": { "enum": ["click", "fill", "check", "selectOption"] }
+  }
+}

@@ -3,6 +3,33 @@
 All notable changes to Healwright are documented here. The project follows Semantic Versioning for
 release tags while the public package remains private and unpublished.
 
+## [0.4.0] - 2026-08-16
+
+### Added
+
+- Explicit `automatic` and `proposal-only` target execution risk, recorded in audit evidence and
+  enforced before guarded execution and second-pass resolution.
+- Strict provider-neutral governance policies with run, target, target/action, and regression
+  budgets; unknown-target enforcement; and deterministic retry handling.
+- Exact-target temporary waivers with optional exact actions, mandatory reasons, strict UTC expiry,
+  duplicate/overlap rejection, and budget-only semantics.
+- Versioned deterministic JSON and sanitized Markdown health summaries plus JSON Schemas.
+- Governance CLI with distinct pass, policy-failure, and malformed-input exit codes.
+- GitHub Actions governance gating and health artifact upload.
+
+### Changed
+
+- Audit events include explicit execution risk and retry-stable operation indexes. Legacy v0.3
+  events and registries remain readable with documented conservative defaults.
+- `checkout.placeOrder` is proposal-only while `checkout.applyDiscount` remains automatic,
+  demonstrating that business risk is not inferred from the shared `click` action.
+
+### Security
+
+- Governance waivers are structurally unable to influence locator safety or runtime execution.
+- Canonical evidence, unknown identities, expired waivers, protected executions, and contradictory
+  policy references fail closed.
+
 ## [0.3.1] - 2026-08-16
 
 ### Fixed
@@ -54,6 +81,7 @@ release tags while the public package remains private and unpublished.
 - Guarded healing execution with screenshots, JSONL audit events, and visible
   `PASSED_WITH_HEALING` results.
 
+[0.4.0]: https://github.com/kamenAsenov/healwright/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/kamenAsenov/healwright/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/kamenAsenov/healwright/compare/82513a74882500d5d31a3c8d284a0727565cef77...v0.3.0
 [0.2.0]: https://github.com/kamenAsenov/healwright/tree/82513a74882500d5d31a3c8d284a0727565cef77

@@ -25,6 +25,7 @@
       },
       "policy": {
         "allowedActions": ["fill"],
+        "executionRisk": "automatic",
         "healing": {
           "enabled": true,
           "confidenceThreshold": 0.92,
@@ -49,6 +50,7 @@
       },
       "policy": {
         "allowedActions": ["selectOption"],
+        "executionRisk": "automatic",
         "healing": {
           "enabled": true,
           "confidenceThreshold": 0.92,
@@ -74,6 +76,7 @@
       },
       "policy": {
         "allowedActions": ["check"],
+        "executionRisk": "automatic",
         "healing": {
           "enabled": true,
           "confidenceThreshold": 0.94,
@@ -97,6 +100,7 @@
       },
       "policy": {
         "allowedActions": ["click"],
+        "executionRisk": "automatic",
         "healing": {
           "enabled": true,
           "confidenceThreshold": 0.91,
@@ -122,6 +126,7 @@
       },
       "policy": {
         "allowedActions": ["click"],
+        "executionRisk": "proposal-only",
         "healing": {
           "enabled": true,
           "confidenceThreshold": 0.95,

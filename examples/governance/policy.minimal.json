@@ -1,0 +1,9 @@
+{
+  "$schema": "../../registry/governance-policy.schema.json",
+  "version": 1,
+  "failOnUnknownTargets": true,
+  "limits": {
+    "maxSuccessfulHealsPerRun": 2,
+    "maxRejectedAttemptsPerRun": 1
+  }
+}

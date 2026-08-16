@@ -17,10 +17,15 @@ const expectedRuntimeExports = [
   'CompositeAuditSink',
   'ConsoleHealingResultSink',
   'DEFAULT_PROPOSAL_MINIMUM_OBSERVATIONS',
+  'EXECUTION_RISKS',
   'FileScreenshotCapture',
   'HEALING_PROPOSAL_SCHEMA_URL',
   'HEALING_PROPOSAL_SCHEMA_VERSION',
   'HEALING_MODES',
+  'GOVERNANCE_POLICY_SCHEMA_VERSION',
+  'HEALTH_SUMMARY_SCHEMA_VERSION',
+  'GovernanceEvidenceError',
+  'GovernancePolicyError',
   'Healer',
   'InMemoryAuditSink',
   'InMemoryHealingResultSink',
@@ -51,23 +56,29 @@ const expectedRuntimeExports = [
   'createPlaywrightAuditProvenance',
   'executePrimaryAction',
   'evaluateCandidateEligibility',
+  'evaluateGovernance',
   'generateHealingProposals',
   'loadAuditHistory',
   'loadHealingProposalBundle',
+  'loadGovernancePolicy',
   'loadTargetRegistry',
   'parseAriaIdentity',
   'parseAuditHistory',
   'parseAuditProvenance',
   'parseHealingProposalBundle',
+  'parseGovernancePolicy',
   'parseTargetRegistry',
   'rankCandidates',
   'resolvePrimaryLocator',
   'renderHealingProposalReport',
+  'renderHealthSummary',
+  'resolveExecutionRisk',
   'scoreCandidate',
   'serializeAuditHistory',
   'verifyHealingProposal',
   'verifyHealingProposalBundle',
   'writeAuditEvidence',
+  'writeHealthSummary',
 ];
 
 const publicApi = await import('healwright');
@@ -99,9 +110,12 @@ const artifactPaths = [
   packageJson.exports['./registry-schema'],
   packageJson.exports['./proposal-schema'],
   packageJson.exports['./evidence-summary-schema'],
+  packageJson.exports['./governance-policy-schema'],
+  packageJson.exports['./health-summary-schema'],
   './scripts/verify-evidence.mjs',
   './scripts/propose-heals.mjs',
   './scripts/verify-proposals.mjs',
+  './scripts/evaluate-governance.mjs',
   './dist/index.js.map',
   './dist/index.d.ts.map',
   './dist/evidence.js',
@@ -137,6 +151,14 @@ const evidenceCliHelp = execFileSync(process.execPath, ['scripts/verify-evidence
 });
 if (!evidenceCliHelp.includes('non-canonical')) {
   throw new Error('Evidence verification CLI help is missing its canonical-output contract');
+}
+const governanceCliHelp = execFileSync(
+  process.execPath,
+  ['scripts/evaluate-governance.mjs', '--help'],
+  { cwd: repositoryPath, encoding: 'utf8' },
+);
+if (!governanceCliHelp.includes('0 policy pass, 1 policy violation, 2 malformed')) {
+  throw new Error('Governance CLI help is missing its provider-neutral exit-code contract');
 }
 
 function proposalAuditEvents(index) {
@@ -227,6 +249,8 @@ try {
   const summaryPath = join(cliDirectory, 'summary.json');
   const jsonPath = join(cliDirectory, 'proposals.json');
   const markdownPath = join(cliDirectory, 'proposals.md');
+  const healthJsonPath = join(cliDirectory, 'health.json');
+  const healthMarkdownPath = join(cliDirectory, 'health.md');
   const historyEvents = [1, 2, 3].flatMap(proposalAuditEvents);
   await publicApi.writeAuditEvidence(historyEvents, {
     historyPath,
@@ -236,6 +260,25 @@ try {
   const evidenceOutput = execFileSync(
     process.execPath,
     ['scripts/verify-evidence.mjs', '--history', historyPath, '--summary', summaryPath],
+    { cwd: repositoryPath, encoding: 'utf8' },
+  );
+  const governanceOutput = execFileSync(
+    process.execPath,
+    [
+      'scripts/evaluate-governance.mjs',
+      '--history',
+      historyPath,
+      '--registry',
+      join(repositoryPath, 'registry', 'targets.json'),
+      '--policy',
+      join(repositoryPath, 'governance', 'policy.json'),
+      '--json',
+      healthJsonPath,
+      '--markdown',
+      healthMarkdownPath,
+      '--evaluated-at',
+      '2026-08-16T00:00:00.000Z',
+    ],
     { cwd: repositoryPath, encoding: 'utf8' },
   );
   const cliOutput = execFileSync(
@@ -255,6 +298,8 @@ try {
   );
   const bundle = JSON.parse(await readFile(jsonPath, 'utf8'));
   const report = await readFile(markdownPath, 'utf8');
+  const health = JSON.parse(await readFile(healthJsonPath, 'utf8'));
+  const healthReport = await readFile(healthMarkdownPath, 'utf8');
   const verifyOutput = execFileSync(
     process.execPath,
     [
@@ -272,7 +317,10 @@ try {
     !report.includes('Review required') ||
     !cliOutput.includes('Registry and test source were not modified') ||
     !verifyOutput.includes('hashes and current registry state are valid') ||
-    !evidenceOutput.includes('matching run summary')
+    !evidenceOutput.includes('matching run summary') ||
+    !governanceOutput.includes('HEALWRIGHT_GOVERNANCE PASS') ||
+    health.status !== 'pass' ||
+    !healthReport.includes('Healwright health summary')
   ) {
     throw new Error('Proposal CLI end-to-end verification failed');
   }
@@ -314,5 +362,5 @@ try {
 }
 
 process.stdout.write(
-  `Verified ${expectedRuntimeExports.length} runtime exports, reporter and schema subpaths, evidence and proposal CLIs end to end, and ${new Set(artifactPaths).size} build artifacts.\n`,
+  `Verified ${expectedRuntimeExports.length} runtime exports, reporter and schema subpaths, evidence, proposal, and governance CLIs end to end, and ${new Set(artifactPaths).size} build artifacts.\n`,
 );

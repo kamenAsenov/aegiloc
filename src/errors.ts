@@ -81,3 +81,21 @@ export class AuditEvidenceError extends Error {
     this.name = 'AuditEvidenceError';
   }
 }
+
+export class GovernancePolicyError extends Error {
+  public constructor(path: string, message: string, cause?: unknown) {
+    super(`Invalid Healwright governance policy at ${path}: ${message}`, {
+      ...(cause === undefined ? {} : { cause }),
+    });
+    this.name = 'GovernancePolicyError';
+  }
+}
+
+export class GovernanceEvidenceError extends Error {
+  public constructor(message: string, cause?: unknown) {
+    super(`Invalid Healwright governance evidence: ${message}`, {
+      ...(cause === undefined ? {} : { cause }),
+    });
+    this.name = 'GovernanceEvidenceError';
+  }
+}

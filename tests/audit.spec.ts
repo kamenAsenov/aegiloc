@@ -32,6 +32,7 @@ function auditEvent(): HealingAuditEvent {
     modeDecision: 'observed',
     targetKey: 'checkout.placeOrder',
     action: 'click',
+    executionRisk: 'proposal-only',
     primaryLocator: { type: 'role', role: 'button', name: 'Place order' },
     primaryError: new Error('sensitive details are not serialized'),
     collectionStatus: 'completed',
@@ -160,4 +161,42 @@ test('validates provenance strictly at API and imported-data boundaries', () => 
       extra: true,
     }),
   ).toThrow(/unexpected property/);
+});
+
+test('rejects internally contradictory execution-risk audit events at creation', () => {
+  const assessment = assessCandidates([], {
+    enabled: true,
+    confidenceThreshold: 0.9,
+    minimumScoreMargin: 0.15,
+  });
+  expect(() =>
+    createHealingAuditEvent({
+      eventId: 'protected-assessment',
+      timestamp: '2026-08-16T00:00:00.000Z',
+      mode: 'guarded',
+      modeDecision: 'eligible',
+      targetKey: 'checkout.placeOrder',
+      action: 'click',
+      executionRisk: 'proposal-only',
+      primaryLocator: { type: 'role', role: 'button', name: 'Place order' },
+      primaryError: new Error('not serialized'),
+      collectionStatus: 'completed',
+      assessment,
+      rankedCandidates: [],
+    }),
+  ).toThrow(/proposal-only assessment/);
+  expect(() =>
+    createHealingExecutionAuditEvent({
+      eventId: 'protected-execution',
+      timestamp: '2026-08-16T00:00:01.000Z',
+      parentEventId: 'protected-assessment',
+      targetKey: 'checkout.placeOrder',
+      action: 'click',
+      executionRisk: 'proposal-only',
+      candidateId: 'button:place-order:0',
+      status: 'succeeded',
+      reason: 'succeeded',
+      screenshots: [],
+    }),
+  ).toThrow(/cannot have an execution event/);
 });
