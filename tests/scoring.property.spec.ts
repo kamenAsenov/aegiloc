@@ -14,7 +14,12 @@ import {
 const PROPERTY_SEED = 20_260_815;
 const PROPERTY_RUNS = 300;
 
-const textArbitrary = fc.string({ minLength: 1, maxLength: 32 });
+const semanticCharacterArbitrary = fc.constantFrom(
+  ...'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789БългарияΕλλάδα日本語',
+);
+const textArbitrary = fc
+  .array(semanticCharacterArbitrary, { minLength: 1, maxLength: 32 })
+  .map((characters) => characters.join(''));
 const probabilityArbitrary = fc.double({
   min: 0,
   max: 1,
@@ -146,6 +151,7 @@ test('eligible assessments always satisfy both configured safety gates', () => {
         if (assessment.eligible) {
           expect(policy.enabled).toBe(true);
           expect(assessment.topCandidate).toBeDefined();
+          expect(assessment.topCandidate?.eligibility).toEqual({ eligible: true, reasons: [] });
           expect(assessment.topCandidate?.score).toBeGreaterThanOrEqual(policy.confidenceThreshold);
           if (assessment.secondCandidate !== undefined) {
             expect(assessment.margin).toBeGreaterThanOrEqual(policy.minimumScoreMargin);

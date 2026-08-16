@@ -1,6 +1,6 @@
 {
   "name": "healwright",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": true,
   "description": "A guarded, deterministic self-healing layer for Playwright Test.",
   "type": "module",
@@ -65,7 +65,7 @@
     "test:reporter:parallel": "playwright test tests/healing.browser.spec.ts --workers=4",
     "test:scoring": "playwright test --config=playwright.unit.config.ts tests/scoring.spec.ts",
     "test:scoring:property": "playwright test --config=playwright.unit.config.ts tests/scoring.property.spec.ts",
-    "test:unit": "playwright test --config=playwright.unit.config.ts tests/audit.spec.ts tests/classification.spec.ts tests/evidence.spec.ts tests/modes.spec.ts tests/proposals.spec.ts tests/registry.spec.ts tests/registry-schema-parity.spec.ts tests/registry-validation.expanded.spec.ts tests/reporter.spec.ts tests/safety-contracts.expanded.spec.ts tests/scoring.spec.ts tests/scoring.property.spec.ts tests/scoring-boundaries.expanded.spec.ts"
+    "test:unit": "playwright test --config=playwright.unit.config.ts tests/audit.spec.ts tests/classification.spec.ts tests/evidence.spec.ts tests/modes.spec.ts tests/proposals.spec.ts tests/registry.spec.ts tests/registry-schema-parity.spec.ts tests/registry-validation.expanded.spec.ts tests/reporter.spec.ts tests/safety-contracts.expanded.spec.ts tests/scoring.spec.ts tests/scoring.property.spec.ts tests/scoring-boundaries.expanded.spec.ts tests/scoring-unicode.spec.ts tests/semantic-eligibility.spec.ts"
   },
   "peerDependencies": {
     "@playwright/test": ">=1.50.0 <2"

@@ -87,12 +87,12 @@ test('rejects a high-confidence but ambiguous pair', () => {
 test('rejects a low-confidence candidate', () => {
   const ranked = rankCandidates(fingerprint, [
     candidate({
-      id: 'link:help:0',
-      role: 'link',
+      id: 'button:help:0',
+      role: 'button',
       accessibleName: 'Help',
-      stableAttributes: { href: '/help' },
+      stableAttributes: { 'data-target': 'help' },
       visibleText: 'Help',
-      tag: 'a',
+      tag: 'button',
       ancestorText: ['Support'],
       neighborText: [],
     }),

@@ -194,6 +194,42 @@ test('rejects malformed or extended provenance objects from imported history', (
   }
 });
 
+test('rejects malformed semantic eligibility from imported history', () => {
+  const [assessment] = eventPair(1);
+  const malformedReasons = {
+    ...assessment,
+    assessment: {
+      ...assessment.assessment,
+      semanticRejectionReasons: ['not-a-supported-reason'],
+    },
+  };
+  expect(() => parseAuditHistory(JSON.stringify(malformedReasons))).toThrow(
+    /semantic rejection reasons are malformed/,
+  );
+
+  const malformedEligibility = {
+    ...assessment,
+    rankedCandidates: assessment.rankedCandidates.map((candidate) => ({
+      ...candidate,
+      eligibility: { eligible: true, reasons: ['role-mismatch'] },
+    })),
+  };
+  expect(() => parseAuditHistory(JSON.stringify(malformedEligibility))).toThrow(
+    /candidate eligibility is malformed/,
+  );
+
+  const inconsistentDecision = {
+    ...assessment,
+    assessment: {
+      ...assessment.assessment,
+      semanticRejectionReasons: ['role-mismatch'],
+    },
+  };
+  expect(() => parseAuditHistory(JSON.stringify(inconsistentDecision))).toThrow(
+    /semantic decision is inconsistent/,
+  );
+});
+
 test('rejects malformed screenshot records', () => {
   const [, execution] = eventPair(1);
   expect(() =>
@@ -272,6 +308,30 @@ test('creates a review-required proposal after three successful agreements', () 
     },
   });
   expect(bundle.proposals[0]?.proposalId).toMatch(/^sha256:[a-f0-9]{64}$/);
+});
+
+test('excludes pre-eligibility evidence from locator proposals', () => {
+  const events = threeSuccessfulPairs().map((event): HealwrightAuditEvent => {
+    if (event.eventType !== 'locator-drift-assessed') {
+      return event;
+    }
+    return {
+      ...event,
+      rankedCandidates: event.rankedCandidates.map(({ eligibility: omitted, ...candidate }) => {
+        void omitted;
+        return candidate;
+      }),
+    };
+  });
+
+  const parsed = parseAuditHistory(events.map((event) => JSON.stringify(event)).join('\n'));
+  const bundle = generateHealingProposals(parsed, registry);
+
+  expect(bundle.proposals).toEqual([]);
+  expect(bundle.rejections[0]).toMatchObject({
+    reason: 'unsupported-candidate',
+    occurrenceCount: 3,
+  });
 });
 
 test('keeps legacy history readable but excludes it from proposal confidence', () => {

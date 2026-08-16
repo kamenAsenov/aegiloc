@@ -25,9 +25,14 @@ if (applies('drifted-country')) {
 if (
   applies('drifted-terms') ||
   mutation === 'ambiguous-drifted-terms' ||
-  mutation === 'drifted-disabled-terms'
+  mutation === 'drifted-disabled-terms' ||
+  mutation === 'drifted-wrong-role-terms'
 ) {
   termsCheckbox?.setAttribute('data-testid', 'accept-terms');
+}
+
+if (mutation === 'drifted-wrong-role-terms') {
+  termsCheckbox?.setAttribute('role', 'button');
 }
 
 if (mutation === 'ambiguous-drifted-terms') {

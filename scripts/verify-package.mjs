@@ -13,6 +13,7 @@ const expectedRuntimeExports = [
   'ArtifactCaptureError',
   'AuditEvidenceError',
   'AuditWriteError',
+  'CANDIDATE_ELIGIBILITY_REASONS',
   'CompositeAuditSink',
   'ConsoleHealingResultSink',
   'DEFAULT_PROPOSAL_MINIMUM_OBSERVATIONS',
@@ -49,6 +50,7 @@ const expectedRuntimeExports = [
   'createHealingExecutionAuditEvent',
   'createPlaywrightAuditProvenance',
   'executePrimaryAction',
+  'evaluateCandidateEligibility',
   'generateHealingProposals',
   'loadAuditHistory',
   'loadHealingProposalBundle',
@@ -142,17 +144,40 @@ function proposalAuditEvents(index) {
   const assessmentId = `assessment-${index}`;
   const timestampPrefix = `2026-08-15T00:0${index}`;
   const provenance = {
-    version: 1,
     runId: `package-check-run-${index}`,
     testId: 'package-check-test',
     projectName: 'chromium',
     retry: 0,
     commitSha: 'abcdef0123456789',
   };
-  return [
+  const rankedCandidates = publicApi.rankCandidates(
     {
-      schemaVersion: 1,
-      eventType: 'locator-drift-assessed',
+      accessibleRole: 'checkbox',
+      accessibleName: 'I agree to the store terms',
+      tag: 'input',
+      stableAttributes: { name: 'terms', type: 'checkbox' },
+    },
+    [
+      {
+        id: candidateId,
+        role: 'checkbox',
+        accessibleName: 'I agree to the store terms',
+        tag: 'input',
+        stableAttributes: { name: 'terms', type: 'checkbox' },
+        visibleText: '',
+        ancestorText: [],
+        neighborText: [],
+      },
+    ],
+    'check',
+  );
+  const assessment = publicApi.assessCandidates(rankedCandidates, {
+    enabled: true,
+    confidenceThreshold: 0.94,
+    minimumScoreMargin: 0.18,
+  });
+  return [
+    publicApi.createHealingAuditEvent({
       eventId: assessmentId,
       timestamp: `${timestampPrefix}:00.000Z`,
       provenance,
@@ -161,36 +186,16 @@ function proposalAuditEvents(index) {
       targetKey: 'checkout.terms',
       action: 'check',
       primaryLocator: { type: 'testId', value: 'checkout-terms' },
-      primaryFailure: { category: 'missing', errorName: 'TimeoutError' },
-      collection: { status: 'completed', candidateCount: 1 },
-      assessment: {
-        eligible: true,
-        reason: 'eligible',
-        margin: 1,
-        confidenceThreshold: 0.94,
-        minimumScoreMargin: 0.18,
-        topCandidateId: candidateId,
-      },
-      rankedCandidates: [
-        {
-          rank: 1,
-          id: candidateId,
-          role: 'checkbox',
-          accessibleName: 'I agree to the store terms',
-          tag: 'input',
-          score: 1,
-          details: [],
-        },
-      ],
-    },
-    {
-      schemaVersion: 1,
-      eventType: 'locator-heal-execution',
+      primaryError: new Error('not serialized'),
+      collectionStatus: 'completed',
+      assessment,
+      rankedCandidates,
+    }),
+    publicApi.createHealingExecutionAuditEvent({
       eventId: `execution-${index}`,
       timestamp: `${timestampPrefix}:01.000Z`,
       provenance,
       parentEventId: assessmentId,
-      mode: 'guarded',
       targetKey: 'checkout.terms',
       action: 'check',
       candidateId,
@@ -200,17 +205,19 @@ function proposalAuditEvents(index) {
         {
           phase: 'before',
           name: `before-${index}.png`,
-          path: `test-results/healwright/before-${index}.png`,
+          filePath: `/private/not-audited/before-${index}.png`,
+          auditPath: `test-results/healwright/before-${index}.png`,
           contentType: 'image/png',
         },
         {
           phase: 'after',
           name: `after-${index}.png`,
-          path: `test-results/healwright/after-${index}.png`,
+          filePath: `/private/not-audited/after-${index}.png`,
+          auditPath: `test-results/healwright/after-${index}.png`,
           contentType: 'image/png',
         },
       ],
-    },
+    }),
   ];
 }
 

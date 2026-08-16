@@ -6,6 +6,7 @@ import {
   createHealer,
   createAuditProvenance,
   createAuditEvidenceSummary,
+  evaluateCandidateEligibility,
   generateHealingProposals,
   renderHealingProposalReport,
   parseHealingProposalBundle,
@@ -14,6 +15,7 @@ import {
   writeAuditEvidence,
   type HealwrightAuditEvent,
   type HealingProposal,
+  type CandidateEligibility,
   type TargetRegistry,
 } from 'healwright';
 import HealwrightReporter, {
@@ -63,6 +65,21 @@ const reporterOptions = {
   outputDirectory: 'artifacts/healwright',
 } satisfies HealwrightReporterOptions;
 void reporterOptions;
+const eligibility: CandidateEligibility = evaluateCandidateEligibility(
+  registry.targets['checkout.submit'].fingerprint,
+  {
+    id: 'button:submit:0',
+    role: 'button',
+    accessibleName: 'Submit',
+    stableAttributes: {},
+    visibleText: 'Submit',
+    tag: 'button',
+    ancestorText: [],
+    neighborText: [],
+  },
+  'click',
+);
+void eligibility;
 
 declare const history: readonly HealwrightAuditEvent[];
 const evidenceSummary = createAuditEvidenceSummary(history, '2026-08-16T00:00:00.000Z');

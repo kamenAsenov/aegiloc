@@ -5,7 +5,13 @@ import { dirname } from 'node:path';
 import type { TestInfo } from '@playwright/test';
 
 import type { CapturedScreenshot } from './artifacts.js';
-import type { CandidateAssessment, RankedCandidate, ScoreDetail } from './scoring.js';
+import type {
+  CandidateAssessment,
+  CandidateEligibility,
+  CandidateEligibilityReason,
+  RankedCandidate,
+  ScoreDetail,
+} from './scoring.js';
 import type { HealingMode, PrimaryLocatorDefinition, TargetAction } from './types.js';
 
 export const AUDIT_SCHEMA_VERSION = 1 as const;
@@ -36,6 +42,7 @@ export type HealingExecutionStatus = 'succeeded' | 'failed' | 'rejected';
 export type HealingExecutionReason =
   | 'succeeded'
   | 'revalidation-changed'
+  | 'semantic-revalidation-failed'
   | 'candidate-not-unique'
   | 'artifact-capture-failed'
   | 'action-failed';
@@ -48,6 +55,7 @@ export interface AuditRankedCandidate {
   readonly tag: string;
   readonly score: number;
   readonly details: readonly ScoreDetail[];
+  readonly eligibility?: CandidateEligibility;
 }
 
 export interface HealingAuditEvent {
@@ -76,6 +84,7 @@ export interface HealingAuditEvent {
     readonly margin: number;
     readonly confidenceThreshold: number;
     readonly minimumScoreMargin: number;
+    readonly semanticRejectionReasons?: readonly CandidateEligibilityReason[];
     readonly topCandidateId?: string;
     readonly secondCandidateId?: string;
   };
@@ -252,6 +261,9 @@ export function createHealingAuditEvent({
       margin: assessment.margin,
       confidenceThreshold: assessment.confidenceThreshold,
       minimumScoreMargin: assessment.minimumScoreMargin,
+      ...(assessment.semanticRejectionReasons === undefined
+        ? {}
+        : { semanticRejectionReasons: assessment.semanticRejectionReasons }),
       ...(assessment.topCandidate === undefined
         ? {}
         : { topCandidateId: assessment.topCandidate.candidate.id }),
@@ -269,6 +281,7 @@ export function createHealingAuditEvent({
       tag: ranked.candidate.tag,
       score: ranked.score,
       details: ranked.details,
+      ...(ranked.eligibility === undefined ? {} : { eligibility: ranked.eligibility }),
     })),
   };
 }

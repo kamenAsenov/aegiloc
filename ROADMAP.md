@@ -62,6 +62,19 @@ Status: implemented in `v0.3.0`.
 
 This stage makes evidence collection dependable before adding more automation around that evidence.
 
+### v0.3.1 — Unicode and semantic safety hardening
+
+Status: implemented in `v0.3.1`.
+
+- Preserve Unicode letters and numbers during deterministic text normalization, including Cyrillic,
+  Greek, accented Latin, CJK, and mixed-script labels.
+- Treat empty and punctuation-only normalized values as zero similarity.
+- Separate weighted ranking signals from mandatory semantic execution eligibility.
+- Reject missing accessible identity, known role or tag contradictions, and action-incompatible
+  element identities in both guarded passes.
+- Record stable semantic rejection reasons in audit evidence and exclude pre-eligibility evidence
+  from locator proposals.
+
 ### v0.4 — Policy governance and healing budgets
 
 - Add optional run-level policies such as maximum successful heals, maximum rejected attempts, and

@@ -3,6 +3,23 @@
 All notable changes to Healwright are documented here. The project follows Semantic Versioning for
 release tags while the public package remains private and unpublished.
 
+## [0.3.1] - 2026-08-16
+
+### Fixed
+
+- Unicode normalization now preserves Cyrillic, Greek, CJK, and other Unicode letters and numbers
+  while retaining deterministic diacritic folding.
+- Empty and punctuation-only normalized strings no longer receive perfect similarity.
+- Edit similarity now compares Unicode code points instead of UTF-16 code units.
+
+### Security
+
+- Known role mismatch, registered tag mismatch, missing accessible identity, and action-incompatible
+  element identity are mandatory eligibility failures rather than weighted hints.
+- First-pass and guarded second-pass evaluation now enforce the same semantic gates.
+- Audit evidence records stable semantic rejection reasons, and proposal generation excludes older
+  evidence that does not prove semantic eligibility.
+
 ## [0.3.0] - 2026-08-16
 
 ### Added
@@ -37,5 +54,6 @@ release tags while the public package remains private and unpublished.
 - Guarded healing execution with screenshots, JSONL audit events, and visible
   `PASSED_WITH_HEALING` results.
 
+[0.3.1]: https://github.com/kamenAsenov/healwright/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/kamenAsenov/healwright/compare/82513a74882500d5d31a3c8d284a0727565cef77...v0.3.0
 [0.2.0]: https://github.com/kamenAsenov/healwright/tree/82513a74882500d5d31a3c8d284a0727565cef77

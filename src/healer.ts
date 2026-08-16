@@ -77,7 +77,7 @@ type RevalidationResult =
       readonly status: 'rejected';
       readonly reason: Extract<
         HealingExecutionReason,
-        'revalidation-changed' | 'candidate-not-unique'
+        'revalidation-changed' | 'semantic-revalidation-failed' | 'candidate-not-unique'
       >;
       readonly error?: unknown;
     };
@@ -235,7 +235,7 @@ class HealerTarget {
       }
     }
 
-    const rankedCandidates = rankCandidates(this.definition.fingerprint, candidates);
+    const rankedCandidates = rankCandidates(this.definition.fingerprint, candidates, action);
     const assessment = assessCandidates(rankedCandidates, this.definition.policy.healing);
     const event = createHealingAuditEvent({
       ...(this.runtime.auditProvenance === undefined
@@ -388,9 +388,12 @@ class HealerTarget {
       return { status: 'rejected', reason: 'revalidation-changed', error };
     }
 
-    const rankedCandidates = rankCandidates(this.definition.fingerprint, candidates);
+    const rankedCandidates = rankCandidates(this.definition.fingerprint, candidates, action);
     const assessment = assessCandidates(rankedCandidates, this.definition.policy.healing);
     const revalidatedCandidate = assessment.topCandidate?.candidate;
+    if (assessment.reason === 'semantic-ineligible') {
+      return { status: 'rejected', reason: 'semantic-revalidation-failed' };
+    }
     if (!assessment.eligible || revalidatedCandidate?.id !== expectedCandidate.id) {
       return { status: 'rejected', reason: 'revalidation-changed' };
     }

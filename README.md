@@ -203,16 +203,18 @@ flowchart LR
   P -->|"action fails"| M{"Timeout + never attached + count = 0?"}
   M -->|"no"| PF["Preserve original Playwright failure"]
   M -->|"yes"| C["Collect compatible live candidates"]
-  C --> S["Deterministic weighted scoring"]
+  C --> E{"Semantic identity eligible?"}
+  E -->|"no"| SF["Fail closed + audit reasons"]
+  E -->|"yes"| S["Deterministic weighted scoring"]
   S --> G{"Threshold and safe margin?"}
-  G -->|"no"| SF["Fail closed"]
+  G -->|"no"| SF
   G -->|"yes"| A["Write assessment audit + provenance"]
   A --> V{"Fresh collection: same unique winner?"}
   V -->|"no"| SF
   V -->|"yes"| B["Before screenshot"]
   B --> H["Execute original action on candidate"]
-  H --> E["After screenshot + execution audit"]
-  E --> PW["PASSED_WITH_HEALING"]
+  H --> X["After screenshot + execution audit"]
+  X --> PW["PASSED_WITH_HEALING"]
 ```
 
 ### Missing means genuinely missing
@@ -229,7 +231,9 @@ closure, or another non-timeout error—Healwright preserves the original result
 ## Deterministic scoring
 
 The scoring engine is pure: identical fingerprints and candidate snapshots always produce the same
-ranking. Equal scores are ordered by a stable candidate identifier.
+ranking. Equal scores are ordered by a stable candidate identifier. Text normalization is
+locale-independent and Unicode-aware: it preserves letters and numbers across scripts, folds
+diacritics deterministically, and assigns zero similarity to empty or punctuation-only values.
 
 | Signal            | Weight | Notes                                   |
 | ----------------- | -----: | --------------------------------------- |
@@ -250,15 +254,23 @@ import { assessCandidates, collectCandidates, rankCandidates } from 'healwright'
 
 const definition = registry.targets['checkout.placeOrder'];
 const candidates = await collectCandidates(page, 'click');
-const ranked = rankCandidates(definition.fingerprint, candidates);
+const ranked = rankCandidates(definition.fingerprint, candidates, 'click');
 const assessment = assessCandidates(ranked, definition.policy.healing);
 
 console.log(assessment.reason, assessment.margin, ranked[0]?.details);
 ```
 
-Possible assessment reasons are `eligible`, `disabled`, `no-candidates`, `low-confidence`, and
-`ambiguous`. `eligible` means the first evidence pass cleared policy; execution still requires the
-same result from the immediate second pass and a unique accessible locator.
+Weighted signals determine ranking, but they can never compensate for mandatory execution
+eligibility. A candidate is semantically ineligible when its required accessible identity is
+missing, its known role or registered tag contradicts the fingerprint, or its element identity is
+incompatible with the requested action. Stable reasons are recorded on the ranked candidate and in
+the assessment.
+
+Possible assessment reasons are `eligible`, `disabled`, `no-candidates`, `semantic-ineligible`,
+`low-confidence`, and `ambiguous`. `eligible` means the first evidence pass cleared semantic,
+confidence, and margin gates; execution still requires the same result from the immediate second
+pass and a unique accessible locator. `observe` mode retains the ranking and semantic rejection
+reasons without executing anything.
 
 ## Audit events and history
 
@@ -515,6 +527,7 @@ Healwright will not heal:
 - test-data setup problems;
 - API, network, or backend failures;
 - ambiguous or low-confidence matches.
+- candidates with missing or contradictory semantic identity.
 
 It will not silently rewrite test source or the locator registry. The MVP requires no LLM, API key,
 cloud service, Docker container, database, OCR, or visual AI.
@@ -541,6 +554,7 @@ cloud service, Docker container, database, OCR, or visual AI.
 - [x] Versioned audit provenance and independent-run consensus
 - [x] Strict proposal-bundle verification API and CLI quality gate
 - [x] Parallel-safe reporter aggregation and canonical evidence summaries
+- [x] Unicode-safe scoring and mandatory semantic execution gates
 
 The staged plan from reliable evidence through policy governance, cross-browser qualification,
 stronger integrity, and a stable `v1.0` contract is maintained in [`ROADMAP.md`](ROADMAP.md).
@@ -554,6 +568,8 @@ stronger integrity, and a stable `v1.0` contract is maintained in [`ROADMAP.md`]
 - Fingerprints and registry changes remain manual; proposals intentionally have no auto-apply path.
 - Proposal consensus requires explicitly configured run provenance; legacy history is readable but
   intentionally excluded from confidence counts.
+- Evidence created before `v0.3.1` remains readable but is excluded from locator proposals when it
+  lacks explicit semantic-eligibility proof.
 - Commit SHA provenance is optional, but a proposal fails closed if qualifying runs mix commits or
   only some of them record a commit.
 - Proposal hashes detect changes after generation but do not authenticate the local JSONL history;

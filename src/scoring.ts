@@ -1,5 +1,5 @@
 import type { CandidateSnapshot } from './candidates.js';
-import type { HealingPolicy, TargetFingerprint, TargetGeometry } from './types.js';
+import type { HealingPolicy, TargetAction, TargetFingerprint, TargetGeometry } from './types.js';
 
 export const SCORE_WEIGHTS = {
   accessibleRole: 0.22,
@@ -25,10 +25,33 @@ export interface RankedCandidate {
   readonly candidate: CandidateSnapshot;
   readonly score: number;
   readonly details: readonly ScoreDetail[];
+  readonly eligibility?: CandidateEligibility;
 }
 
 export type CandidateAssessmentReason =
-  'eligible' | 'disabled' | 'no-candidates' | 'low-confidence' | 'ambiguous';
+  | 'eligible'
+  | 'disabled'
+  | 'no-candidates'
+  | 'semantic-ineligible'
+  | 'low-confidence'
+  | 'ambiguous';
+
+export const CANDIDATE_ELIGIBILITY_REASONS = [
+  'missing-eligibility',
+  'missing-role',
+  'role-mismatch',
+  'missing-accessible-name',
+  'missing-tag',
+  'tag-mismatch',
+  'action-incompatible',
+] as const;
+
+export type CandidateEligibilityReason = (typeof CANDIDATE_ELIGIBILITY_REASONS)[number];
+
+export interface CandidateEligibility {
+  readonly eligible: boolean;
+  readonly reasons: readonly CandidateEligibilityReason[];
+}
 
 export interface CandidateAssessment {
   readonly eligible: boolean;
@@ -38,6 +61,7 @@ export interface CandidateAssessment {
   readonly margin: number;
   readonly confidenceThreshold: number;
   readonly minimumScoreMargin: number;
+  readonly semanticRejectionReasons?: readonly CandidateEligibilityReason[];
 }
 
 interface RawDetail {
@@ -57,29 +81,32 @@ function round(value: number): number {
 function normalizeText(value: string): string {
   return value
     .normalize('NFKD')
-    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\p{M}+/gu, '')
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/[\p{P}\p{S}]+/gu, ' ')
     .trim()
     .replace(/\s+/g, ' ');
 }
 
 function levenshteinDistance(left: string, right: string): number {
-  if (left === right) {
+  const leftCharacters = [...left];
+  const rightCharacters = [...right];
+  if (leftCharacters.join('') === rightCharacters.join('')) {
     return 0;
   }
-  if (left.length === 0) {
-    return right.length;
+  if (leftCharacters.length === 0) {
+    return rightCharacters.length;
   }
-  if (right.length === 0) {
-    return left.length;
+  if (rightCharacters.length === 0) {
+    return leftCharacters.length;
   }
 
-  let previous = Array.from({ length: right.length + 1 }, (_, index) => index);
-  for (let leftIndex = 1; leftIndex <= left.length; leftIndex += 1) {
+  let previous = Array.from({ length: rightCharacters.length + 1 }, (_, index) => index);
+  for (let leftIndex = 1; leftIndex <= leftCharacters.length; leftIndex += 1) {
     const current = [leftIndex];
-    for (let rightIndex = 1; rightIndex <= right.length; rightIndex += 1) {
-      const substitutionCost = left[leftIndex - 1] === right[rightIndex - 1] ? 0 : 1;
+    for (let rightIndex = 1; rightIndex <= rightCharacters.length; rightIndex += 1) {
+      const substitutionCost =
+        leftCharacters[leftIndex - 1] === rightCharacters[rightIndex - 1] ? 0 : 1;
       current[rightIndex] = Math.min(
         (current[rightIndex - 1] ?? 0) + 1,
         (previous[rightIndex] ?? 0) + 1,
@@ -89,7 +116,9 @@ function levenshteinDistance(left: string, right: string): number {
     previous = current;
   }
 
-  return previous[right.length] ?? Math.max(left.length, right.length);
+  return (
+    previous[rightCharacters.length] ?? Math.max(leftCharacters.length, rightCharacters.length)
+  );
 }
 
 function stringSimilarity(expected: string, actual: string | undefined): number {
@@ -100,7 +129,7 @@ function stringSimilarity(expected: string, actual: string | undefined): number 
   const left = normalizeText(expected);
   const right = normalizeText(actual);
   if (left === '' || right === '') {
-    return left === right ? 1 : 0;
+    return 0;
   }
   if (left === right) {
     return 1;
@@ -111,8 +140,85 @@ function stringSimilarity(expected: string, actual: string | undefined): number 
   const intersection = [...leftTokens].filter((token) => rightTokens.has(token)).length;
   const union = new Set([...leftTokens, ...rightTokens]).size;
   const tokenScore = union === 0 ? 0 : intersection / union;
-  const editScore = 1 - levenshteinDistance(left, right) / Math.max(left.length, right.length);
+  const editScore =
+    1 - levenshteinDistance(left, right) / Math.max([...left].length, [...right].length);
   return clamp(tokenScore * 0.6 + editScore * 0.4);
+}
+
+function normalizedIdentity(value: string | undefined): string | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  const normalized = normalizeText(value);
+  return normalized === '' ? undefined : normalized;
+}
+
+function isActionCompatible(candidate: CandidateSnapshot, action: TargetAction): boolean {
+  const role = normalizedIdentity(candidate.role);
+  const tag = normalizedIdentity(candidate.tag);
+  const type = normalizedIdentity(candidate.stableAttributes.type);
+
+  switch (action) {
+    case 'click':
+      return (
+        (role !== undefined && ['button', 'link', 'menuitem', 'tab', 'switch'].includes(role)) ||
+        tag === 'button' ||
+        tag === 'a' ||
+        (tag === 'input' && ['button', 'submit', 'reset'].includes(type ?? ''))
+      );
+    case 'fill':
+      if (tag !== undefined && ['a', 'button', 'select'].includes(tag)) {
+        return false;
+      }
+      return (
+        (role !== undefined && ['textbox', 'searchbox', 'spinbutton'].includes(role)) ||
+        tag === 'textarea' ||
+        (tag === 'input' &&
+          (type === undefined ||
+            ['email', 'number', 'password', 'search', 'tel', 'text', 'url'].includes(type)))
+      );
+    case 'check':
+      if (tag !== undefined && ['a', 'button', 'select', 'textarea'].includes(tag)) {
+        return false;
+      }
+      return (
+        (role !== undefined && ['checkbox', 'radio', 'switch'].includes(role)) ||
+        (tag === 'input' && ['checkbox', 'radio'].includes(type ?? ''))
+      );
+    case 'selectOption':
+      return tag === 'select';
+  }
+}
+
+export function evaluateCandidateEligibility(
+  fingerprint: TargetFingerprint,
+  candidate: CandidateSnapshot,
+  action?: TargetAction,
+): CandidateEligibility {
+  const reasons: CandidateEligibilityReason[] = [];
+  const expectedRole = normalizedIdentity(fingerprint.accessibleRole);
+  const actualRole = normalizedIdentity(candidate.role);
+  const expectedTag = normalizedIdentity(fingerprint.tag);
+  const actualTag = normalizedIdentity(candidate.tag);
+
+  if (actualRole === undefined) {
+    reasons.push('missing-role');
+  } else if (expectedRole !== undefined && actualRole !== expectedRole) {
+    reasons.push('role-mismatch');
+  }
+  if (normalizedIdentity(candidate.accessibleName) === undefined) {
+    reasons.push('missing-accessible-name');
+  }
+  if (actualTag === undefined) {
+    reasons.push('missing-tag');
+  } else if (expectedTag !== undefined && actualTag !== expectedTag) {
+    reasons.push('tag-mismatch');
+  }
+  if (action !== undefined && !isActionCompatible(candidate, action)) {
+    reasons.push('action-incompatible');
+  }
+
+  return { eligible: reasons.length === 0, reasons };
 }
 
 function contextSimilarity(expected: readonly string[], actual: readonly string[]): number {
@@ -171,6 +277,7 @@ function addDetail(
 export function scoreCandidate(
   fingerprint: TargetFingerprint,
   candidate: CandidateSnapshot,
+  action?: TargetAction,
 ): RankedCandidate {
   const rawDetails: RawDetail[] = [];
 
@@ -243,15 +350,21 @@ export function scoreCandidate(
   }));
   const score = round(details.reduce((sum, detail) => sum + detail.contribution, 0));
 
-  return { candidate, score, details };
+  return {
+    candidate,
+    score,
+    details,
+    eligibility: evaluateCandidateEligibility(fingerprint, candidate, action),
+  };
 }
 
 export function rankCandidates(
   fingerprint: TargetFingerprint,
   candidates: readonly CandidateSnapshot[],
+  action?: TargetAction,
 ): readonly RankedCandidate[] {
   return candidates
-    .map((candidate) => scoreCandidate(fingerprint, candidate))
+    .map((candidate) => scoreCandidate(fingerprint, candidate, action))
     .sort((left, right) => {
       if (left.score !== right.score) {
         return right.score - left.score;
@@ -271,12 +384,17 @@ export function assessCandidates(
   const topCandidate = rankedCandidates[0];
   const secondCandidate = rankedCandidates[1];
   const margin = round((topCandidate?.score ?? 0) - (secondCandidate?.score ?? 0));
+  const semanticRejectionReasons =
+    topCandidate === undefined
+      ? []
+      : (topCandidate.eligibility?.reasons ?? ['missing-eligibility']);
   const common = {
     ...(topCandidate === undefined ? {} : { topCandidate }),
     ...(secondCandidate === undefined ? {} : { secondCandidate }),
     margin,
     confidenceThreshold: policy.confidenceThreshold,
     minimumScoreMargin: policy.minimumScoreMargin,
+    semanticRejectionReasons,
   };
 
   if (!policy.enabled) {
@@ -284,6 +402,9 @@ export function assessCandidates(
   }
   if (topCandidate === undefined) {
     return { eligible: false, reason: 'no-candidates', ...common };
+  }
+  if (topCandidate.eligibility?.eligible !== true) {
+    return { eligible: false, reason: 'semantic-ineligible', ...common };
   }
   if (topCandidate.score < policy.confidenceThreshold) {
     return { eligible: false, reason: 'low-confidence', ...common };

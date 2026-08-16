@@ -23,7 +23,12 @@ function candidate(overrides: Partial<CandidateSnapshot> = {}): CandidateSnapsho
 }
 
 function ranked(id: string, score: number): RankedCandidate {
-  return { candidate: candidate({ id }), score, details: [] };
+  return {
+    candidate: candidate({ id }),
+    score,
+    details: [],
+    eligibility: { eligible: true, reasons: [] },
+  };
 }
 
 test('normalizes case, punctuation, and diacritics in accessible names', () => {

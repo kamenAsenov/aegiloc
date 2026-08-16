@@ -86,6 +86,29 @@ test('does not turn a disabled replacement into a passing test', async ({ page }
   expect(resultSink.results).toHaveLength(0);
 });
 
+test('rejects a live candidate whose accessible role contradicts the target', async ({
+  page,
+}, testInfo) => {
+  const { healer, auditSink, resultSink } = await guardedHarness(page, testInfo);
+  await page.goto('/?mutation=drifted-wrong-role-terms');
+
+  const error = await captureError(healer.target('checkout.terms').check());
+
+  expect(error).toBeInstanceOf(MissingPrimaryLocatorError);
+  await expect(page.locator('input[name="terms"]')).not.toBeChecked();
+  expect(auditSink.events).toHaveLength(1);
+  expect(auditSink.events[0]).toMatchObject({
+    eventType: 'locator-drift-assessed',
+    modeDecision: 'rejected',
+    assessment: {
+      eligible: false,
+      reason: 'semantic-ineligible',
+      semanticRejectionReasons: ['role-mismatch'],
+    },
+  });
+  expect(resultSink.results).toHaveLength(0);
+});
+
 test('rejects a candidate set that changes between assessment and execution', async ({
   page,
 }, testInfo) => {

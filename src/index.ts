@@ -105,12 +105,16 @@ export {
 } from './result.js';
 export { resolvePrimaryLocator } from './locator.js';
 export {
+  CANDIDATE_ELIGIBILITY_REASONS,
   SCORE_WEIGHTS,
   assessCandidates,
+  evaluateCandidateEligibility,
   rankCandidates,
   scoreCandidate,
   type CandidateAssessment,
   type CandidateAssessmentReason,
+  type CandidateEligibility,
+  type CandidateEligibilityReason,
   type RankedCandidate,
   type ScoreDetail,
   type ScoreSignal,

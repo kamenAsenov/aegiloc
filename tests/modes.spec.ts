@@ -182,6 +182,7 @@ for (const [mode, expectedDecision] of nonExecutingModes) {
           role: 'checkbox',
           accessibleName: 'I agree to the store terms',
           tag: 'input',
+          eligibility: { eligible: true, reasons: [] },
         },
       ],
     });
@@ -227,6 +228,8 @@ test('guarded mode revalidates, executes, audits, and records a healed result', 
   expect(auditSink.events[0]).toMatchObject({
     eventType: 'locator-drift-assessed',
     modeDecision: 'eligible',
+    assessment: { eligible: true, semanticRejectionReasons: [] },
+    rankedCandidates: [{ eligibility: { eligible: true, reasons: [] } }],
     provenance: { runId: 'run-guarded-1', testId: 'guarded-healing-test' },
   });
   expect(auditSink.events[1]).toMatchObject({
@@ -241,6 +244,94 @@ test('guarded mode revalidates, executes, audits, and records a healed result', 
     status: PASSED_WITH_HEALING,
     targetKey: 'checkout.terms',
     action: 'check',
+  });
+});
+
+test('observe mode reports semantic rejection without executing the candidate', async () => {
+  const harness = missingPage();
+  const auditSink = new InMemoryAuditSink();
+  const healer = createHealer({
+    page: harness.page,
+    registry,
+    mode: 'observe',
+    auditSink,
+    primaryActionTimeoutMs: 300,
+    candidateCollector: () => Promise.resolve([{ ...compatibleCandidate, role: 'button' }]),
+  });
+
+  const error = await captureError(healer.target('checkout.terms').check());
+
+  expect(error).toBeInstanceOf(MissingPrimaryLocatorError);
+  expect(harness.candidateActionCalls()).toBe(0);
+  expect(auditSink.events).toHaveLength(1);
+  expect(auditSink.events[0]).toMatchObject({
+    eventType: 'locator-drift-assessed',
+    modeDecision: 'observed',
+    assessment: {
+      eligible: false,
+      reason: 'semantic-ineligible',
+      semanticRejectionReasons: ['role-mismatch'],
+    },
+    rankedCandidates: [{ eligibility: { eligible: false, reasons: ['role-mismatch'] } }],
+  });
+});
+
+test('guarded mode fails closed on a first-pass semantic contradiction', async () => {
+  const harness = missingPage();
+  const auditSink = new InMemoryAuditSink();
+  let collectionCalls = 0;
+  const healer = createHealer({
+    page: harness.page,
+    registry,
+    mode: 'guarded',
+    auditSink,
+    primaryActionTimeoutMs: 300,
+    candidateCollector: () => {
+      collectionCalls += 1;
+      return Promise.resolve([{ ...compatibleCandidate, role: 'button' }]);
+    },
+  });
+
+  const error = await captureError(healer.target('checkout.terms').check());
+
+  expect(error).toBeInstanceOf(MissingPrimaryLocatorError);
+  expect(collectionCalls).toBe(1);
+  expect(harness.candidateActionCalls()).toBe(0);
+  expect(auditSink.events).toHaveLength(1);
+  expect(auditSink.events[0]).toMatchObject({
+    modeDecision: 'rejected',
+    assessment: { eligible: false, reason: 'semantic-ineligible' },
+  });
+});
+
+test('guarded mode rejects a candidate that becomes semantically invalid between passes', async () => {
+  const harness = missingPage();
+  const auditSink = new InMemoryAuditSink();
+  let collectionCalls = 0;
+  const healer = createHealer({
+    page: harness.page,
+    registry,
+    mode: 'guarded',
+    auditSink,
+    screenshotCapture,
+    primaryActionTimeoutMs: 300,
+    candidateCollector: () => {
+      collectionCalls += 1;
+      return Promise.resolve([
+        collectionCalls === 1 ? compatibleCandidate : { ...compatibleCandidate, role: 'button' },
+      ]);
+    },
+  });
+
+  const error = await captureError(healer.target('checkout.terms').check());
+
+  expect(error).toBeInstanceOf(MissingPrimaryLocatorError);
+  expect(collectionCalls).toBe(2);
+  expect(harness.candidateActionCalls()).toBe(0);
+  expect(auditSink.events[1]).toMatchObject({
+    eventType: 'locator-heal-execution',
+    status: 'rejected',
+    reason: 'semantic-revalidation-failed',
   });
 });
 

@@ -13,6 +13,7 @@ import {
 } from './audit.js';
 import { ProposalHistoryError } from './errors.js';
 import { SUPPORTED_ARIA_ROLES } from './registry.js';
+import { CANDIDATE_ELIGIBILITY_REASONS } from './scoring.js';
 import {
   TARGET_ACTIONS,
   type PrimaryLocatorDefinition,
@@ -216,6 +217,18 @@ function requireAssessmentEvent(
     throw new ProposalHistoryError(line, 'assessment decision is malformed');
   }
   if (
+    ![
+      'eligible',
+      'disabled',
+      'no-candidates',
+      'semantic-ineligible',
+      'low-confidence',
+      'ambiguous',
+    ].includes(String(value.assessment.reason))
+  ) {
+    throw new ProposalHistoryError(line, 'assessment reason is unsupported');
+  }
+  if (
     !isProbability(value.assessment.margin) ||
     !isProbability(value.assessment.confidenceThreshold) ||
     !isProbability(value.assessment.minimumScoreMargin)
@@ -228,10 +241,26 @@ function requireAssessmentEvent(
   ) {
     throw new ProposalHistoryError(line, 'assessment topCandidateId must be a non-empty string');
   }
+  if (
+    value.assessment.semanticRejectionReasons !== undefined &&
+    (!Array.isArray(value.assessment.semanticRejectionReasons) ||
+      new Set(value.assessment.semanticRejectionReasons).size !==
+        value.assessment.semanticRejectionReasons.length ||
+      value.assessment.semanticRejectionReasons.some(
+        (reason) =>
+          typeof reason !== 'string' ||
+          !CANDIDATE_ELIGIBILITY_REASONS.includes(
+            reason as (typeof CANDIDATE_ELIGIBILITY_REASONS)[number],
+          ),
+      ))
+  ) {
+    throw new ProposalHistoryError(line, 'assessment semantic rejection reasons are malformed');
+  }
   if (!Array.isArray(value.rankedCandidates)) {
     throw new ProposalHistoryError(line, 'rankedCandidates must be an array');
   }
-  for (const candidate of value.rankedCandidates) {
+  const rankedCandidates: readonly unknown[] = value.rankedCandidates;
+  for (const candidate of rankedCandidates) {
     if (
       !isRecord(candidate) ||
       !isNonEmptyString(candidate.id) ||
@@ -244,6 +273,47 @@ function requireAssessmentEvent(
       (candidate.accessibleName !== undefined && !isNonEmptyString(candidate.accessibleName))
     ) {
       throw new ProposalHistoryError(line, 'ranked candidate is malformed');
+    }
+    if (candidate.eligibility !== undefined) {
+      if (
+        !isRecord(candidate.eligibility) ||
+        typeof candidate.eligibility.eligible !== 'boolean' ||
+        !Array.isArray(candidate.eligibility.reasons) ||
+        new Set(candidate.eligibility.reasons).size !== candidate.eligibility.reasons.length ||
+        candidate.eligibility.reasons.some(
+          (reason) =>
+            typeof reason !== 'string' ||
+            !CANDIDATE_ELIGIBILITY_REASONS.includes(
+              reason as (typeof CANDIDATE_ELIGIBILITY_REASONS)[number],
+            ),
+        ) ||
+        candidate.eligibility.eligible !== (candidate.eligibility.reasons.length === 0)
+      ) {
+        throw new ProposalHistoryError(line, 'ranked candidate eligibility is malformed');
+      }
+    }
+  }
+  const semanticRejectionReasons = value.assessment.semanticRejectionReasons;
+  if (semanticRejectionReasons !== undefined) {
+    const semanticallyRejected = value.assessment.reason === 'semantic-ineligible';
+    if (
+      semanticallyRejected !== semanticRejectionReasons.length > 0 ||
+      (semanticallyRejected && value.assessment.eligible)
+    ) {
+      throw new ProposalHistoryError(line, 'assessment semantic decision is inconsistent');
+    }
+    const topCandidate = rankedCandidates[0];
+    if (isRecord(topCandidate) && isRecord(topCandidate.eligibility)) {
+      if (
+        topCandidate.eligibility.eligible !== !semanticallyRejected ||
+        JSON.stringify(topCandidate.eligibility.reasons) !==
+          JSON.stringify(semanticRejectionReasons)
+      ) {
+        throw new ProposalHistoryError(
+          line,
+          'assessment and top candidate semantic eligibility disagree',
+        );
+      }
     }
   }
 }
@@ -275,6 +345,7 @@ function requireExecutionEvent(
     ![
       'succeeded',
       'revalidation-changed',
+      'semantic-revalidation-failed',
       'candidate-not-unique',
       'artifact-capture-failed',
       'action-failed',
@@ -428,7 +499,8 @@ function candidateFromAssessment(
     execution.reason !== 'succeeded' ||
     assessment.assessment.topCandidateId !== execution.candidateId ||
     top?.id !== execution.candidateId ||
-    top.rank !== 1
+    top.rank !== 1 ||
+    top.eligibility?.eligible !== true
   ) {
     return undefined;
   }
