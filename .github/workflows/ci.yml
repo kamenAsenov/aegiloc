@@ -32,6 +32,9 @@ jobs:
       - name: Check formatting
         run: pnpm format:check
 
+      - name: Verify documentation links
+        run: pnpm docs:check
+
       - name: Lint
         run: pnpm lint
 
@@ -46,6 +49,9 @@ jobs:
 
       - name: Install Chromium
         run: pnpm exec playwright install --with-deps chromium
+
+      - name: Verify basic consumer example
+        run: pnpm example:verify
 
       - name: Exercise reporter with parallel workers
         run: pnpm test:reporter:parallel

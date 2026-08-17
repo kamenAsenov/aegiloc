@@ -1,7 +1,24 @@
 # Changelog
 
 All notable changes to Healwright are documented here. The project follows Semantic Versioning for
-release tags while the public package remains private and unpublished.
+release tags. Package metadata is publication-ready, but no npm package is currently published.
+
+## [Unreleased]
+
+### Added
+
+- MIT license, contribution guidance, coordinated security reporting, and repository metadata
+  recommendations.
+- Scan-first README plus dedicated quick-start, architecture, safety, technical, product, release,
+  portfolio, and release-note documentation.
+- A consumer-shaped basic Playwright example with an automated type-check and Chromium verification
+  command.
+
+### Changed
+
+- Package metadata now describes a future public package while `prepublishOnly` requires an explicit
+  human confirmation and the complete release gate. No publication is automatic.
+- CI verifies the basic consumer example in addition to the existing package and full-suite gates.
 
 ## [0.4.0] - 2026-08-16
 
@@ -82,6 +99,7 @@ release tags while the public package remains private and unpublished.
   `PASSED_WITH_HEALING` results.
 
 [0.4.0]: https://github.com/kamenAsenov/healwright/compare/v0.3.1...v0.4.0
+[Unreleased]: https://github.com/kamenAsenov/healwright/compare/v0.4.0...HEAD
 [0.3.1]: https://github.com/kamenAsenov/healwright/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/kamenAsenov/healwright/compare/82513a74882500d5d31a3c8d284a0727565cef77...v0.3.0
 [0.2.0]: https://github.com/kamenAsenov/healwright/tree/82513a74882500d5d31a3c8d284a0727565cef77

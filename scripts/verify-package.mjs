@@ -116,6 +116,19 @@ const artifactPaths = [
   './scripts/propose-heals.mjs',
   './scripts/verify-proposals.mjs',
   './scripts/evaluate-governance.mjs',
+  './scripts/guard-publish.mjs',
+  './scripts/verify-docs.mjs',
+  './scripts/verify-pack.mjs',
+  './LICENSE',
+  './docs/QUICKSTART.md',
+  './docs/ARCHITECTURE.md',
+  './docs/SAFETY-MODEL.md',
+  './docs/PRODUCT-POSITIONING.md',
+  './docs/RELEASE-PROCESS.md',
+  './docs/PORTFOLIO-SUMMARY.md',
+  './docs/releases/v0.4.0.md',
+  './examples/basic-playwright/playwright.config.ts',
+  './examples/basic-playwright/targets.json',
   './dist/index.js.map',
   './dist/index.d.ts.map',
   './dist/evidence.js',
@@ -128,6 +141,36 @@ const artifactPaths = [
 
 for (const artifactPath of new Set(artifactPaths)) {
   await access(new URL(`..${artifactPath.slice(1)}`, import.meta.url));
+}
+
+if (
+  packageJson.private !== false ||
+  packageJson.license !== 'MIT' ||
+  packageJson.author !== 'Kamen Asenov' ||
+  packageJson.repository?.url !== 'git+https://github.com/kamenAsenov/healwright.git' ||
+  packageJson.publishConfig?.access !== 'public'
+) {
+  throw new Error('Package publication metadata is incomplete or inconsistent');
+}
+if (!packageJson.scripts?.prepublishOnly?.includes('scripts/guard-publish.mjs')) {
+  throw new Error('Package publication is missing its explicit human-confirmation guard');
+}
+
+const blockedPublish = spawnSync(process.execPath, ['scripts/guard-publish.mjs'], {
+  cwd: fileURLToPath(new URL('..', import.meta.url)),
+  encoding: 'utf8',
+  env: { ...process.env, HEALWRIGHT_PUBLISH: '' },
+});
+if (blockedPublish.status === 0 || !blockedPublish.stderr.includes('publication blocked')) {
+  throw new Error('Publication guard did not reject an unconfirmed publish');
+}
+const confirmedPublish = spawnSync(process.execPath, ['scripts/guard-publish.mjs'], {
+  cwd: fileURLToPath(new URL('..', import.meta.url)),
+  encoding: 'utf8',
+  env: { ...process.env, HEALWRIGHT_PUBLISH: 'I_UNDERSTAND_THIS_PUBLISHES_TO_NPM' },
+});
+if (confirmedPublish.status !== 0 || !confirmedPublish.stdout.includes('confirmation accepted')) {
+  throw new Error('Publication guard did not accept the exact documented confirmation');
 }
 
 const repositoryPath = fileURLToPath(new URL('..', import.meta.url));

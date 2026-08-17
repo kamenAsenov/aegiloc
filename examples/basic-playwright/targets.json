@@ -1,0 +1,34 @@
+{
+  "$schema": "../../registry/targets.schema.json",
+  "version": 1,
+  "defaults": {
+    "confidenceThreshold": 0.9,
+    "minimumScoreMargin": 0.15
+  },
+  "targets": {
+    "checkout.applyDiscount": {
+      "description": "Apply the deterministic fixture discount",
+      "primary": {
+        "type": "text",
+        "value": "Apply discount",
+        "exact": true
+      },
+      "fingerprint": {
+        "accessibleRole": "button",
+        "accessibleName": "Apply discount",
+        "visibleText": "Apply discount",
+        "tag": "button",
+        "ancestorText": ["Checkout"]
+      },
+      "policy": {
+        "allowedActions": ["click"],
+        "executionRisk": "automatic",
+        "healing": {
+          "enabled": true,
+          "confidenceThreshold": 0.91,
+          "minimumScoreMargin": 0.15
+        }
+      }
+    }
+  }
+}
