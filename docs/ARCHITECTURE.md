@@ -1,0 +1,116 @@
+# Architecture
+
+Healwright is a deterministic layer around Playwright Test actions. Tests name a semantic target;
+the version-controlled registry supplies its primary locator, fingerprint, allowed actions, and
+risk policy. Ordinary Playwright behavior remains the default path.
+
+## End-to-end flow
+
+```mermaid
+flowchart TD
+  Test["Playwright test"] --> Wrapper["healer.target(key).action()"]
+  Wrapper --> Registry["Validated target registry"]
+  Registry --> Primary["Primary Playwright locator"]
+  Primary -->|"action succeeds"| Normal["Normal Playwright pass"]
+  Primary -->|"action fails"| Classifier{"Genuinely missing?"}
+  Classifier -->|"no"| Original["Preserve original failure"]
+  Classifier -->|"yes"| Collector["Collect action-compatible candidates"]
+  Collector --> Scoring["Semantic eligibility + deterministic scoring"]
+  Scoring --> Gates{"Confidence and safe margin?"}
+  Gates -->|"no"| Rejected["Fail closed + audit"]
+  Gates -->|"yes"| Risk{"Automatic execution allowed?"}
+  Risk -->|"no"| Protected["Proposal-only evidence; no execution"]
+  Risk -->|"yes"| Revalidate["Fresh collection and unique identity"]
+  Revalidate -->|"disagrees"| Rejected
+  Revalidate -->|"agrees"| Action["Screenshot + original action + screenshot"]
+  Action --> Audit["Audit attachments and PASSED_WITH_HEALING"]
+  Audit --> Reporter["Canonical JSONL and run summary"]
+  Reporter --> Proposals["Human-reviewed locator proposals"]
+  Reporter --> Governance["Budgets, baselines, waivers, health summary"]
+```
+
+## Components
+
+### Target registry
+
+[`src/registry.ts`](../src/registry.ts) strictly parses the JSON registry before test interaction.
+Unknown fields, invalid locator shapes, unsupported roles/actions, duplicate actions, malformed
+fingerprints, and unsafe thresholds fail early. [`registry/targets.schema.json`](../registry/targets.schema.json)
+provides editor and tooling support; parity tests keep it aligned with runtime validation.
+
+### Wrapper and primary action
+
+[`src/healer.ts`](../src/healer.ts) implements the explicit target API and action allowlists.
+[`src/locator.ts`](../src/locator.ts) resolves role, label, test-id, text, and CSS primary locators
+using public Playwright APIs. [`src/classification.ts`](../src/classification.ts) runs the primary
+action and proves genuine absence without reclassifying ordinary actionability failures.
+
+### Candidate collection
+
+[`src/candidates.ts`](../src/candidates.ts) queries common interactive HTML and ARIA patterns through
+public locators. It retains bounded, allowlisted signals: accessible role/name, visible text, tag,
+stable attributes, ancestor and sibling context, normalized geometry, and action compatibility.
+Sensitive form values are not candidate signals.
+
+### Eligibility and scoring
+
+[`src/scoring.ts`](../src/scoring.ts) separates mandatory semantic eligibility from weighted ranking.
+The pure scoring engine uses fixed weights and stable tie-breaking; input order cannot alter the
+result. Confidence and runner-up margin are independent gates.
+
+### Guarded execution
+
+The wrapper recollects and reranks immediately before executing. The winner must remain the same and
+resolve through one exact accessible role/name/tag identity. An available test ID further narrows the
+locator. Registry risk is checked again before resolution so a policy change cannot race execution.
+
+### Audit and artifacts
+
+[`src/audit.ts`](../src/audit.ts) defines versioned assessment and execution events plus JSONL and
+Playwright attachment sinks. [`src/artifacts.ts`](../src/artifacts.ts) captures before/after images
+with sensitive controls masked. [`src/result.ts`](../src/result.ts) attaches structured results and
+the visible `PASSED_WITH_HEALING` marker.
+
+### Reporter and canonical evidence
+
+[`src/reporter.ts`](../src/reporter.ts) aggregates typed attachments in Playwright's coordinator
+process instead of letting workers append to one shared file. [`src/evidence.ts`](../src/evidence.ts)
+deduplicates identical events, rejects conflicts, orders records deterministically, and atomically
+writes canonical history and a machine-readable summary.
+
+### Review-only proposals
+
+[`src/proposals.ts`](../src/proposals.ts) links eligible assessments to successful executions and
+requires independent-run consensus. [`src/proposal-validation.ts`](../src/proposal-validation.ts)
+strictly verifies proposal shape, hashes, current registry state, provenance, and screenshot
+references. Proposals are artifacts for humans; no code applies them automatically.
+
+### Governance
+
+[`src/governance.ts`](../src/governance.ts) consumes canonical evidence after the run. It evaluates
+budgets, baselines, retries, protected attempts, unknown targets, and temporary exact-scope waivers.
+Governance cannot influence candidate selection or runtime execution.
+
+## Trust boundaries
+
+```text
+Reviewed source and registry
+        │
+        ▼
+Playwright runtime ──► audit attachments ──► canonical local evidence
+        │                                         │
+        ▼                                         ├──► proposal review
+Application under test                            └──► governance gate
+```
+
+The live page is untrusted candidate input. Audit history is validated input, not an authorization
+source. Governance and proposals consume evidence but never make an unsafe candidate executable.
+
+## Public API and package boundaries
+
+`src/index.ts` is the intentional framework surface. `healwright/reporter` is the reporter subpath;
+five schema subpaths expose registry, proposal, evidence, policy, and health contracts. Package tests
+compile an external-style consumer and load built exports through Node package resolution.
+
+See [`TECHNICAL-REFERENCE.md`](TECHNICAL-REFERENCE.md) for modes, scoring weights, evidence files,
+fixture mutations, and package details.
