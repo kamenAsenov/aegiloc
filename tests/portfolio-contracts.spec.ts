@@ -9,13 +9,14 @@ test('portfolio entry points remain concise, honest, and connected to deeper doc
   const readmeLines = readme.split('\n').length;
 
   expect(readmeLines).toBeLessThan(250);
-  expect(readme).toContain('experimental · pre-1.0');
-  expect(readme).toContain('a false-positive heal is worse than a failed heal');
+  expect(readme).toContain('v0.6.0 Technical Preview · experimental · pre-1.0');
+  expect(readme).toMatch(/a false-positive heal is worse than a failed heal/i);
   expect(readme).toContain('examples/basic-playwright');
+  expect(readme).toContain('examples/realistic-demo');
   expect(readme).toContain('docs/ARCHITECTURE.md');
   expect(readme).toContain('docs/SAFETY-MODEL.md');
-  expect(readme).toContain('not proven production adoption');
-  expect(readme).not.toMatch(/production-ready|enterprise-ready|trusted by|used by \d+/i);
+  expect(readme).toContain('not presented as production-proven software');
+  expect(readme).not.toMatch(/enterprise-ready|enterprise-grade|trusted by|used by \d+/i);
 });
 
 test('package metadata is ready for review but publication remains explicitly guarded', async () => {
@@ -23,16 +24,21 @@ test('package metadata is ready for review but publication remains explicitly gu
     await readFile(new URL('../package.json', import.meta.url), 'utf8'),
   ) as {
     private?: boolean;
+    version?: string;
+    bin?: Record<string, string>;
     license?: string;
     repository?: { url?: string };
     scripts?: Record<string, string>;
   };
 
   expect(packageJson.private).toBe(false);
+  expect(packageJson.version).toBe('0.6.0');
+  expect(packageJson.bin?.healwright).toBe('./dist/cli.js');
   expect(packageJson.license).toBe('MIT');
   expect(packageJson.repository?.url).toBe('git+https://github.com/kamenAsenov/healwright.git');
   expect(packageJson.scripts?.['prepublishOnly']).toContain('scripts/guard-publish.mjs');
   expect(packageJson.scripts?.['release:check']).toContain('pnpm example:verify');
+  expect(packageJson.scripts?.['release:check']).toContain('pnpm example:realistic');
   expect(packageJson.scripts).not.toHaveProperty('publish');
 });
 
@@ -49,6 +55,7 @@ test('basic example uses a valid automatic target and is enforced by CI', async 
     },
   });
   expect(workflow).toContain('run: pnpm example:verify');
+  expect(workflow).toContain('run: pnpm example:realistic');
 });
 
 test('type-aware example linting resolves public imports before the package build exists', async () => {
@@ -65,5 +72,6 @@ test('type-aware example linting resolves public imports before the package buil
     'healwright/reporter': ['src/reporter.ts'],
   });
   expect(eslintConfig).toContain("project: './examples/basic-playwright/tsconfig.eslint.json'");
+  expect(eslintConfig).toContain("project: './examples/realistic-demo/tsconfig.eslint.json'");
   expect(eslintConfig).toContain('projectService: false');
 });

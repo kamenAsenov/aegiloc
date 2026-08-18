@@ -40,6 +40,23 @@ Ordinary locator failures, unsupported candidate patterns, and intentionally con
 heals are usually correctness issues rather than vulnerabilities unless they enable one of the
 unsafe outcomes above.
 
+## Evidence and generated report handling
+
+Treat JSONL history, summaries, health output, screenshots, traces, Playwright reports, and static
+Healwright viewers as potentially sensitive test artifacts. They can contain accessible names,
+target keys, application structure, commit identifiers, and retained screenshot paths.
+
+- keep generated output under ignored, access-controlled directories;
+- use short retention appropriate to the tested environment;
+- review screenshots, traces, and report pages before sharing;
+- never serve a report directory publicly by default;
+- do not add credentials, tokens, customer data, or real filled form values to demo evidence;
+- delete the viewer when deleting its source evidence so a stale copy is not retained separately.
+
+The v0.6 viewer escapes evidence strings and has no remote assets or scripts. That reduces rendering
+risk but does not make the underlying evidence public-safe. Canonical evidence is also not an
+authenticated statement of origin.
+
 ## Disclosure expectations
 
 Please allow reasonable time to reproduce, test, and release a fix before public disclosure. A fix

@@ -42,6 +42,20 @@ export default tseslint.config(
     },
   },
   {
+    files: ['examples/realistic-demo/**/*.ts'],
+    extends: [eslint.configs.recommended, ...tseslint.configs.recommendedTypeChecked],
+    languageOptions: {
+      parserOptions: {
+        project: './examples/realistic-demo/tsconfig.eslint.json',
+        projectService: false,
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+    rules: {
+      '@typescript-eslint/consistent-type-imports': 'error',
+    },
+  },
+  {
     files: ['**/*.mjs'],
     extends: [eslint.configs.recommended],
     languageOptions: {

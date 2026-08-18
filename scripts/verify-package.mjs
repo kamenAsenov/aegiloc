@@ -58,6 +58,7 @@ const expectedRuntimeExports = [
   'evaluateCandidateEligibility',
   'evaluateGovernance',
   'generateHealingProposals',
+  'generateReportViewer',
   'loadAuditHistory',
   'loadHealingProposalBundle',
   'loadGovernancePolicy',
@@ -71,6 +72,7 @@ const expectedRuntimeExports = [
   'rankCandidates',
   'resolvePrimaryLocator',
   'renderHealingProposalReport',
+  'renderReportViewer',
   'renderHealthSummary',
   'resolveExecutionRisk',
   'scoreCandidate',
@@ -117,21 +119,34 @@ const artifactPaths = [
   './scripts/verify-proposals.mjs',
   './scripts/evaluate-governance.mjs',
   './scripts/guard-publish.mjs',
+  './scripts/reset-realistic-demo.mjs',
   './scripts/verify-docs.mjs',
   './scripts/verify-pack.mjs',
   './LICENSE',
   './docs/QUICKSTART.md',
+  './docs/CLI.md',
+  './docs/REPORT-VIEWER.md',
+  './docs/REALISTIC-DEMO.md',
+  './docs/KNOWN-RISKS.md',
+  './docs/WHEN-NOT-TO-USE.md',
   './docs/ARCHITECTURE.md',
   './docs/SAFETY-MODEL.md',
   './docs/PRODUCT-POSITIONING.md',
   './docs/RELEASE-PROCESS.md',
   './docs/PORTFOLIO-SUMMARY.md',
   './docs/releases/v0.4.0.md',
+  './docs/releases/v0.6.0.md',
   './examples/basic-playwright/playwright.config.ts',
   './examples/basic-playwright/targets.json',
   './examples/basic-playwright/tsconfig.eslint.json',
+  './examples/realistic-demo/README.md',
+  './examples/realistic-demo/playwright.config.ts',
+  './examples/realistic-demo/targets.json',
+  './examples/realistic-demo/tests/storefront.spec.ts',
   './dist/index.js.map',
   './dist/index.d.ts.map',
+  './dist/cli.js',
+  './dist/cli.d.ts',
   './dist/evidence.js',
   './dist/evidence.d.ts',
   './dist/proposal-validation.js',
@@ -149,7 +164,8 @@ if (
   packageJson.license !== 'MIT' ||
   packageJson.author !== 'Kamen Asenov' ||
   packageJson.repository?.url !== 'git+https://github.com/kamenAsenov/healwright.git' ||
-  packageJson.publishConfig?.access !== 'public'
+  packageJson.publishConfig?.access !== 'public' ||
+  packageJson.bin?.healwright !== './dist/cli.js'
 ) {
   throw new Error('Package publication metadata is incomplete or inconsistent');
 }
@@ -175,6 +191,16 @@ if (confirmedPublish.status !== 0 || !confirmedPublish.stdout.includes('confirma
 }
 
 const repositoryPath = fileURLToPath(new URL('..', import.meta.url));
+const productCliHelp = execFileSync(process.execPath, ['dist/cli.js', '--help'], {
+  cwd: repositoryPath,
+  encoding: 'utf8',
+});
+if (
+  !productCliHelp.includes('healwright init') ||
+  !productCliHelp.includes('No command rewrites tests')
+) {
+  throw new Error('Built Healwright CLI help is missing its onboarding or safety contract');
+}
 const cliHelp = execFileSync(process.execPath, ['scripts/propose-heals.mjs', '--help'], {
   cwd: repositoryPath,
   encoding: 'utf8',

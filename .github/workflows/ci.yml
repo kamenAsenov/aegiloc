@@ -53,6 +53,9 @@ jobs:
       - name: Verify basic consumer example
         run: pnpm example:verify
 
+      - name: Verify realistic technical-preview demo
+        run: pnpm example:realistic
+
       - name: Exercise reporter with parallel workers
         run: pnpm test:reporter:parallel
 

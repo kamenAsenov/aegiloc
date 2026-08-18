@@ -8,7 +8,9 @@ import {
   createAuditEvidenceSummary,
   evaluateCandidateEligibility,
   generateHealingProposals,
+  generateReportViewer,
   renderHealingProposalReport,
+  renderReportViewer,
   parseHealingProposalBundle,
   verifyHealingProposal,
   verifyHealingProposalBundle,
@@ -98,3 +100,9 @@ if (proposal !== undefined) {
 }
 const parsedBundle = parseHealingProposalBundle(JSON.stringify(proposalBundle));
 void verifyHealingProposalBundle(parsedBundle, registry);
+void renderReportViewer(history, evidenceSummary);
+void generateReportViewer({
+  historyPath: 'test-results/healwright/history.jsonl',
+  summaryPath: 'test-results/healwright/summary.json',
+  outputDirectory: 'test-results/healwright/viewer',
+});

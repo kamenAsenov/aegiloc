@@ -88,20 +88,32 @@ Status: implemented in `v0.4.0`.
 - Provider-neutral CLI exit codes for pass, policy failure, and malformed input, consumed by CI with
   uploaded health artifacts.
 
-### v0.5 — Cross-browser qualification
+### v0.5 — Portfolio and package-readiness foundation
 
-- Qualify the public-API collector and guarded resolver on Firefox and WebKit.
-- Keep Chromium as the fast default while offering an opt-in browser contract matrix.
-- Add browser-difference fixtures and require semantic agreement where accessibility snapshots vary.
-- Establish performance budgets for candidate collection on large interactive pages.
+Status: implemented on the pre-v0.6 mainline without a release tag.
 
-### v0.6 — Stronger evidence integrity and supply chain
+- Add coherent product positioning, portfolio documentation, contribution and security guidance,
+  package publication guards, metadata recommendations, and a consumer-shaped example.
+- Keep package publication, tags, and GitHub Releases separate from source readiness.
+
+### v0.6 — Technical-preview product experience
+
+Status: implemented in source for `v0.6.0` review; not tagged or published.
+
+- Add a lightweight compiled CLI for onboarding, validation, diagnostics, and report generation.
+- Generate a self-contained static UI from matching canonical history and summary evidence.
+- Add a deterministic realistic demo with ordinary, safely healed, and ambiguous rejected paths.
+- Refresh documentation around risks, non-use cases, evaluation, and artifact handling.
+- Preserve the runtime healing surface and conservative fail-closed model.
+
+### v0.7 — Evidence integrity, supply chain, and qualification
 
 - Add optional authenticated evidence manifests or signatures without making a cloud service or key
   mandatory.
 - Detect missing, reordered, replaced, or truncated evidence files against a trusted manifest.
-- Add dependency review, SBOM generation, provenance-aware release artifacts, and reproducible package
-  checks.
+- Add dependency review, SBOM generation, provenance-aware release artifacts, and reproducible
+  package checks.
+- Qualify Firefox and WebKit behavior and establish candidate-collection performance budgets.
 - Document secret rotation and retention guidance for teams that enable authenticated evidence.
 
 ### v1.0 — Stable framework contract

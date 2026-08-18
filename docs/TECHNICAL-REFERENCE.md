@@ -252,12 +252,17 @@ adversarial tests. Fast-check uses the fixed seed `20260815` so property failure
 package resolution, verifies build artifacts, exercises evidence/proposal/governance CLIs and their
 tamper failures, and inspects `pnpm pack --dry-run --json`. It creates no publication.
 
+The `healwright` package bin resolves to `dist/cli.js`. Its `view` command is also available as the
+public `generateReportViewer` and `renderReportViewer` APIs. Report generation requires canonical
+history and an exactly matching summary and produces escaped static HTML without remote assets.
+
 ## Project structure
 
 ```text
 .
 ├── docs/                       # Architecture, safety, product, policy, and release references
 ├── examples/basic-playwright/  # Minimal consumer-shaped Playwright project
+├── examples/realistic-demo/    # Ordinary, healed, and ambiguous local evaluation flow
 ├── examples/governance/        # Passing and deliberately failing policies
 ├── fixtures/app/               # Deterministic checkout UI and controlled mutations
 ├── governance/                 # Checked-in run policy

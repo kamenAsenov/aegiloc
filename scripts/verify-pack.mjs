@@ -25,7 +25,7 @@ if (jsonStart === -1) {
 }
 
 const manifest = JSON.parse(result.stdout.slice(jsonStart));
-if (manifest.name !== 'healwright' || manifest.version !== '0.4.0') {
+if (manifest.name !== 'healwright' || manifest.version !== '0.6.0') {
   throw new Error('Pack manifest identity does not match the reviewed package');
 }
 
@@ -35,10 +35,15 @@ const requiredPaths = [
   'README.md',
   'SECURITY.md',
   'dist/index.js',
+  'dist/cli.js',
+  'dist/cli.d.ts',
+  'docs/CLI.md',
+  'docs/REPORT-VIEWER.md',
   'docs/ARCHITECTURE.md',
-  'docs/releases/v0.4.0.md',
+  'docs/releases/v0.6.0.md',
   'examples/basic-playwright/playwright.config.ts',
   'examples/basic-playwright/tests/checkout.spec.ts',
+  'examples/realistic-demo/tests/storefront.spec.ts',
   'registry/targets.schema.json',
   'scripts/guard-publish.mjs',
 ];

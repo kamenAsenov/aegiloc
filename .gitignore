@@ -4,5 +4,7 @@ playwright-report/
 test-results/
 blob-report/
 coverage/
+healwright-report/
+.healwright/
 .DS_Store
 *.log

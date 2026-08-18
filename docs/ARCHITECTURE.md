@@ -27,6 +27,7 @@ flowchart TD
   Audit --> Reporter["Canonical JSONL and run summary"]
   Reporter --> Proposals["Human-reviewed locator proposals"]
   Reporter --> Governance["Budgets, baselines, waivers, health summary"]
+  Reporter --> Viewer["Validated static evidence viewer"]
 ```
 
 ## Components
@@ -91,6 +92,17 @@ references. Proposals are artifacts for humans; no code applies them automatical
 budgets, baselines, retries, protected attempts, unknown targets, and temporary exact-scope waivers.
 Governance cannot influence candidate selection or runtime execution.
 
+### CLI and static viewer
+
+[`src/cli-core.ts`](../src/cli-core.ts) parses the onboarding commands and keeps filesystem mutation
+explicit. [`src/cli.ts`](../src/cli.ts) is the compiled package bin entry. `init` uses exclusive file
+creation, `validate` reuses the runtime registry parser, and `doctor` performs local checks without
+installing software.
+
+[`src/report-viewer.ts`](../src/report-viewer.ts) strictly parses history, recomputes the canonical
+summary, and emits one escaped, script-free HTML file. The viewer is downstream evidence
+presentation: it cannot influence scoring, runtime execution, proposals, or governance.
+
 ## Trust boundaries
 
 ```text
@@ -109,8 +121,9 @@ source. Governance and proposals consume evidence but never make an unsafe candi
 ## Public API and package boundaries
 
 `src/index.ts` is the intentional framework surface. `healwright/reporter` is the reporter subpath;
-five schema subpaths expose registry, proposal, evidence, policy, and health contracts. Package tests
-compile an external-style consumer and load built exports through Node package resolution.
+the `healwright` package bin points to `dist/cli.js`; five schema subpaths expose registry, proposal,
+evidence, policy, and health contracts. Package tests compile an external-style consumer and load
+built exports through Node package resolution.
 
 See [`TECHNICAL-REFERENCE.md`](TECHNICAL-REFERENCE.md) for modes, scoring weights, evidence files,
 fixture mutations, and package details.
