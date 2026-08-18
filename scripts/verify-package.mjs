@@ -129,6 +129,7 @@ const artifactPaths = [
   './docs/releases/v0.4.0.md',
   './examples/basic-playwright/playwright.config.ts',
   './examples/basic-playwright/targets.json',
+  './examples/basic-playwright/tsconfig.eslint.json',
   './dist/index.js.map',
   './dist/index.d.ts.map',
   './dist/evidence.js',

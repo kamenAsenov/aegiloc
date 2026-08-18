@@ -15,11 +15,25 @@ export default tseslint.config(
     ],
   },
   {
-    files: ['**/*.ts'],
+    files: ['*.ts', 'src/**/*.ts', 'tests/**/*.ts'],
     extends: [eslint.configs.recommended, ...tseslint.configs.recommendedTypeChecked],
     languageOptions: {
       parserOptions: {
         projectService: true,
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+    rules: {
+      '@typescript-eslint/consistent-type-imports': 'error',
+    },
+  },
+  {
+    files: ['examples/basic-playwright/**/*.ts'],
+    extends: [eslint.configs.recommended, ...tseslint.configs.recommendedTypeChecked],
+    languageOptions: {
+      parserOptions: {
+        project: './examples/basic-playwright/tsconfig.eslint.json',
+        projectService: false,
         tsconfigRootDir: import.meta.dirname,
       },
     },

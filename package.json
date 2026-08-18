@@ -50,7 +50,7 @@
     "examples/basic-playwright/playwright.config.ts",
     "examples/basic-playwright/targets.json",
     "examples/basic-playwright/tests/*.ts",
-    "examples/basic-playwright/tsconfig.json",
+    "examples/basic-playwright/tsconfig*.json",
     "scripts/verify-evidence.mjs",
     "scripts/propose-heals.mjs",
     "scripts/verify-proposals.mjs",

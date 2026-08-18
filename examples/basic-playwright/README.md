@@ -41,6 +41,7 @@ test-results/basic-playwright/evidence/
 basic-playwright/
 ├── playwright.config.ts
 ├── targets.json
+├── tsconfig.eslint.json
 ├── tsconfig.json
 └── tests/checkout.spec.ts
 ```
@@ -48,6 +49,10 @@ basic-playwright/
 The repository-level command deliberately resolves `healwright` through the built public package
 exports. In a separate consumer repository, add `@playwright/test` and a reviewed Healwright tarball
 or future published version as development dependencies; no source-path import is required.
+
+`tsconfig.eslint.json` is repository tooling only. It lets type-aware ESLint analyze the example
+before `dist/` exists by mapping the public package names to their source entry points. The runnable
+example's `tsconfig.json` and `example:verify` continue to resolve the built package contract.
 
 ## Important boundary
 

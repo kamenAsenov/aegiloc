@@ -50,3 +50,20 @@ test('basic example uses a valid automatic target and is enforced by CI', async 
   });
   expect(workflow).toContain('run: pnpm example:verify');
 });
+
+test('type-aware example linting resolves public imports before the package build exists', async () => {
+  const lintProject = JSON.parse(
+    await readFile(
+      new URL('../examples/basic-playwright/tsconfig.eslint.json', import.meta.url),
+      'utf8',
+    ),
+  ) as { compilerOptions?: { paths?: Record<string, readonly string[]> } };
+  const eslintConfig = await readFile(new URL('../eslint.config.mjs', import.meta.url), 'utf8');
+
+  expect(lintProject.compilerOptions?.paths).toEqual({
+    healwright: ['src/index.ts'],
+    'healwright/reporter': ['src/reporter.ts'],
+  });
+  expect(eslintConfig).toContain("project: './examples/basic-playwright/tsconfig.eslint.json'");
+  expect(eslintConfig).toContain('projectService: false');
+});
