@@ -9,9 +9,21 @@ permissions:
   contents: read
 
 jobs:
+  dependency-review:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Review dependency changes
+        uses: actions/dependency-review-action@v5
+
   quality:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
 
     steps:
       - name: Check out repository
@@ -47,8 +59,8 @@ jobs:
       - name: Verify package exports
         run: pnpm package:check
 
-      - name: Install Chromium
-        run: pnpm exec playwright install --with-deps chromium
+      - name: Install qualified browsers
+        run: pnpm exec playwright install --with-deps chromium firefox webkit
 
       - name: Verify basic consumer example
         run: pnpm example:verify
@@ -65,8 +77,17 @@ jobs:
       - name: Verify canonical Healwright evidence
         run: pnpm evidence:verify
 
+      - name: Create evidence integrity manifest
+        run: pnpm evidence:attest
+
+      - name: Verify evidence integrity manifest
+        run: pnpm evidence:manifest:verify
+
       - name: Evaluate Healwright governance policy
         run: pnpm governance:evaluate
+
+      - name: Qualify Firefox and WebKit
+        run: pnpm test:cross-browser
 
       - name: Upload Healwright evidence
         if: ${{ !cancelled() }}
@@ -86,3 +107,69 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 7
+
+  supply-chain:
+    needs: quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build package
+        run: pnpm build
+
+      - name: Verify reproducible package
+        run: pnpm package:reproducible
+
+      - name: Prepare artifact directory
+        run: mkdir -p test-results/supply-chain
+
+      - name: Build package artifact
+        run: pnpm pack --pack-destination test-results/supply-chain
+
+      - name: Generate deterministic CycloneDX SBOM
+        run: pnpm supply-chain:sbom
+
+      - name: Verify deterministic CycloneDX SBOM
+        run: pnpm supply-chain:sbom:check
+
+      - name: Upload package and SBOM
+        uses: actions/upload-artifact@v7
+        with:
+          name: healwright-supply-chain
+          path: |
+            test-results/supply-chain/*.tgz
+            test-results/supply-chain/sbom.cdx.json
+          retention-days: 14
+
+      - name: Attest package build provenance
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/attest@v4
+        with:
+          subject-path: test-results/supply-chain/*.tgz
+
+      - name: Attest package SBOM
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/attest@v4
+        with:
+          subject-path: test-results/supply-chain/*.tgz
+          sbom-path: test-results/supply-chain/sbom.cdx.json

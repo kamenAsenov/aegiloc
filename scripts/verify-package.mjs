@@ -17,6 +17,9 @@ const expectedRuntimeExports = [
   'CompositeAuditSink',
   'ConsoleHealingResultSink',
   'DEFAULT_PROPOSAL_MINIMUM_OBSERVATIONS',
+  'EVIDENCE_AUTHENTICATION_ALGORITHM',
+  'EVIDENCE_DIGEST_ALGORITHM',
+  'EVIDENCE_MANIFEST_SCHEMA_VERSION',
   'EXECUTION_RISKS',
   'FileScreenshotCapture',
   'HEALING_PROPOSAL_SCHEMA_URL',
@@ -31,6 +34,7 @@ const expectedRuntimeExports = [
   'InMemoryHealingResultSink',
   'JsonlAuditSink',
   'MissingPrimaryLocatorError',
+  'MINIMUM_EVIDENCE_KEY_BYTES',
   'NoopAuditSink',
   'NoopHealingResultSink',
   'PASSED_WITH_HEALING',
@@ -66,6 +70,7 @@ const expectedRuntimeExports = [
   'parseAriaIdentity',
   'parseAuditHistory',
   'parseAuditProvenance',
+  'parseEvidenceManifest',
   'parseHealingProposalBundle',
   'parseGovernancePolicy',
   'parseTargetRegistry',
@@ -79,7 +84,9 @@ const expectedRuntimeExports = [
   'serializeAuditHistory',
   'verifyHealingProposal',
   'verifyHealingProposalBundle',
+  'verifyEvidenceManifest',
   'writeAuditEvidence',
+  'writeEvidenceManifest',
   'writeHealthSummary',
 ];
 
@@ -112,6 +119,7 @@ const artifactPaths = [
   packageJson.exports['./registry-schema'],
   packageJson.exports['./proposal-schema'],
   packageJson.exports['./evidence-summary-schema'],
+  packageJson.exports['./evidence-manifest-schema'],
   packageJson.exports['./governance-policy-schema'],
   packageJson.exports['./health-summary-schema'],
   './scripts/verify-evidence.mjs',
@@ -122,10 +130,15 @@ const artifactPaths = [
   './scripts/reset-realistic-demo.mjs',
   './scripts/verify-docs.mjs',
   './scripts/verify-pack.mjs',
+  './scripts/generate-sbom.mjs',
+  './scripts/verify-reproducible-pack.mjs',
   './LICENSE',
   './docs/QUICKSTART.md',
   './docs/CLI.md',
   './docs/REPORT-VIEWER.md',
+  './docs/EVIDENCE-INTEGRITY.md',
+  './docs/SUPPLY-CHAIN.md',
+  './docs/CROSS-BROWSER-QUALIFICATION.md',
   './docs/REALISTIC-DEMO.md',
   './docs/KNOWN-RISKS.md',
   './docs/WHEN-NOT-TO-USE.md',
@@ -136,6 +149,7 @@ const artifactPaths = [
   './docs/PORTFOLIO-SUMMARY.md',
   './docs/releases/v0.4.0.md',
   './docs/releases/v0.6.0.md',
+  './docs/releases/v0.7.0.md',
   './examples/basic-playwright/playwright.config.ts',
   './examples/basic-playwright/targets.json',
   './examples/basic-playwright/tsconfig.eslint.json',
@@ -143,12 +157,15 @@ const artifactPaths = [
   './examples/realistic-demo/playwright.config.ts',
   './examples/realistic-demo/targets.json',
   './examples/realistic-demo/tests/storefront.spec.ts',
+  './performance/candidate-collection-budget.json',
   './dist/index.js.map',
   './dist/index.d.ts.map',
   './dist/cli.js',
   './dist/cli.d.ts',
   './dist/evidence.js',
   './dist/evidence.d.ts',
+  './dist/evidence-manifest.js',
+  './dist/evidence-manifest.d.ts',
   './dist/proposal-validation.js',
   './dist/proposal-validation.d.ts',
   './dist/reporter.js.map',
@@ -197,6 +214,7 @@ const productCliHelp = execFileSync(process.execPath, ['dist/cli.js', '--help'],
 });
 if (
   !productCliHelp.includes('healwright init') ||
+  !productCliHelp.includes('healwright attest') ||
   !productCliHelp.includes('No command rewrites tests')
 ) {
   throw new Error('Built Healwright CLI help is missing its onboarding or safety contract');
@@ -317,6 +335,7 @@ const cliDirectory = await mkdtemp(join(tmpdir(), 'healwright-package-check-'));
 try {
   const historyPath = join(cliDirectory, 'history.jsonl');
   const summaryPath = join(cliDirectory, 'summary.json');
+  const manifestPath = join(cliDirectory, 'manifest.json');
   const jsonPath = join(cliDirectory, 'proposals.json');
   const markdownPath = join(cliDirectory, 'proposals.md');
   const healthJsonPath = join(cliDirectory, 'health.json');
@@ -327,6 +346,26 @@ try {
     summaryPath,
     generatedAt: '2026-08-16T00:00:00.000Z',
   });
+  const manifestCreateOutput = execFileSync(
+    process.execPath,
+    [
+      'dist/cli.js',
+      'attest',
+      '--history',
+      historyPath,
+      '--summary',
+      summaryPath,
+      '--out',
+      manifestPath,
+    ],
+    { cwd: repositoryPath, encoding: 'utf8' },
+  );
+  const manifestVerifyOutput = execFileSync(
+    process.execPath,
+    ['dist/cli.js', 'verify', '--manifest', manifestPath],
+    { cwd: repositoryPath, encoding: 'utf8' },
+  );
+  const manifestVerification = await publicApi.verifyEvidenceManifest({ manifestPath });
   const evidenceOutput = execFileSync(
     process.execPath,
     ['scripts/verify-evidence.mjs', '--history', historyPath, '--summary', summaryPath],
@@ -382,6 +421,10 @@ try {
     { cwd: repositoryPath, encoding: 'utf8' },
   );
   if (
+    manifestVerification.eventCount !== 6 ||
+    manifestVerification.authenticated ||
+    !manifestCreateOutput.includes('Created integrity evidence manifest') ||
+    !manifestVerifyOutput.includes('unsigned integrity manifest') ||
     bundle.proposals?.length !== 1 ||
     bundle.proposals[0]?.status !== 'review-required' ||
     !report.includes('Review required') ||

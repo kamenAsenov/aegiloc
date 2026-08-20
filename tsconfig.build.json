@@ -10,5 +10,11 @@
     "noEmitOnError": true
   },
   "include": ["src/**/*.ts"],
-  "exclude": ["tests", "fixtures", "playwright.config.ts", "playwright.unit.config.ts"]
+  "exclude": [
+    "tests",
+    "fixtures",
+    "playwright.config.ts",
+    "playwright.cross-browser.config.ts",
+    "playwright.unit.config.ts"
+  ]
 }

@@ -1,6 +1,6 @@
 # Static report viewer
 
-The v0.6 report viewer turns canonical Healwright JSONL history and its matching summary into one
+The v0.7 report viewer turns canonical Healwright JSONL history and its matching summary into one
 self-contained `index.html`. It is a local developer artifact, not a hosted dashboard.
 
 ## Generate a report
@@ -32,6 +32,10 @@ human-ownership boundaries in the page.
 `view` uses the strict history parser and recomputes the canonical summary. Generation fails if the
 provided summary is malformed, contains extra data, or differs from history.
 
+For evidence-origin assurance, run `healwright verify` against the sibling manifest before opening
+the viewer. Report generation validates content agreement but does not authenticate origin by
+itself.
+
 All evidence-derived strings are HTML escaped. The report contains embedded CSS, no JavaScript, no
 remote assets, no telemetry, and no network requests after opening. Audit events already reject
 absolute screenshot paths; the viewer renders retained artifact paths as references rather than
@@ -50,5 +54,5 @@ history and screenshots.
 ## Browser support
 
 The output uses semantic HTML and responsive CSS and is intended for current desktop browsers. The
-framework remains Chromium-first; viewer rendering in other browsers is not a claim that healing is
-qualified there.
+runtime's checked core behavior is qualified separately on Chromium, Firefox, and WebKit; see the
+[qualification scope](CROSS-BROWSER-QUALIFICATION.md).

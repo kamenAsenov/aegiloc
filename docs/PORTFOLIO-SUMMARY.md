@@ -11,8 +11,11 @@ guarded policy, and preserves evidence for human and CI review.
 - deterministic weighted scoring with Unicode-safe normalization and seeded property tests;
 - runtime/JSON Schema parity for registries, proposals, evidence, policy, and health outputs;
 - canonical JSONL evidence, screenshots, review-only proposals, and tamper/stale-state detection;
+- optional authenticated evidence manifests with truncation, replacement, and order detection;
 - post-run governance with budgets, baselines, retry handling, and exact expiring waivers;
 - a compiled onboarding CLI, escaped static report viewer, and realistic safe-versus-ambiguous demo.
+- Firefox/WebKit core qualification, candidate performance budgets, deterministic SBOMs, and
+  reproducible package/provenance controls.
 
 ## QA and SDET value
 
@@ -29,9 +32,9 @@ and budget-only waivers keep recovery bounded and inspectable.
 
 ## Honest limitations
 
-Healwright is a v0.6.0 Technical Preview: Chromium-first, unpublished, and pre-1.0. It has no
-demonstrated production adoption, does not authenticate original evidence, and intentionally does
-not auto-apply locator changes.
+Healwright is a v0.7.0 Technical Preview: unpublished and pre-1.0. It has no demonstrated production
+adoption, optional HMAC is not public-key non-repudiation, and it intentionally does not auto-apply
+locator changes.
 
 ## Suggested LinkedIn Featured description
 

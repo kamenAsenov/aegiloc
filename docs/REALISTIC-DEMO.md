@@ -39,12 +39,14 @@ fail-closed behavior.
 ```text
 test-results/realistic-demo/evidence/history.jsonl
 test-results/realistic-demo/evidence/summary.json
+test-results/realistic-demo/evidence/manifest.json
 test-results/realistic-demo/viewer/index.html
 playwright-report/realistic-demo/index.html
 ```
 
-The command clears only the ignored `test-results/realistic-demo` directory before execution so
-repeated demonstrations remain deterministic. It never deletes or edits source files.
+The command creates and verifies an unsigned integrity manifest, then clears only the ignored
+`test-results/realistic-demo` directory before the next execution so demonstrations remain
+deterministic. It never deletes or edits source files.
 
 Open the static viewer with:
 

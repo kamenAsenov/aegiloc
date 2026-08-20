@@ -1,6 +1,6 @@
 # Realistic local storefront demo
 
-This deterministic example makes the v0.6 technical-preview behavior visible without depending on
+This deterministic example makes the v0.7 technical-preview behavior visible without depending on
 an external site. It uses the same local checkout fixture for three intentionally different cases.
 
 ## Run it
@@ -14,7 +14,8 @@ pnpm example:realistic
 ```
 
 The command resets only `test-results/realistic-demo`, builds the package, type-checks this consumer
-example, runs Chromium, and generates a static report.
+example, runs Chromium, creates and verifies an evidence integrity manifest, and generates a static
+report.
 
 ## What happens
 

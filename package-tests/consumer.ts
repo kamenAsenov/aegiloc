@@ -9,12 +9,16 @@ import {
   evaluateCandidateEligibility,
   generateHealingProposals,
   generateReportViewer,
+  parseEvidenceManifest,
   renderHealingProposalReport,
   renderReportViewer,
   parseHealingProposalBundle,
   verifyHealingProposal,
   verifyHealingProposalBundle,
+  verifyEvidenceManifest,
   writeAuditEvidence,
+  writeEvidenceManifest,
+  type EvidenceManifest,
   type HealwrightAuditEvent,
   type HealingProposal,
   type CandidateEligibility,
@@ -89,6 +93,17 @@ void evidenceSummary;
 void writeAuditEvidence(history, {
   historyPath: 'test-results/healwright/history.jsonl',
   summaryPath: 'test-results/healwright/summary.json',
+});
+declare const evidenceManifest: EvidenceManifest;
+void parseEvidenceManifest(JSON.stringify(evidenceManifest));
+void writeEvidenceManifest({
+  historyPath: 'test-results/healwright/history.jsonl',
+  summaryPath: 'test-results/healwright/summary.json',
+  manifestPath: 'test-results/healwright/manifest.json',
+});
+void verifyEvidenceManifest({
+  manifestPath: 'test-results/healwright/manifest.json',
+  requireAuthenticated: false,
 });
 const proposalBundle = generateHealingProposals(history, registry, {
   minimumObservations: DEFAULT_PROPOSAL_MINIMUM_OBSERVATIONS,

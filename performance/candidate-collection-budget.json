@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "scenario": "visible click candidates with stable attributes and neighboring context",
+  "candidateCount": 150,
+  "warmupRuns": 1,
+  "sampleRuns": 5,
+  "maximumMedianMilliseconds": 2500,
+  "maximumP95Milliseconds": 3500
+}

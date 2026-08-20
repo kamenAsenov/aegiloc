@@ -5,7 +5,7 @@
 
 **A conservative, deterministic self-healing layer for Playwright Test.**
 
-Current milestone: **v0.6.0 Technical Preview · experimental · pre-1.0 · Chromium-first**
+Current milestone: **v0.7.0 Technical Preview · experimental · pre-1.0 · cross-browser qualified**
 
 Healwright recovers from genuine UI locator drift through an explicit wrapper, inspectable scoring,
 and guarded execution. It is a developer tool, not magic AI: the same reviewed fingerprint and live
@@ -19,7 +19,7 @@ await healer.target('checkout.placeOrder').click();
 > A false-positive heal is worse than a failed heal. Weak, ambiguous, contradictory, protected, or
 > stale evidence fails closed.
 
-The package is not published to npm, and no `v0.6.0` tag or GitHub Release is implied by this
+The package is not published to npm, and no `v0.7.0` tag or GitHub Release is implied by this
 technical-preview branch. Use a local checkout for evaluation.
 
 ## Why it exists
@@ -51,7 +51,8 @@ remain ordinary test failures. Read the full [safety model](docs/SAFETY-MODEL.md
 
 ## Quick start
 
-Requirements: Node.js 20+, pnpm 11, and Chromium.
+Requirements: Node.js 20+, pnpm 11, and Chromium for the primary demo. Firefox and WebKit are used
+by the qualification gate.
 
 ```bash
 git clone https://github.com/kamenAsenov/healwright.git
@@ -76,14 +77,20 @@ node dist/cli.js --help
 node dist/cli.js init --registry healwright.targets.json
 node dist/cli.js validate --registry healwright.targets.json
 node dist/cli.js doctor
+node dist/cli.js attest \
+  --history test-results/healwright/history.jsonl \
+  --summary test-results/healwright/summary.json \
+  --out test-results/healwright/manifest.json
+node dist/cli.js verify --manifest test-results/healwright/manifest.json
 node dist/cli.js view \
   --history test-results/realistic-demo/evidence/history.jsonl \
   --summary test-results/realistic-demo/evidence/summary.json \
   --out test-results/realistic-demo/viewer --force
 ```
 
-`init` refuses to overwrite an existing registry unless `--force` is explicit. `view` rejects a
-summary that does not exactly match canonical JSONL history. See the [CLI reference](docs/CLI.md).
+`attest` can create an unsigned integrity manifest or authenticate it with an optional external
+HMAC key. `verify` detects missing, truncated, reordered, and replaced evidence. See the
+[CLI reference](docs/CLI.md) and [evidence integrity guide](docs/EVIDENCE-INTEGRITY.md).
 
 ## Run the realistic demo
 
@@ -125,6 +132,10 @@ See the [report viewer reference](docs/REPORT-VIEWER.md).
 - per-target `automatic` and `proposal-only` execution risk;
 - JSONL evidence, summaries, screenshots, visible `PASSED_WITH_HEALING`, review-only proposals, and
   governance budgets;
+- optional HMAC-authenticated evidence manifests with strict key-file handling;
+- qualified core runtime behavior on Chromium, Firefox, and WebKit with enforced collection budgets;
+- deterministic CycloneDX SBOMs, reproducible package checks, dependency review, and provenance-ready
+  CI artifacts;
 - a zero-dependency onboarding CLI and static evidence viewer.
 
 ## What it intentionally does not support yet
@@ -133,8 +144,8 @@ See the [report viewer reference](docs/REPORT-VIEWER.md).
   test-data problems;
 - silent locator or source rewriting;
 - mandatory LLMs, API keys, cloud services, databases, OCR, or visual AI;
-- qualified Firefox or WebKit behavior;
-- authenticated evidence origin, long-term artifact storage, or a stable v1 API;
+- public-key signatures, non-repudiation, managed key storage, or long-term artifact storage;
+- a stable v1 API or production-adoption claim;
 - an npm installation path—the package remains unpublished during this preview.
 
 See [known risks](docs/KNOWN-RISKS.md) and the detailed
@@ -151,7 +162,8 @@ flowchart LR
   E -->|"weak or ambiguous"| F["Fail closed + audit"]
   E -->|"high confidence"| G["Fresh second-pass validation"]
   G -->|"same unique winner"| H["Guarded action + PASSED_WITH_HEALING"]
-  H --> I["JSONL evidence + static report"]
+  H --> I["JSONL evidence + integrity manifest"]
+  I --> J["Static report + governance"]
 ```
 
 The implementation uses public Playwright APIs only. The deeper component and evidence flow is in
@@ -164,21 +176,24 @@ pnpm release:check
 ```
 
 The release gate runs formatting, documentation validation, strict lint/type checking, builds,
-package contracts and dry-run packing, parallel reporter tests, the full unit/browser/adversarial
-suite, evidence verification, governance, the basic consumer example, and the realistic demo. It
-does not publish, tag, push, or create a GitHub Release.
+package contracts, reproducibility and SBOM checks, parallel reporter tests, Chromium plus
+Firefox/WebKit qualification, evidence-manifest verification, governance, both examples, and the
+realistic demo. It does not publish, tag, push, or create a GitHub Release.
 
 ## Roadmap
 
-The next priorities are authenticated evidence manifests, supply-chain attestations, cross-browser
-qualification, performance budgets, and public API stabilization—not broader automatic healing.
-See the [roadmap](ROADMAP.md).
+The next priorities are API compatibility review, longer-running reliability benchmarks, public-key
+attestation options, and operational adoption guidance—not broader automatic healing. See the
+[roadmap](ROADMAP.md).
 
 ## Documentation
 
 - [Quick start](docs/QUICKSTART.md)
 - [CLI reference](docs/CLI.md)
 - [Report viewer](docs/REPORT-VIEWER.md)
+- [Evidence integrity and authentication](docs/EVIDENCE-INTEGRITY.md)
+- [Supply-chain controls](docs/SUPPLY-CHAIN.md)
+- [Cross-browser qualification](docs/CROSS-BROWSER-QUALIFICATION.md)
 - [Realistic demo](docs/REALISTIC-DEMO.md)
 - [Basic consumer example](examples/basic-playwright)
 - [Architecture](docs/ARCHITECTURE.md)
@@ -189,6 +204,7 @@ See the [roadmap](ROADMAP.md).
 - [Governance policy](docs/POLICY.md)
 - [Product positioning](docs/PRODUCT-POSITIONING.md)
 - [v0.6.0 technical-preview notes](docs/releases/v0.6.0.md)
+- [v0.7.0 technical-preview notes](docs/releases/v0.7.0.md)
 - [Release process](docs/RELEASE-PROCESS.md)
 - [Contributing](CONTRIBUTING.md) and [security reporting](SECURITY.md)
 

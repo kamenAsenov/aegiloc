@@ -16,5 +16,11 @@
     "skipLibCheck": true,
     "types": ["node"]
   },
-  "include": ["playwright.config.ts", "playwright.unit.config.ts", "src/**/*.ts", "tests/**/*.ts"]
+  "include": [
+    "playwright.config.ts",
+    "playwright.cross-browser.config.ts",
+    "playwright.unit.config.ts",
+    "src/**/*.ts",
+    "tests/**/*.ts"
+  ]
 }

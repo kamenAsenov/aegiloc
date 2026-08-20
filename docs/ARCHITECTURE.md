@@ -25,6 +25,7 @@ flowchart TD
   Revalidate -->|"agrees"| Action["Screenshot + original action + screenshot"]
   Action --> Audit["Audit attachments and PASSED_WITH_HEALING"]
   Audit --> Reporter["Canonical JSONL and run summary"]
+  Reporter --> Manifest["Optional authenticated evidence manifest"]
   Reporter --> Proposals["Human-reviewed locator proposals"]
   Reporter --> Governance["Budgets, baselines, waivers, health summary"]
   Reporter --> Viewer["Validated static evidence viewer"]
@@ -51,7 +52,9 @@ action and proves genuine absence without reclassifying ordinary actionability f
 [`src/candidates.ts`](../src/candidates.ts) queries common interactive HTML and ARIA patterns through
 public locators. It retains bounded, allowlisted signals: accessible role/name, visible text, tag,
 stable attributes, ancestor and sibling context, normalized geometry, and action compatibility.
-Sensitive form values are not candidate signals.
+Sensitive form values are not candidate signals. One public `Locator.evaluateAll()` call snapshots
+DOM evidence, followed by bounded concurrent public `Locator.ariaSnapshot()` calls; result ordering
+remains the original DOM order.
 
 ### Eligibility and scoring
 
@@ -78,6 +81,11 @@ the visible `PASSED_WITH_HEALING` marker.
 process instead of letting workers append to one shared file. [`src/evidence.ts`](../src/evidence.ts)
 deduplicates identical events, rejects conflicts, orders records deterministically, and atomically
 writes canonical history and a machine-readable summary.
+
+[`src/evidence-manifest.ts`](../src/evidence-manifest.ts) binds those sibling files to ordered byte
+lengths and SHA-256 digests. Optional HMAC-SHA-256 authentication covers the canonical unsigned
+manifest. Verification checks authentication before evidence and fails closed on missing,
+truncated, reordered, replaced, or mismatched files.
 
 ### Review-only proposals
 
@@ -109,9 +117,9 @@ presentation: it cannot influence scoring, runtime execution, proposals, or gove
 Reviewed source and registry
         │
         ▼
-Playwright runtime ──► audit attachments ──► canonical local evidence
-        │                                         │
-        ▼                                         ├──► proposal review
+Playwright runtime ──► audit attachments ──► canonical local evidence ──► manifest
+        │                                         │                         │
+        ▼                                         ├──► proposal review       └──► trusted review
 Application under test                            └──► governance gate
 ```
 
@@ -121,8 +129,8 @@ source. Governance and proposals consume evidence but never make an unsafe candi
 ## Public API and package boundaries
 
 `src/index.ts` is the intentional framework surface. `healwright/reporter` is the reporter subpath;
-the `healwright` package bin points to `dist/cli.js`; five schema subpaths expose registry, proposal,
-evidence, policy, and health contracts. Package tests compile an external-style consumer and load
+the `healwright` package bin points to `dist/cli.js`; six schema subpaths expose registry, proposal,
+evidence summary/manifest, policy, and health contracts. Package tests compile an external-style consumer and load
 built exports through Node package resolution.
 
 See [`TECHNICAL-REFERENCE.md`](TECHNICAL-REFERENCE.md) for modes, scoring weights, evidence files,

@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/kamenAsenov/healwright/registry/evidence-manifest.schema.json",
+  "title": "Healwright evidence manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "generatedAt", "files"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "files": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "prefixItems": [{ "$ref": "#/$defs/historyFile" }, { "$ref": "#/$defs/summaryFile" }],
+      "items": false
+    },
+    "authentication": { "$ref": "#/$defs/authentication" }
+  },
+  "$defs": {
+    "file": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "path", "byteLength", "algorithm", "digest"],
+      "properties": {
+        "kind": { "enum": ["history", "summary"] },
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[^/\\\\]+$",
+          "not": { "enum": [".", ".."] }
+        },
+        "byteLength": { "type": "integer", "minimum": 0 },
+        "algorithm": { "const": "sha256" },
+        "digest": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      }
+    },
+    "historyFile": {
+      "allOf": [
+        { "$ref": "#/$defs/file" },
+        { "type": "object", "properties": { "kind": { "const": "history" } } }
+      ]
+    },
+    "summaryFile": {
+      "allOf": [
+        { "$ref": "#/$defs/file" },
+        { "type": "object", "properties": { "kind": { "const": "summary" } } }
+      ]
+    },
+    "authentication": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithm", "keyId", "signature"],
+      "properties": {
+        "algorithm": { "const": "hmac-sha256" },
+        "keyId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+        },
+        "signature": { "type": "string", "pattern": "^[A-Za-z0-9_-]{43}$" }
+      }
+    }
+  }
+}

@@ -1,6 +1,6 @@
 # CLI reference
 
-Healwright v0.6.0 includes a small, dependency-free CLI for local evaluation. The package is not yet
+Healwright v0.7.0 includes a small, dependency-free CLI for local evaluation. The package is not yet
 published, so commands in this repository use `node dist/cli.js` after `pnpm build`. An installed
 package exposes the same entry point as `healwright`.
 
@@ -57,6 +57,53 @@ Doctor checks:
 
 Required failures return a nonzero exit code. The command does not install software or contact a
 cloud service.
+
+## Create an evidence manifest
+
+```bash
+node dist/cli.js attest \
+  --history test-results/healwright/history.jsonl \
+  --summary test-results/healwright/summary.json \
+  --out test-results/healwright/manifest.json
+```
+
+The command validates canonical history and exact summary agreement before recording file order,
+byte length, and SHA-256 digests. The three files must be siblings. Existing output is not replaced
+unless `--force` is explicit.
+
+Optional authentication requires both arguments:
+
+```bash
+node dist/cli.js attest \
+  --history test-results/healwright/history.jsonl \
+  --summary test-results/healwright/summary.json \
+  --out test-results/healwright/manifest.json \
+  --key-file .healwright-evidence.key \
+  --key-id ci-2026-q3
+```
+
+The key file must contain at least 32 bytes. On POSIX it must be owner-only (`chmod 600`), and it
+must be a regular file rather than a symbolic link.
+
+## Verify an evidence manifest
+
+```bash
+node dist/cli.js verify --manifest test-results/healwright/manifest.json
+```
+
+For authenticated evidence:
+
+```bash
+node dist/cli.js verify \
+  --manifest test-results/healwright/manifest.json \
+  --key-file .healwright-evidence.key \
+  --key-id ci-2026-q3 \
+  --require-authenticated
+```
+
+Verification fails on missing, unreadable, truncated, reordered, replaced, mismatched, or
+unauthenticated evidence when authentication is required. See the
+[evidence integrity guide](EVIDENCE-INTEGRITY.md) for key rotation and trust boundaries.
 
 ## Generate the static viewer
 

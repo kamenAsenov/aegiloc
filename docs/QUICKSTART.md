@@ -7,7 +7,7 @@ This guide runs Healwright from a local checkout. The package is not published t
 - Node.js 20 or newer;
 - pnpm 11;
 - Git;
-- Chromium installed through Playwright.
+- Chromium installed through Playwright; Firefox and WebKit for the qualification gate.
 
 ## Install and build
 
@@ -108,6 +108,7 @@ generates:
 ```text
 test-results/realistic-demo/evidence/history.jsonl
 test-results/realistic-demo/evidence/summary.json
+test-results/realistic-demo/evidence/manifest.json
 test-results/realistic-demo/viewer/index.html
 ```
 
@@ -136,6 +137,29 @@ test-results/healwright/health-summary.md
 Evidence verification rejects malformed, conflicting, or non-canonical history. Governance returns
 exit `0` for a pass, `1` for a valid policy violation, and `2` for invalid evidence or configuration.
 
+Create and verify a deterministic integrity manifest:
+
+```bash
+pnpm evidence:attest
+pnpm evidence:manifest:verify
+```
+
+For optional HMAC authentication and key rotation, use the explicit CLI flow in the
+[evidence integrity guide](EVIDENCE-INTEGRITY.md).
+
+## Run cross-browser and supply-chain qualification
+
+```bash
+pnpm exec playwright install firefox webkit
+pnpm test:cross-browser
+pnpm package:reproducible
+pnpm supply-chain:sbom
+pnpm supply-chain:sbom:check
+```
+
+The browser matrix enforces the checked core contracts and a 150-candidate performance budget. The
+supply-chain commands create local generated output only; they do not publish a package.
+
 ## Run every release gate
 
 ```bash
@@ -148,6 +172,7 @@ package, push Git, create a tag, or create a GitHub Release.
 ## Troubleshooting
 
 - If Chromium is missing, run `pnpm exec playwright install chromium`.
+- If the qualification browsers are missing, run `pnpm exec playwright install firefox webkit`.
 - If port `4173` is occupied, stop the existing process; the test configuration intentionally uses a
   fixed deterministic base URL.
 - If evidence verification reports a mismatch, rerun `pnpm test` before verifying; focused tests can

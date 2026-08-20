@@ -103,89 +103,110 @@ function normalizeDomText(value: string | null | undefined): string {
   return (value ?? '').replace(/\s+/g, ' ').trim().slice(0, 240);
 }
 
-async function snapshotDomCandidate(locator: Locator): Promise<DomCandidateSnapshot> {
-  return locator.evaluate((element) => {
+async function snapshotDomCandidates(locator: Locator): Promise<readonly DomCandidateSnapshot[]> {
+  return locator.evaluateAll((elements) => {
     const normalize = (value: string | null | undefined): string =>
       (value ?? '').replace(/\s+/g, ' ').trim().slice(0, 240);
-    const rect = element.getBoundingClientRect();
-    const style = window.getComputedStyle(element);
-    const visible =
-      rect.width > 0 &&
-      rect.height > 0 &&
-      style.display !== 'none' &&
-      style.visibility !== 'hidden';
 
-    const stableAttributes: Record<string, string> = {};
-    for (const attribute of element.attributes) {
-      if (
-        [
-          'autocomplete',
-          'data-cy',
-          'data-qa',
-          'data-target',
-          'data-test',
-          'data-testid',
-          'id',
-          'name',
-          'placeholder',
-          'title',
-          'type',
-        ].includes(attribute.name)
-      ) {
-        stableAttributes[attribute.name] = attribute.value;
-      } else if (attribute.name === 'href') {
-        try {
-          stableAttributes.href = new URL(attribute.value, window.location.href).pathname;
-        } catch {
-          // Ignore malformed or non-URL href values rather than auditing them verbatim.
+    return elements.map((element) => {
+      const rect = element.getBoundingClientRect();
+      const style = window.getComputedStyle(element);
+      const visible =
+        rect.width > 0 &&
+        rect.height > 0 &&
+        style.display !== 'none' &&
+        style.visibility !== 'hidden';
+
+      const stableAttributes: Record<string, string> = {};
+      for (const attribute of element.attributes) {
+        if (
+          [
+            'autocomplete',
+            'data-cy',
+            'data-qa',
+            'data-target',
+            'data-test',
+            'data-testid',
+            'id',
+            'name',
+            'placeholder',
+            'title',
+            'type',
+          ].includes(attribute.name)
+        ) {
+          stableAttributes[attribute.name] = attribute.value;
+        } else if (attribute.name === 'href') {
+          try {
+            stableAttributes.href = new URL(attribute.value, window.location.href).pathname;
+          } catch {
+            // Ignore malformed or non-URL href values rather than auditing them verbatim.
+          }
         }
       }
-    }
 
-    const contextText = (context: Element | null): string => {
-      if (context === null) {
-        return '';
-      }
-      const ariaLabel = context.getAttribute('aria-label');
-      const heading = context.querySelector('h1, h2, h3, legend');
-      return normalize(ariaLabel ?? heading?.textContent ?? '');
-    };
+      const contextText = (context: Element | null): string => {
+        if (context === null) return '';
+        const ariaLabel = context.getAttribute('aria-label');
+        const heading = context.querySelector('h1, h2, h3, legend');
+        return normalize(ariaLabel ?? heading?.textContent ?? '');
+      };
 
-    const ancestorText: string[] = [];
-    let ancestor = element.parentElement;
-    while (ancestor !== null && ancestorText.length < 3) {
-      if (ancestor.matches('form, fieldset, section, article, nav, main, [aria-label]')) {
-        const text = contextText(ancestor);
-        if (text !== '' && !ancestorText.includes(text)) {
-          ancestorText.push(text);
+      const ancestorText: string[] = [];
+      let ancestor = element.parentElement;
+      while (ancestor !== null && ancestorText.length < 3) {
+        if (ancestor.matches('form, fieldset, section, article, nav, main, [aria-label]')) {
+          const text = contextText(ancestor);
+          if (text !== '' && !ancestorText.includes(text)) ancestorText.push(text);
         }
+        ancestor = ancestor.parentElement;
       }
-      ancestor = ancestor.parentElement;
-    }
 
-    const neighborText = [element.previousElementSibling, element.nextElementSibling]
-      .map((neighbor) => normalize((neighbor as HTMLElement | null)?.innerText))
-      .filter((text) => text !== '')
-      .slice(0, 4);
+      const neighborText = [element.previousElementSibling, element.nextElementSibling]
+        .map((neighbor) => normalize((neighbor as HTMLElement | null)?.innerText))
+        .filter((text) => text !== '')
+        .slice(0, 4);
+      const viewportWidth = Math.max(window.innerWidth, 1);
+      const viewportHeight = Math.max(window.innerHeight, 1);
 
-    const viewportWidth = Math.max(window.innerWidth, 1);
-    const viewportHeight = Math.max(window.innerHeight, 1);
-
-    return {
-      visible,
-      stableAttributes,
-      visibleText: normalize((element as HTMLElement).innerText ?? element.textContent),
-      tag: element.tagName.toLowerCase(),
-      ancestorText,
-      neighborText,
-      geometry: {
-        x: (rect.x + rect.width / 2) / viewportWidth,
-        y: (rect.y + rect.height / 2) / viewportHeight,
-        width: rect.width / viewportWidth,
-        height: rect.height / viewportHeight,
-      },
-    };
+      return {
+        visible,
+        stableAttributes,
+        visibleText: normalize((element as HTMLElement).innerText ?? element.textContent),
+        tag: element.tagName.toLowerCase(),
+        ancestorText,
+        neighborText,
+        geometry: {
+          x: (rect.x + rect.width / 2) / viewportWidth,
+          y: (rect.y + rect.height / 2) / viewportHeight,
+          width: rect.width / viewportWidth,
+          height: rect.height / viewportHeight,
+        },
+      };
+    });
   });
+}
+
+async function collectAriaIdentities(
+  locator: Locator,
+  indices: readonly number[],
+): Promise<ReadonlyMap<number, AriaIdentity>> {
+  const identities = new Map<number, AriaIdentity>();
+  const concurrency = 16;
+  for (let start = 0; start < indices.length; start += concurrency) {
+    const batch = indices.slice(start, start + concurrency);
+    const results = await Promise.all(
+      batch.map(async (index) => {
+        try {
+          return [index, parseAriaIdentity(await locator.nth(index).ariaSnapshot())] as const;
+        } catch {
+          // A candidate without an accessibility snapshot remains scoreable by other signals.
+          return [index, {}] as const;
+        }
+      }),
+    );
+    for (const [index, identity] of results) identities.set(index, identity);
+  }
+  return identities;
 }
 
 export async function collectCandidates(
@@ -193,23 +214,15 @@ export async function collectCandidates(
   action: TargetAction,
 ): Promise<readonly CandidateSnapshot[]> {
   const candidates = page.locator(ACTION_SELECTORS[action]);
-  const count = await candidates.count();
+  const domSnapshots = await snapshotDomCandidates(candidates);
+  const visibleIndices = domSnapshots.flatMap((dom, index) => (dom.visible ? [index] : []));
+  const ariaIdentities = await collectAriaIdentities(candidates, visibleIndices);
   const snapshots: CandidateSnapshot[] = [];
 
-  for (let index = 0; index < count; index += 1) {
-    const locator = candidates.nth(index);
-    const dom = await snapshotDomCandidate(locator);
-    if (!dom.visible) {
-      continue;
-    }
-
-    let ariaSnapshot = '';
-    try {
-      ariaSnapshot = await locator.ariaSnapshot();
-    } catch {
-      // A candidate without an accessibility snapshot remains scoreable by other signals.
-    }
-    const aria = parseAriaIdentity(ariaSnapshot);
+  for (const index of visibleIndices) {
+    const dom = domSnapshots[index];
+    if (dom === undefined) continue;
+    const aria = ariaIdentities.get(index) ?? {};
     const stableId =
       dom.stableAttributes['data-testid'] ??
       dom.stableAttributes.id ??

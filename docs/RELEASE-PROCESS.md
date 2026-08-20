@@ -27,18 +27,18 @@ the differences.
 
 ## 3. Run the local release gate
 
-Install from the lockfile and ensure Chromium is available:
+Install from the lockfile and ensure the qualified browsers are available:
 
 ```bash
 pnpm install --frozen-lockfile
-pnpm exec playwright install chromium
+pnpm exec playwright install chromium firefox webkit
 pnpm release:check
 ```
 
 The release check runs formatting, documentation-link validation, linting, strict type checking,
-build and package verification, parallel reporter execution, the complete suite, evidence
-verification, governance evaluation, the consumer and realistic examples, static report generation,
-and `pnpm pack --dry-run --json`.
+build and package verification, reproducible packing, deterministic SBOM generation, parallel
+reporter execution, Chromium plus Firefox/WebKit qualification, evidence and manifest verification,
+governance evaluation, both examples, static report generation, and `pnpm pack --dry-run --json`.
 
 Review the package contents and confirm that generated evidence, screenshots, reports, credentials,
 and unrelated local files are absent.
@@ -89,6 +89,7 @@ Before any first npm publication, additionally verify:
 
 - package-name ownership and registry access;
 - the exact tarball contents and package provenance;
+- the CycloneDX SBOM and GitHub provenance/SBOM attestations for the chosen artifact;
 - the public support and deprecation policy;
 - whether the reviewed current version should be the first registry release rather than assuming a
   source milestone must be published.

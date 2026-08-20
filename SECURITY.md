@@ -53,9 +53,25 @@ target keys, application structure, commit identifiers, and retained screenshot 
 - do not add credentials, tokens, customer data, or real filled form values to demo evidence;
 - delete the viewer when deleting its source evidence so a stale copy is not retained separately.
 
-The v0.6 viewer escapes evidence strings and has no remote assets or scripts. That reduces rendering
-risk but does not make the underlying evidence public-safe. Canonical evidence is also not an
-authenticated statement of origin.
+The v0.7 viewer escapes evidence strings and has no remote assets or scripts. That reduces rendering
+risk but does not make the underlying evidence public-safe. Verify a trusted evidence manifest
+before relying on the report; viewer generation alone does not authenticate origin.
+
+## Evidence authentication keys
+
+Authenticated manifests are optional. When enabled:
+
+- generate at least 32 random bytes and store them in a secret manager;
+- materialize a temporary owner-only regular file (`chmod 600`) only for the command invocation;
+- never pass key bytes as CLI arguments or include the key file in artifacts;
+- use a non-secret generation ID such as `ci-2026-q3`, not a hash or fragment of the key;
+- rotate on a documented schedule and immediately after suspected disclosure;
+- retain the retired verification key only until all evidence signed by it has expired;
+- delete temporary key files even when a CI job fails.
+
+HMAC authenticates shared-key possession, not an individual actor, and does not provide
+non-repudiation. See the [evidence integrity guide](docs/EVIDENCE-INTEGRITY.md) for the exact rotation
+and retention sequence.
 
 ## Disclosure expectations
 

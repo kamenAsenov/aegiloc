@@ -96,6 +96,23 @@ export {
   type WriteAuditEvidenceOptions,
 } from './evidence.js';
 export {
+  EVIDENCE_AUTHENTICATION_ALGORITHM,
+  EVIDENCE_DIGEST_ALGORITHM,
+  EVIDENCE_MANIFEST_SCHEMA_VERSION,
+  MINIMUM_EVIDENCE_KEY_BYTES,
+  parseEvidenceManifest,
+  verifyEvidenceManifest,
+  writeEvidenceManifest,
+  type EvidenceFileDigest,
+  type EvidenceFileKind,
+  type EvidenceManifest,
+  type EvidenceManifestAuthentication,
+  type EvidenceManifestAuthenticationInput,
+  type VerifiedEvidenceManifest,
+  type VerifyEvidenceManifestOptions,
+  type WriteEvidenceManifestOptions,
+} from './evidence-manifest.js';
+export {
   DEFAULT_PROPOSAL_MINIMUM_OBSERVATIONS,
   HEALING_PROPOSAL_SCHEMA_URL,
   HEALING_PROPOSAL_SCHEMA_VERSION,

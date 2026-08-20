@@ -31,7 +31,8 @@ verifiable public evidence.
 For `main`, recommend:
 
 - require a pull request before merging;
-- require the GitHub Actions `quality` job from `.github/workflows/ci.yml`;
+- require the GitHub Actions `quality`, `dependency-review`, and `supply-chain` jobs from
+  `.github/workflows/ci.yml` on pull requests;
 - require branches to be current before merge;
 - block force pushes and branch deletion;
 - require conversation resolution when review comments exist;
