@@ -2,9 +2,10 @@
 
 ## Honest description
 
-Healwright is an experimental but serious deterministic self-healing layer for Playwright Test. It
-is a pre-1.0 open-source portfolio project focused on safe locator-drift recovery, inspectable
-evidence, human-reviewed proposals, and CI governance.
+Healwright is an experimental but serious deterministic self-healing layer for Playwright Test. The
+v0.6.0 Technical Preview is a pre-1.0 open-source portfolio project focused on safe locator-drift
+recovery, inspectable evidence, human-reviewed proposals, local CLI onboarding, a static evidence
+viewer, and CI governance.
 
 It is not presented as proof of production adoption, commercial traction, enterprise use, or a
 replacement for sound test design.
@@ -27,6 +28,8 @@ Healwright demonstrates that locator recovery can be bounded by explicit contrac
 - scoring is fixed, deterministic, and inspectable;
 - guarded execution requires confidence, separation, semantic identity, and fresh agreement;
 - evidence, proposals, and governance make exceptional passes visible and reviewable.
+- a deterministic local demo and zero-dependency report viewer make those boundaries practical to
+  evaluate without a hosted service.
 
 ## Non-goals
 
@@ -36,7 +39,7 @@ Healwright is not:
 - a visual-diff, OCR, or computer-vision system;
 - an assertion, business-logic, authentication, API, or test-data healer;
 - an automatic test or registry rewriter;
-- a hosted platform, database, dashboard, or long-term artifact store;
+- a hosted platform, database, live dashboard, or long-term artifact store;
 - a claim that selectors no longer need engineering ownership;
 - a mature v1 compatibility contract.
 
@@ -57,7 +60,7 @@ make different valid tradeoffs.
 
 ## Product maturity
 
-The repository is suitable for local evaluation and portfolio review. It has extensive automated
-coverage and conservative boundaries, but is still Chromium-first, unpublished, and pre-1.0. The
-roadmap deliberately places cross-browser qualification, stronger evidence integrity, supply-chain
-work, benchmarks, and API stabilization before v1.0.
+The repository is ready to show and evaluate as a technical preview. It has extensive automated
+coverage, a runnable demo, and conservative boundaries, but is still Chromium-first, unpublished,
+and pre-1.0. The roadmap deliberately places cross-browser qualification, authenticated evidence,
+supply-chain work, benchmarks, and API stabilization before v1.0.

@@ -146,6 +146,13 @@ export {
 } from './scoring.js';
 export { SUPPORTED_ARIA_ROLES, loadTargetRegistry, parseTargetRegistry } from './registry.js';
 export { EXECUTION_RISKS, HEALING_MODES, TARGET_ACTIONS, resolveExecutionRisk } from './types.js';
+export {
+  generateReportViewer,
+  renderReportViewer,
+  type GenerateReportViewerOptions,
+  type GeneratedReportViewer,
+  type RenderReportViewerOptions,
+} from './report-viewer.js';
 export type {
   AriaRole,
   ExecutionRisk,

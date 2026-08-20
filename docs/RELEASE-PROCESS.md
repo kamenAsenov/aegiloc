@@ -37,7 +37,8 @@ pnpm release:check
 
 The release check runs formatting, documentation-link validation, linting, strict type checking,
 build and package verification, parallel reporter execution, the complete suite, evidence
-verification, governance evaluation, the consumer example, and `pnpm pack --dry-run --json`.
+verification, governance evaluation, the consumer and realistic examples, static report generation,
+and `pnpm pack --dry-run --json`.
 
 Review the package contents and confirm that generated evidence, screenshots, reports, credentials,
 and unrelated local files are absent.
@@ -89,7 +90,7 @@ Before any first npm publication, additionally verify:
 - package-name ownership and registry access;
 - the exact tarball contents and package provenance;
 - the public support and deprecation policy;
-- whether `0.4.0` should be published or a later reviewed version should be the first registry
-  release.
+- whether the reviewed current version should be the first registry release rather than assuming a
+  source milestone must be published.
 
 Do not put an npm token in the repository, command history, CI logs, or release artifacts.

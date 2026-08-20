@@ -22,6 +22,13 @@ pnpm build
 `pnpm build` creates the ignored `dist/` directory with ESM JavaScript, declarations, and source
 maps. Nothing is published.
 
+Confirm the local CLI and package prerequisites:
+
+```bash
+node dist/cli.js --help
+node dist/cli.js doctor
+```
+
 ## Confirm the ordinary Playwright path
 
 ```bash
@@ -88,6 +95,24 @@ pnpm example:verify
 This builds Healwright, starts the existing fixture, and executes the minimal project under
 [`examples/basic-playwright`](../examples/basic-playwright). The example imports the package through
 its public export rather than reaching into `src/`.
+
+## Run the realistic technical-preview demo
+
+```bash
+pnpm example:realistic
+```
+
+This runs an ordinary Playwright flow, one safe locator recovery, and one ambiguous rejection, then
+generates:
+
+```text
+test-results/realistic-demo/evidence/history.jsonl
+test-results/realistic-demo/evidence/summary.json
+test-results/realistic-demo/viewer/index.html
+```
+
+Open the last file directly in a browser. See the [realistic demo](REALISTIC-DEMO.md) and
+[report viewer](REPORT-VIEWER.md) guides for the exact behavior and artifact boundaries.
 
 ## Verify evidence and governance
 

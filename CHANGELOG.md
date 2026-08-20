@@ -5,20 +5,37 @@ release tags. Package metadata is publication-ready, but no npm package is curre
 
 ## [Unreleased]
 
+No changes yet.
+
+## [0.6.0] - 2026-08-18 (source technical preview)
+
+Prepared for review; not tagged, published to npm, or published as a GitHub Release.
+
 ### Added
 
-- MIT license, contribution guidance, coordinated security reporting, and repository metadata
-  recommendations.
-- Scan-first README plus dedicated quick-start, architecture, safety, technical, product, release,
-  portfolio, and release-note documentation.
-- A consumer-shaped basic Playwright example with an automated type-check and Chromium verification
-  command.
+- A compiled `healwright` CLI with help, non-destructive initialization, registry validation, local
+  diagnostics, and static report generation.
+- A self-contained evidence viewer with canonical summary/history agreement, HTML escaping, clear
+  empty states, ranked assessment details, successful heals, and rejected or protected outcomes.
+- A deterministic realistic storefront demo covering ordinary Playwright, one safe heal, and one
+  ambiguous fail-closed case with generated evidence and report output.
+- Dedicated CLI, viewer, demo, known-risk, non-use, and technical-preview release documentation.
+- Focused CLI, overwrite, validation, report, XSS, mismatch, smoke, and realistic Chromium tests.
 
 ### Changed
 
-- Package metadata now describes a future public package while `prepublishOnly` requires an explicit
-  human confirmation and the complete release gate. No publication is automatic.
-- CI verifies the basic consumer example in addition to the existing package and full-suite gates.
+- Package metadata and documentation now identify `0.6.0 Technical Preview` consistently and expose
+  `dist/cli.js` through the `healwright` bin entry.
+- The complete release gate and CI include the realistic demo and generated-viewer verification.
+- Portfolio and repository-readiness documentation from the untagged v0.5 preparation work is
+  incorporated into this reviewable preview milestone.
+
+### Security
+
+- Report generation rejects malformed or mismatched evidence, escapes evidence-derived strings, and
+  emits no remote scripts, assets, or telemetry.
+- Initialization and report output refuse silent overwrite unless `--force` is explicit.
+- Runtime healing scope and fail-closed rules are unchanged.
 
 ## [0.4.0] - 2026-08-16
 
@@ -99,7 +116,8 @@ release tags. Package metadata is publication-ready, but no npm package is curre
   `PASSED_WITH_HEALING` results.
 
 [0.4.0]: https://github.com/kamenAsenov/healwright/compare/v0.3.1...v0.4.0
-[Unreleased]: https://github.com/kamenAsenov/healwright/compare/v0.4.0...HEAD
+[0.6.0]: https://github.com/kamenAsenov/healwright/compare/v0.4.0...v0.6.0
+[Unreleased]: https://github.com/kamenAsenov/healwright/compare/v0.6.0...HEAD
 [0.3.1]: https://github.com/kamenAsenov/healwright/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/kamenAsenov/healwright/compare/82513a74882500d5d31a3c8d284a0727565cef77...v0.3.0
 [0.2.0]: https://github.com/kamenAsenov/healwright/tree/82513a74882500d5d31a3c8d284a0727565cef77
