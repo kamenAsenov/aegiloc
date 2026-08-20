@@ -1,7 +1,8 @@
 import { createRequire } from 'node:module';
-import { access, lstat, mkdir, writeFile } from 'node:fs/promises';
+import { access, lstat, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 
+import { verifyEvidenceManifest, writeEvidenceManifest } from './evidence-manifest.js';
 import { generateReportViewer } from './report-viewer.js';
 import { loadTargetRegistry } from './registry.js';
 
@@ -10,6 +11,22 @@ export type CliCommand =
   | { readonly command: 'doctor' }
   | { readonly command: 'init'; readonly registryPath: string; readonly force: boolean }
   | { readonly command: 'validate'; readonly registryPath: string }
+  | {
+      readonly command: 'attest';
+      readonly historyPath: string;
+      readonly summaryPath: string;
+      readonly manifestPath: string;
+      readonly force: boolean;
+      readonly keyFilePath?: string;
+      readonly keyId?: string;
+    }
+  | {
+      readonly command: 'verify';
+      readonly manifestPath: string;
+      readonly keyFilePath?: string;
+      readonly expectedKeyId?: string;
+      readonly requireAuthenticated: boolean;
+    }
   | {
       readonly command: 'view';
       readonly historyPath: string;
@@ -28,7 +45,7 @@ export interface RunCliOptions {
   readonly io?: CliIo;
 }
 
-const HELP = `Healwright v0.6.0 Technical Preview
+const HELP = `Healwright v0.7.0 Technical Preview
 
 Conservative, deterministic self-healing for Playwright Test.
 
@@ -37,17 +54,23 @@ Usage:
   healwright init [--registry <path>] [--force]
   healwright validate --registry <path>
   healwright doctor
+  healwright attest --history <path> --summary <path> --out <manifest> [--key-file <path> --key-id <id>] [--force]
+  healwright verify --manifest <path> [--key-file <path>] [--key-id <id>] [--require-authenticated]
   healwright view --history <path> --summary <path> --out <dir> [--force]
 
 Examples:
   healwright init
   healwright validate --registry healwright.targets.json
   healwright doctor
+  healwright attest --history test-results/healwright/history.jsonl --summary test-results/healwright/summary.json --out test-results/healwright/manifest.json
+  healwright verify --manifest test-results/healwright/manifest.json
   healwright view --history test-results/healwright/history.jsonl \\
     --summary test-results/healwright/summary.json --out healwright-report
 
 Safety:
   init never overwrites an existing registry unless --force is explicit.
+  attest creates an integrity manifest; HMAC authentication is optional and keys stay external.
+  verify detects missing, truncated, reordered, or replaced evidence and can require authentication.
   view validates that the summary matches canonical history and emits static local HTML.
   No command rewrites tests or applies locator proposals.
 `;
@@ -137,6 +160,56 @@ export function parseCliArguments(arguments_: readonly string[]): CliCommand {
       if (registryPath === undefined) throw new TypeError('validate requires --registry <path>');
       return { command, registryPath };
     }
+    case 'attest': {
+      rejectUnknownOptions(
+        options,
+        ['--history', '--summary', '--out', '--key-file', '--key-id'],
+        ['--force'],
+      );
+      const historyPath = optionValue(options, '--history');
+      const summaryPath = optionValue(options, '--summary');
+      const manifestPath = optionValue(options, '--out');
+      const keyFilePath = optionValue(options, '--key-file');
+      const keyId = optionValue(options, '--key-id');
+      if (historyPath === undefined || summaryPath === undefined || manifestPath === undefined) {
+        throw new TypeError(
+          'attest requires --history <path>, --summary <path>, and --out <manifest>',
+        );
+      }
+      if ((keyFilePath === undefined) !== (keyId === undefined)) {
+        throw new TypeError('attest requires --key-file and --key-id together');
+      }
+      return {
+        command,
+        historyPath,
+        summaryPath,
+        manifestPath,
+        force: options.includes('--force'),
+        ...(keyFilePath === undefined ? {} : { keyFilePath }),
+        ...(keyId === undefined ? {} : { keyId }),
+      };
+    }
+    case 'verify': {
+      rejectUnknownOptions(
+        options,
+        ['--manifest', '--key-file', '--key-id'],
+        ['--require-authenticated'],
+      );
+      const manifestPath = optionValue(options, '--manifest');
+      const keyFilePath = optionValue(options, '--key-file');
+      const expectedKeyId = optionValue(options, '--key-id');
+      if (manifestPath === undefined) throw new TypeError('verify requires --manifest <path>');
+      if (expectedKeyId !== undefined && keyFilePath === undefined) {
+        throw new TypeError('verify requires --key-file when --key-id is provided');
+      }
+      return {
+        command,
+        manifestPath,
+        requireAuthenticated: options.includes('--require-authenticated'),
+        ...(keyFilePath === undefined ? {} : { keyFilePath }),
+        ...(expectedKeyId === undefined ? {} : { expectedKeyId }),
+      };
+    }
     case 'view': {
       rejectUnknownOptions(options, ['--history', '--summary', '--out'], ['--force']);
       const historyPath = optionValue(options, '--history');
@@ -193,6 +266,17 @@ async function refuseSymbolicLink(path: string): Promise<void> {
       throw error;
     }
   }
+}
+
+async function readEvidenceKey(path: string): Promise<Buffer> {
+  const metadata = await lstat(path);
+  if (metadata.isSymbolicLink() || !metadata.isFile()) {
+    throw new Error(`Evidence key must be a regular file, not a symbolic link: ${path}`);
+  }
+  if (process.platform !== 'win32' && (metadata.mode & 0o077) !== 0) {
+    throw new Error(`Evidence key permissions are too broad; run chmod 600 ${path}`);
+  }
+  return readFile(path);
 }
 
 async function runDoctor(io: CliIo, cwd: string): Promise<number> {
@@ -281,6 +365,45 @@ export async function runCli(
         );
         return 0;
       }
+      case 'attest': {
+        const historyPath = resolve(cwd, parsed.historyPath);
+        const summaryPath = resolve(cwd, parsed.summaryPath);
+        const manifestPath = resolve(cwd, parsed.manifestPath);
+        const key =
+          parsed.keyFilePath === undefined
+            ? undefined
+            : await readEvidenceKey(resolve(cwd, parsed.keyFilePath));
+        const manifest = await writeEvidenceManifest({
+          historyPath,
+          summaryPath,
+          manifestPath,
+          force: parsed.force,
+          ...(key === undefined || parsed.keyId === undefined
+            ? {}
+            : { authentication: { key, keyId: parsed.keyId } }),
+        });
+        io.stdout(
+          `Created ${manifest.authentication === undefined ? 'integrity' : 'authenticated'} evidence manifest: ${manifestPath}\n`,
+        );
+        return 0;
+      }
+      case 'verify': {
+        const manifestPath = resolve(cwd, parsed.manifestPath);
+        const key =
+          parsed.keyFilePath === undefined
+            ? undefined
+            : await readEvidenceKey(resolve(cwd, parsed.keyFilePath));
+        const verified = await verifyEvidenceManifest({
+          manifestPath,
+          requireAuthenticated: parsed.requireAuthenticated,
+          ...(key === undefined ? {} : { key }),
+          ...(parsed.expectedKeyId === undefined ? {} : { expectedKeyId: parsed.expectedKeyId }),
+        });
+        io.stdout(
+          `Verified ${String(verified.eventCount)} event(s) against ${verified.authenticated ? `authenticated manifest key ${verified.manifest.authentication?.keyId ?? 'unknown'}` : 'unsigned integrity manifest'}.\n`,
+        );
+        return 0;
+      }
       case 'view': {
         const result = await generateReportViewer({
           historyPath: resolve(cwd, parsed.historyPath),
@@ -296,14 +419,18 @@ export async function runCli(
     }
   } catch (error) {
     if (
-      parsed.command === 'init' &&
+      (parsed.command === 'init' || parsed.command === 'attest') &&
       typeof error === 'object' &&
       error !== null &&
       'code' in error &&
       error.code === 'EEXIST'
     ) {
+      const outputPath =
+        parsed.command === 'init'
+          ? resolve(cwd, parsed.registryPath)
+          : resolve(cwd, parsed.manifestPath);
       io.stderr(
-        `healwright: refusing to overwrite ${resolve(cwd, parsed.registryPath)}; pass --force only after reviewing the existing file\n`,
+        `healwright: refusing to overwrite ${outputPath}; pass --force only after reviewing the existing file\n`,
       );
       return 1;
     }

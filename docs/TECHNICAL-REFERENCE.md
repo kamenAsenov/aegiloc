@@ -245,6 +245,7 @@ adversarial tests. Fast-check uses the fixed seed `20260815` so property failure
 - `healwright/registry-schema` — target registry schema;
 - `healwright/proposal-schema` — review proposal schema;
 - `healwright/evidence-summary-schema` — run summary schema;
+- `healwright/evidence-manifest-schema` — evidence integrity/authentication schema;
 - `healwright/governance-policy-schema` — governance configuration schema;
 - `healwright/health-summary-schema` — health result schema.
 
@@ -252,8 +253,9 @@ adversarial tests. Fast-check uses the fixed seed `20260815` so property failure
 package resolution, verifies build artifacts, exercises evidence/proposal/governance CLIs and their
 tamper failures, and inspects `pnpm pack --dry-run --json`. It creates no publication.
 
-The `healwright` package bin resolves to `dist/cli.js`. Its `view` command is also available as the
-public `generateReportViewer` and `renderReportViewer` APIs. Report generation requires canonical
+The `healwright` package bin resolves to `dist/cli.js`. Its `attest` and `verify` commands map to the
+public evidence-manifest APIs. Its `view` command is also available as the public
+`generateReportViewer` and `renderReportViewer` APIs. Report generation requires canonical
 history and an exactly matching summary and produces escaped static HTML without remote assets.
 
 ## Project structure
@@ -267,17 +269,20 @@ history and an exactly matching summary and produces escaped static HTML without
 ├── fixtures/app/               # Deterministic checkout UI and controlled mutations
 ├── governance/                 # Checked-in run policy
 ├── package-tests/              # External-consumer TypeScript contract
+├── performance/                # Version-controlled collection performance budget
 ├── registry/                   # Target, evidence, proposal, policy, and health schemas
 ├── scripts/                    # Fixture, evidence, proposal, governance, package, release tools
 ├── src/                        # Framework implementation and public exports
 ├── tests/                      # Unit, integration, property, browser, and adversarial tests
-├── playwright.config.ts        # Chromium-first test and reporter configuration
+├── playwright.config.ts        # Full Chromium test and reporter configuration
+├── playwright.cross-browser.config.ts # Firefox/WebKit core qualification
 └── .github/workflows/ci.yml    # Complete quality pipeline
 ```
 
 ## Limitations
 
-- Chromium is the only configured and qualified browser.
+- The full portfolio suite and realistic demo are Chromium-first; the core browser contract is also
+  qualified on Firefox and WebKit through the dedicated matrix.
 - The package is not currently published to a registry.
 - Candidate collection covers common interactive HTML and ARIA patterns, not arbitrary widgets.
 - Accessible identity uses Playwright's public ARIA snapshot representation.
@@ -290,8 +295,8 @@ history and an exactly matching summary and produces escaped static HTML without
 - Protected observations never execute, and the current proposal generator requires successful
   guarded execution, so protected-only evidence cannot generate a proposal.
 - Commit provenance is optional, but mixed or partially recorded commits fail proposal generation.
-- Proposal hashes do not authenticate original evidence; artifact trust remains the user's
-  responsibility.
+- Optional manifests authenticate evidence with a shared HMAC key; unsigned manifests and shared-key
+  attribution still require an external trust and key-management policy.
 - Guarded execution requires exact, unique accessible identity; otherwise it fails closed even after
   a high ranking.
 - Reporter aggregation is local to one Playwright or merged-report process; cross-machine storage is

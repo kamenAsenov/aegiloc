@@ -109,7 +109,7 @@ test('renders a practical report with summary, successful, and rejected sections
   expect(html).toContain('Successful heals');
   expect(html).toContain('Rejected and protected');
   expect(html).toContain('screenshots/before.png');
-  expect(html).toContain('v0.6.0 Technical Preview');
+  expect(html).toContain('v0.7.0 Technical Preview');
   expect(html).toContain("default-src 'none'; style-src 'unsafe-inline'");
 });
 

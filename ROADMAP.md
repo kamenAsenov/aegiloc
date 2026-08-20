@@ -98,7 +98,7 @@ Status: implemented on the pre-v0.6 mainline without a release tag.
 
 ### v0.6 — Technical-preview product experience
 
-Status: implemented in source for `v0.6.0` review; not tagged or published.
+Status: implemented on `main`; not tagged or published.
 
 - Add a lightweight compiled CLI for onboarding, validation, diagnostics, and report generation.
 - Generate a self-contained static UI from matching canonical history and summary evidence.
@@ -108,13 +108,22 @@ Status: implemented in source for `v0.6.0` review; not tagged or published.
 
 ### v0.7 — Evidence integrity, supply chain, and qualification
 
-- Add optional authenticated evidence manifests or signatures without making a cloud service or key
-  mandatory.
-- Detect missing, reordered, replaced, or truncated evidence files against a trusted manifest.
-- Add dependency review, SBOM generation, provenance-aware release artifacts, and reproducible
-  package checks.
-- Qualify Firefox and WebKit behavior and establish candidate-collection performance budgets.
-- Document secret rotation and retention guidance for teams that enable authenticated evidence.
+Status: implemented in source for `v0.7.0` review; not tagged or published.
+
+- Optional HMAC-authenticated evidence manifests without making a cloud service or key mandatory.
+- Missing, reordered, replaced, truncated, mismatched, and unauthenticated evidence detection.
+- Dependency review, deterministic CycloneDX SBOM generation, GitHub artifact attestations, and
+  byte-reproducible package checks.
+- Firefox and WebKit core qualification plus candidate-collection median/p95 budgets.
+- Secret rotation, key handling, retention, cryptographic-boundary, and supply-chain guidance.
+
+### v0.8 — Compatibility and operational reliability
+
+- Perform an explicit public API and schema compatibility review with machine-readable API reports.
+- Add longer-running reliability, memory, and performance trend benchmarks.
+- Evaluate optional public-key evidence signatures without weakening the zero-key local workflow.
+- Expand examples for page objects, fixtures, sharding, artifact merging, and key-provider adapters.
+- Publish a troubleshooting decision tree and operational adoption checklist.
 
 ### v1.0 — Stable framework contract
 
@@ -134,5 +143,6 @@ the core framework.
 ## Release gate for every increment
 
 Each increment must keep formatting, linting, strict type checking, package verification, schema
-parity, unit tests, real Chromium tests, adversarial negative tests, and package dry-run checks green.
-Documentation and known limitations must match runtime behavior before a commit is proposed.
+parity, unit tests, the qualified browser matrix, adversarial negative tests, evidence integrity,
+reproducibility, SBOM, and package dry-run checks green. Documentation and known limitations must
+match runtime behavior before a commit is proposed.

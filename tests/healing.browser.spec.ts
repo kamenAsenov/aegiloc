@@ -42,14 +42,14 @@ function expectSuccessfulHealing(memory: InMemoryAuditSink, testInfo: TestInfo):
     mode: 'guarded',
     modeDecision: 'eligible',
     assessment: { eligible: true, reason: 'eligible' },
-    provenance: { version: 1, projectName: 'chromium', retry: 0 },
+    provenance: { version: 1, projectName: testInfo.project.name, retry: 0 },
   });
   expect(memory.events[1]).toMatchObject({
     eventType: 'locator-heal-execution',
     status: 'succeeded',
     reason: 'succeeded',
     screenshots: [{ phase: 'before' }, { phase: 'after' }],
-    provenance: { version: 1, projectName: 'chromium', retry: 0 },
+    provenance: { version: 1, projectName: testInfo.project.name, retry: 0 },
   });
   expect(testInfo.annotations).toContainEqual(
     expect.objectContaining({ type: PASSED_WITH_HEALING }),

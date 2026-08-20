@@ -1,6 +1,6 @@
 # Known risks
 
-Healwright v0.6.0 is a technical preview intended for evaluation. Conservative design reduces some
+Healwright v0.7.0 is a technical preview intended for evaluation. Conservative design reduces some
 locator-recovery risks; it does not remove the need for test ownership or product review.
 
 ## False-positive execution
@@ -32,14 +32,29 @@ short-lived, and reviewed before sharing.
 
 ## Evidence authenticity
 
-Canonical ordering and proposal hashes detect several forms of local mismatch and tampering, but
-v0.6 does not authenticate who or what produced the original evidence. Do not treat a report as a
-signed attestation.
+Unsigned manifests detect change only when the manifest is obtained through a trusted channel.
+Optional HMAC authentication proves shared-key possession, not which person or runner acted, and
+does not provide non-repudiation. Key compromise allows forged manifests until rotation. A static
+report is never itself a signed attestation.
 
 ## Platform scope
 
-Chromium is the only configured and qualified browser. Node and Playwright versions outside the
-documented ranges are not covered. The API is pre-1.0 and can change with migration guidance.
+The full portfolio suite and realistic demo remain Chromium-first. A focused core matrix qualifies
+Firefox and WebKit for the frozen Playwright version, not arbitrary versions, mobile engines, or
+application widgets. The API is pre-1.0 and can change with migration guidance.
+
+## Performance budget scope
+
+The 150-candidate median/p95 gate is a regression alarm on CI hardware, not a guarantee for every
+DOM, browser, or machine. Pages with unusually many compatible controls can still make conservative
+collection slow. Healing is exceptional-path behavior, not a substitute for stable primary
+locators.
+
+## Supply-chain attestations
+
+Reproducible tarballs, SBOMs, dependency review, and GitHub attestations improve traceability but do
+not prove absence of vulnerabilities or authorize publication. Attestations are produced only for
+`main` workflow artifacts and remain distinct from npm packages, tags, and releases.
 
 ## Generated report content
 

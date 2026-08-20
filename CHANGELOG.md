@@ -7,6 +7,40 @@ release tags. Package metadata is publication-ready, but no npm package is curre
 
 No changes yet.
 
+## [0.7.0] - 2026-08-20 (source technical preview)
+
+Prepared for review; not tagged, published to npm, or published as a GitHub Release.
+
+### Added
+
+- Strict evidence manifests with ordered SHA-256 digests, byte lengths, and optional
+  HMAC-SHA-256 authentication using external key files.
+- `healwright attest` and `healwright verify` with required-authentication mode, key identity,
+  minimum key strength, POSIX permission checks, and symbolic-link rejection.
+- Adversarial tests for missing, truncated, replaced, reordered, malformed, weak-key, wrong-key,
+  and unauthenticated evidence.
+- Deterministic CycloneDX 1.6 SBOM generation, byte-for-byte package reproducibility checks,
+  dependency review, and GitHub build/SBOM attestation workflows.
+- Firefox and WebKit core qualification plus a version-controlled median/p95 candidate-collection
+  performance budget.
+- Evidence-integrity, supply-chain, cross-browser, rotation, retention, and v0.7 release guidance.
+
+### Changed
+
+- Candidate collection now uses one public `Locator.evaluateAll()` DOM snapshot and bounded
+  concurrent public `Locator.ariaSnapshot()` calls while preserving deterministic order.
+- The complete release gate covers manifests, SBOM determinism, package reproducibility, and the
+  additional browser matrix.
+- Package metadata and CLI/report status identify `0.7.0 Technical Preview` consistently.
+
+### Security
+
+- Authenticated manifests fail closed on key mismatch or modified authenticated fields and use
+  constant-time signature comparison.
+- Key files remain external, are never logged, and must be owner-only regular files on POSIX.
+- CI attestations are restricted to `main` pushes; pull requests receive read-only dependency review
+  and unpublished artifact checks.
+
 ## [0.6.0] - 2026-08-18 (source technical preview)
 
 Prepared for review; not tagged, published to npm, or published as a GitHub Release.
@@ -117,7 +151,8 @@ Prepared for review; not tagged, published to npm, or published as a GitHub Rele
 
 [0.4.0]: https://github.com/kamenAsenov/healwright/compare/v0.3.1...v0.4.0
 [0.6.0]: https://github.com/kamenAsenov/healwright/compare/v0.4.0...v0.6.0
-[Unreleased]: https://github.com/kamenAsenov/healwright/compare/v0.6.0...HEAD
+[0.7.0]: https://github.com/kamenAsenov/healwright/compare/v0.6.0...v0.7.0
+[Unreleased]: https://github.com/kamenAsenov/healwright/compare/v0.7.0...HEAD
 [0.3.1]: https://github.com/kamenAsenov/healwright/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/kamenAsenov/healwright/compare/82513a74882500d5d31a3c8d284a0727565cef77...v0.3.0
 [0.2.0]: https://github.com/kamenAsenov/healwright/tree/82513a74882500d5d31a3c8d284a0727565cef77

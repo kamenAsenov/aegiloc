@@ -252,7 +252,7 @@ export function renderReportViewer(
         <p class="eyebrow">Deterministic locator evidence</p>
         <h1>${escapeHtml(title)}</h1>
         <p class="subtitle">A local, static view of reviewed Healwright audit evidence. It reports what the framework assessed and executed; it does not change tests or locator registries.</p>
-        <span class="preview">v0.6.0 Technical Preview · not production-ready</span>
+        <span class="preview">v0.7.0 Technical Preview · not production-ready</span>
         <div class="metrics">
           <div class="metric"><span>Generated</span><strong>${escapeHtml(summary.generatedAt)}</strong></div>
           <div class="metric"><span>Total assessments</span><strong>${String(summary.events.assessments)}</strong></div>

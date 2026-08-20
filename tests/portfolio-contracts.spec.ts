@@ -9,7 +9,7 @@ test('portfolio entry points remain concise, honest, and connected to deeper doc
   const readmeLines = readme.split('\n').length;
 
   expect(readmeLines).toBeLessThan(250);
-  expect(readme).toContain('v0.6.0 Technical Preview · experimental · pre-1.0');
+  expect(readme).toContain('v0.7.0 Technical Preview · experimental · pre-1.0');
   expect(readme).toMatch(/a false-positive heal is worse than a failed heal/i);
   expect(readme).toContain('examples/basic-playwright');
   expect(readme).toContain('examples/realistic-demo');
@@ -32,13 +32,16 @@ test('package metadata is ready for review but publication remains explicitly gu
   };
 
   expect(packageJson.private).toBe(false);
-  expect(packageJson.version).toBe('0.6.0');
+  expect(packageJson.version).toBe('0.7.0');
   expect(packageJson.bin?.healwright).toBe('./dist/cli.js');
   expect(packageJson.license).toBe('MIT');
   expect(packageJson.repository?.url).toBe('git+https://github.com/kamenAsenov/healwright.git');
   expect(packageJson.scripts?.['prepublishOnly']).toContain('scripts/guard-publish.mjs');
   expect(packageJson.scripts?.['release:check']).toContain('pnpm example:verify');
   expect(packageJson.scripts?.['release:check']).toContain('pnpm example:realistic');
+  expect(packageJson.scripts?.['release:check']).toContain('pnpm package:reproducible');
+  expect(packageJson.scripts?.['release:check']).toContain('pnpm test:cross-browser');
+  expect(packageJson.scripts?.['release:check']).toContain('pnpm evidence:manifest:verify');
   expect(packageJson.scripts).not.toHaveProperty('publish');
 });
 
@@ -56,6 +59,8 @@ test('basic example uses a valid automatic target and is enforced by CI', async 
   });
   expect(workflow).toContain('run: pnpm example:verify');
   expect(workflow).toContain('run: pnpm example:realistic');
+  expect(workflow).toContain('run: pnpm test:cross-browser');
+  expect(workflow).toContain('run: pnpm evidence:manifest:verify');
 });
 
 test('type-aware example linting resolves public imports before the package build exists', async () => {
