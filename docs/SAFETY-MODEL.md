@@ -96,7 +96,7 @@ Typed reporter attachments are aggregated centrally and written atomically. Malf
 conflicting event IDs, attachment/body mismatches, non-canonical history, broken assessment/execution
 chains, and inconsistent risk metadata fail closed.
 
-Proposal hashes detect modification after generation. v0.7 evidence manifests additionally detect
+Proposal hashes detect modification after generation. Evidence manifests additionally detect
 file replacement, truncation, and reordering; optional HMAC authentication covers the manifest with
 an external shared key. Unsigned manifests and compromised shared keys still require an external
 artifact trust policy. See [`EVIDENCE-INTEGRITY.md`](EVIDENCE-INTEGRITY.md).

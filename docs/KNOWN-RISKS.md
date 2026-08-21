@@ -1,6 +1,6 @@
 # Known risks
 
-Healwright v0.7.0 is a technical preview intended for evaluation. Conservative design reduces some
+Healwright v1.0.0 is an evaluation release with a stable API. Conservative design reduces some
 locator-recovery risks; it does not remove the need for test ownership or product review.
 
 ## False-positive execution
@@ -41,7 +41,7 @@ report is never itself a signed attestation.
 
 The full portfolio suite and realistic demo remain Chromium-first. A focused core matrix qualifies
 Firefox and WebKit for the frozen Playwright version, not arbitrary versions, mobile engines, or
-application widgets. The API is pre-1.0 and can change with migration guidance.
+application widgets. The stable API policy does not broaden browser qualification.
 
 ## Performance budget scope
 

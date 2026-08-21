@@ -4,7 +4,7 @@ This guide runs Healwright from a local checkout. The package is not published t
 
 ## Prerequisites
 
-- Node.js 20 or newer;
+- Node.js 22 or 24;
 - pnpm 11;
 - Git;
 - Chromium installed through Playwright; Firefox and WebKit for the qualification gate.
@@ -28,6 +28,16 @@ Confirm the local CLI and package prerequisites:
 node dist/cli.js --help
 node dist/cli.js doctor
 ```
+
+## Run the interactive local demo
+
+```bash
+pnpm demo
+```
+
+This runs ordinary Playwright, one safe locator recovery, and one ambiguous rejection; verifies the
+evidence manifest; and prints the absolute path to the v1 local report. Use
+`pnpm cli demo --force --open` only when you explicitly want to launch the browser.
 
 ## Confirm the ordinary Playwright path
 
@@ -96,7 +106,7 @@ This builds Healwright, starts the existing fixture, and executes the minimal pr
 [`examples/basic-playwright`](../examples/basic-playwright). The example imports the package through
 its public export rather than reaching into `src/`.
 
-## Run the realistic technical-preview demo
+## Run the realistic demo pipeline directly
 
 ```bash
 pnpm example:realistic
@@ -112,7 +122,8 @@ test-results/realistic-demo/evidence/manifest.json
 test-results/realistic-demo/viewer/index.html
 ```
 
-Open the last file directly in a browser. See the [realistic demo](REALISTIC-DEMO.md) and
+The viewer verifies the sibling manifest before rendering. Open the last file directly in a browser.
+See the [realistic demo](REALISTIC-DEMO.md) and
 [report viewer](REPORT-VIEWER.md) guides for the exact behavior and artifact boundaries.
 
 ## Verify evidence and governance
@@ -171,12 +182,6 @@ package, push Git, create a tag, or create a GitHub Release.
 
 ## Troubleshooting
 
-- If Chromium is missing, run `pnpm exec playwright install chromium`.
-- If the qualification browsers are missing, run `pnpm exec playwright install firefox webkit`.
-- If port `4173` is occupied, stop the existing process; the test configuration intentionally uses a
-  fixed deterministic base URL.
-- If evidence verification reports a mismatch, rerun `pnpm test` before verifying; focused tests can
-  replace the latest local report output.
-- If governance reports a policy failure, inspect both health summaries and the checked-in
-  [`governance/policy.json`](../governance/policy.json). Do not weaken runtime safety to satisfy a
-  budget.
+Use the [outcome-based troubleshooting decision tree](TROUBLESHOOTING.md). It distinguishes setup,
+ordinary Playwright failures, safe rejection, guarded execution, evidence trust, and governance
+without suggesting unsafe threshold changes.

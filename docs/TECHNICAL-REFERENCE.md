@@ -302,4 +302,5 @@ history and an exactly matching summary and produces escaped static HTML without
 - Reporter aggregation is local to one Playwright or merged-report process; cross-machine storage is
   the CI or consumer's responsibility.
 - Waivers are budget-only and still require human review and removal.
-- The public API is pre-1.0 and does not yet carry a long-term compatibility guarantee.
+- The public API follows the stable v1 contract in [`COMPATIBILITY.md`](COMPATIBILITY.md); this does
+  not imply production adoption or support for unexported internals.

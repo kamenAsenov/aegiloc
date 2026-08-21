@@ -108,7 +108,7 @@ Status: implemented on `main`; not tagged or published.
 
 ### v0.7 — Evidence integrity, supply chain, and qualification
 
-Status: implemented in source for `v0.7.0` review; not tagged or published.
+Status: implemented on `main` and incorporated into v1.0.0; no standalone v0.7 tag was created.
 
 - Optional HMAC-authenticated evidence manifests without making a cloud service or key mandatory.
 - Missing, reordered, replaced, truncated, mismatched, and unauthenticated evidence detection.
@@ -117,21 +117,27 @@ Status: implemented in source for `v0.7.0` review; not tagged or published.
 - Firefox and WebKit core qualification plus candidate-collection median/p95 budgets.
 - Secret rotation, key handling, retention, cryptographic-boundary, and supply-chain guidance.
 
-### v0.8 — Compatibility and operational reliability
-
-- Perform an explicit public API and schema compatibility review with machine-readable API reports.
-- Add longer-running reliability, memory, and performance trend benchmarks.
-- Evaluate optional public-key evidence signatures without weakening the zero-key local workflow.
-- Expand examples for page objects, fixtures, sharding, artifact merging, and key-provider adapters.
-- Publish a troubleshooting decision tree and operational adoption checklist.
-
 ### v1.0 — Stable framework contract
 
-- Freeze the public API after an explicit compatibility review.
-- Publish migration guides, operational examples, and a troubleshooting reference.
-- Add long-running reliability and performance benchmarks.
-- Expand consumer examples for fixtures, page objects, CI sharding, and proposal review.
-- Define support windows for Node.js and Playwright versions.
+Status: implemented in `v1.0.0`.
+
+- Stable runtime/type/schema inventory with a checked-in machine-readable snapshot.
+- SemVer, schema, CLI, Node 22/24, and Playwright compatibility policy.
+- Guided one-command local demo and manifest-bound report generation.
+- Responsive evidence UI with trust states, filters, timelines, candidate signals, and next actions.
+- Consumer, Page Object/fixture, execution-risk, CI evidence, and troubleshooting guidance.
+- Immutable GitHub Action pins and GitHub-compatible deterministic CycloneDX identity.
+
+## Post-v1 opportunities
+
+1. Collect long-running soak, memory, and performance trend evidence across supported Node and locked
+   browser versions.
+2. Add sharded Playwright artifact-merging examples and test exact multi-job evidence provenance.
+3. Evaluate optional public-key evidence authentication without weakening the zero-key local path.
+4. Publish a reference pilot playbook with review SLAs, retention examples, and measured operational
+   outcomes once real usage exists.
+5. Qualify future Playwright minors through an automated compatibility lane before expanding the peer
+   support floor.
 
 ## Deliberate non-goals
 

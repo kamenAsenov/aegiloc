@@ -32,7 +32,7 @@ and budget-only waivers keep recovery bounded and inspectable.
 
 ## Honest limitations
 
-Healwright is a v0.7.0 Technical Preview: unpublished and pre-1.0. It has no demonstrated production
+Healwright is a v1.0.0 evaluation release with a stable inventoried API and no npm publication. It has no demonstrated production
 adoption, optional HMAC is not public-key non-repudiation, and it intentionally does not auto-apply
 locator changes.
 

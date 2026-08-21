@@ -1,77 +1,64 @@
 # CLI reference
 
-Healwright v0.7.0 includes a small, dependency-free CLI for local evaluation. The package is not yet
-published, so commands in this repository use `node dist/cli.js` after `pnpm build`. An installed
-package exposes the same entry point as `healwright`.
+Healwright v1.0.0 includes a dependency-free CLI for local evaluation. The package is not published
+to npm, so repository commands use `node dist/cli.js` after `pnpm build`. The package `bin` exposes
+the same entry point as `healwright` for future installations.
 
-## Help
+## Guided demo
+
+```bash
+node dist/cli.js demo --force
+node dist/cli.js demo --force --open
+```
+
+`demo` runs only the deterministic repository fixture. It demonstrates ordinary Playwright, one
+guarded heal, and an ambiguous rejection; creates and verifies the evidence manifest; generates the
+local report; and prints its absolute path. `--open` is deliberate and never implied.
+
+Existing `test-results/realistic-demo` output causes refusal unless `--force` is present. If the
+platform opener is unavailable, the command remains successful after generation and prints a
+copyable path plus a warning.
+
+## Help and diagnostics
 
 ```bash
 node dist/cli.js --help
+node dist/cli.js doctor
 ```
 
-Help lists every command, examples, and the non-mutation safety boundary.
+Doctor checks Node.js 22/24, `@playwright/test`, the built CLI, example registries, and the optional
+local `healwright.targets.json`. It does not install software or contact a service.
 
-## Initialize a starter registry
+## Initialize and validate a registry
 
 ```bash
 node dist/cli.js init
 node dist/cli.js init --registry config/healwright.targets.json
+node dist/cli.js validate --registry config/healwright.targets.json
 ```
 
-The default output is `healwright.targets.json`. The command creates parent directories when needed
-and uses exclusive file creation. It refuses to overwrite an existing file.
+`init` creates parent directories and exclusively creates the file. It never overwrites without
+`--force`, and even forced output refuses a symbolic-link destination. Review the starter fingerprint
+and policy; initialization does not infer application or business intent.
 
-`--force` permits a deliberate replacement:
+`validate` uses the strict runtime parser. It proves structural/policy consistency, not that a live
+page matches the fingerprint.
 
-```bash
-node dist/cli.js init --registry healwright.targets.json --force
-```
-
-Review the existing file first. `init` does not inspect an application, infer business intent, or
-rewrite tests.
-
-## Validate a registry
-
-```bash
-node dist/cli.js validate --registry healwright.targets.json
-```
-
-Validation uses the same strict runtime parser as the framework. Invalid inputs exit nonzero and
-report a precise JSON path. Validation proves structural and safety-policy consistency; it does not
-prove that a live application matches the fingerprint.
-
-## Diagnose local setup
-
-```bash
-node dist/cli.js doctor
-```
-
-Doctor checks:
-
-- Node.js 20 or newer;
-- whether `@playwright/test` resolves;
-- whether the compiled CLI artifact exists;
-- whether the bundled basic and realistic example registries are present;
-- whether the optional default `healwright.targets.json` exists in the working directory.
-
-Required failures return a nonzero exit code. The command does not install software or contact a
-cloud service.
-
-## Create an evidence manifest
+## Create and verify an evidence manifest
 
 ```bash
 node dist/cli.js attest \
   --history test-results/healwright/history.jsonl \
   --summary test-results/healwright/summary.json \
   --out test-results/healwright/manifest.json
+
+node dist/cli.js verify --manifest test-results/healwright/manifest.json
 ```
 
-The command validates canonical history and exact summary agreement before recording file order,
-byte length, and SHA-256 digests. The three files must be siblings. Existing output is not replaced
-unless `--force` is explicit.
+`attest` validates canonical history and exact summary agreement before recording ordered sibling
+file names, byte lengths, and SHA-256 digests. Output is exclusive unless `--force` is explicit.
 
-Optional authentication requires both arguments:
+Optional authentication requires both an external key and key ID:
 
 ```bash
 node dist/cli.js attest \
@@ -80,20 +67,7 @@ node dist/cli.js attest \
   --out test-results/healwright/manifest.json \
   --key-file .healwright-evidence.key \
   --key-id ci-2026-q3
-```
 
-The key file must contain at least 32 bytes. On POSIX it must be owner-only (`chmod 600`), and it
-must be a regular file rather than a symbolic link.
-
-## Verify an evidence manifest
-
-```bash
-node dist/cli.js verify --manifest test-results/healwright/manifest.json
-```
-
-For authenticated evidence:
-
-```bash
 node dist/cli.js verify \
   --manifest test-results/healwright/manifest.json \
   --key-file .healwright-evidence.key \
@@ -101,27 +75,30 @@ node dist/cli.js verify \
   --require-authenticated
 ```
 
-Verification fails on missing, unreadable, truncated, reordered, replaced, mismatched, or
-unauthenticated evidence when authentication is required. See the
-[evidence integrity guide](EVIDENCE-INTEGRITY.md) for key rotation and trust boundaries.
+The key must contain at least 32 bytes. On POSIX it must be an owner-only regular file rather than a
+symbolic link. Keys are not printed or embedded in output.
 
-## Generate the static viewer
+## Generate and open the viewer
 
 ```bash
 node dist/cli.js view \
   --history test-results/healwright/history.jsonl \
   --summary test-results/healwright/summary.json \
-  --out test-results/healwright/viewer
+  --manifest test-results/healwright/manifest.json \
+  --out test-results/healwright/viewer \
+  --force
 ```
 
-The command strictly parses JSONL history and requires the supplied summary to match a freshly
-computed canonical summary structurally, including rejecting extra data. Existing `index.html`
-output is not overwritten unless `--force` is present.
+Add `--open` to deliberately launch the generated `index.html`. With a manifest, the viewer verifies
+exact file identity before rendering and displays `integrity` or `authenticated` trust. Use
+`--key-file`, `--key-id`, and `--require-authenticated` for authenticated evidence.
 
-Exit `0` means the command completed. Argument, filesystem, registry, history, and summary errors
-exit `1` with a human-readable message on stderr.
+Without a manifest, the viewer still validates canonical history/summary agreement but labels the
+result `validated`, not authenticated. Invalid, mismatched, or malicious evidence fails before an
+HTML file is written.
 
-## Deliberate non-goals
+## Exit and mutation contract
 
-The CLI does not apply healing proposals, edit registries after initialization, edit test source,
+Ordinary CLI success returns `0`; argument, validation, filesystem, evidence, or operation failures
+return `1`. The CLI does not apply proposals, edit tests, rewrite registries after explicit `init`,
 publish packages, upload evidence, or start a hosted dashboard.

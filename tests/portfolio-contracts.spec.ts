@@ -9,13 +9,16 @@ test('portfolio entry points remain concise, honest, and connected to deeper doc
   const readmeLines = readme.split('\n').length;
 
   expect(readmeLines).toBeLessThan(250);
-  expect(readme).toContain('v0.7.0 Technical Preview · experimental · pre-1.0');
+  expect(readme).toContain('v1.0.0 is a stable-API evaluation release');
   expect(readme).toMatch(/a false-positive heal is worse than a failed heal/i);
   expect(readme).toContain('examples/basic-playwright');
   expect(readme).toContain('examples/realistic-demo');
+  expect(readme).toContain('docs/assets/healwright-report-v1.png');
+  expect(readme).toContain('docs/COMPATIBILITY.md');
+  expect(readme).toContain('api/public-api.json');
   expect(readme).toContain('docs/ARCHITECTURE.md');
   expect(readme).toContain('docs/SAFETY-MODEL.md');
-  expect(readme).toContain('not presented as production-proven software');
+  expect(readme).toContain('not a claim of production adoption');
   expect(readme).not.toMatch(/enterprise-ready|enterprise-grade|trusted by|used by \d+/i);
 });
 
@@ -32,7 +35,7 @@ test('package metadata is ready for review but publication remains explicitly gu
   };
 
   expect(packageJson.private).toBe(false);
-  expect(packageJson.version).toBe('0.7.0');
+  expect(packageJson.version).toBe('1.0.0');
   expect(packageJson.bin?.healwright).toBe('./dist/cli.js');
   expect(packageJson.license).toBe('MIT');
   expect(packageJson.repository?.url).toBe('git+https://github.com/kamenAsenov/healwright.git');
@@ -42,6 +45,7 @@ test('package metadata is ready for review but publication remains explicitly gu
   expect(packageJson.scripts?.['release:check']).toContain('pnpm package:reproducible');
   expect(packageJson.scripts?.['release:check']).toContain('pnpm test:cross-browser');
   expect(packageJson.scripts?.['release:check']).toContain('pnpm evidence:manifest:verify');
+  expect(packageJson.scripts?.['release:check']).toContain('pnpm api:snapshot:check');
   expect(packageJson.scripts).not.toHaveProperty('publish');
 });
 

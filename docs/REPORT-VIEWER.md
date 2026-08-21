@@ -1,58 +1,65 @@
 # Static report viewer
 
-The v0.7 report viewer turns canonical Healwright JSONL history and its matching summary into one
-self-contained `index.html`. It is a local developer artifact, not a hosted dashboard.
+The v1 report viewer turns canonical JSONL history and its exact matching summary into a single local
+`index.html`. It is the main evaluation surface, not a hosted dashboard.
 
-## Generate a report
+## Open the guided demo
 
 ```bash
-pnpm build
-node dist/cli.js view \
-  --history test-results/healwright/history.jsonl \
-  --summary test-results/healwright/summary.json \
-  --out test-results/healwright/viewer
+pnpm demo
 ```
 
-Add `--force` only when intentionally replacing an existing generated report.
+The command prints the absolute report path. For deliberate opening:
 
-## What it shows
+```bash
+pnpm cli demo --force --open
+```
 
-- generation time and assessment totals;
-- successful, rejected, and protected outcomes;
-- average top-candidate confidence when scores exist;
-- original locator, top candidate identity, decision, reason, margin, and ranked candidates;
-- successful execution identity and sanitized screenshot references;
-- clear empty states when a run contains no relevant evidence.
+To generate from another run, use `healwright view` with history, summary, and preferably their
+manifest. See the [CLI reference](CLI.md#generate-and-open-the-viewer).
 
-The viewer does not present a healed pass as an ordinary pass. It repeats the technical-preview and
-human-ownership boundaries in the page.
+## What the report explains
 
-## Integrity and privacy
+- the overall run state without presenting a healed pass as ordinary;
+- whether evidence was only validated, integrity-verified, or authenticated;
+- generated time and assessment/heal/rejection/failure totals;
+- primary locator → candidate decision → guarded execution/rejection timeline;
+- confidence, required threshold, runner-up margin, semantic gate, and execution risk;
+- expandable ranked candidates with exact per-signal match, weight, and contribution;
+- sanitized screenshot references and outcome-specific next actions;
+- search and filters for target/evidence text, action, outcome, and decision reason.
 
-`view` uses the strict history parser and recomputes the canonical summary. Generation fails if the
-provided summary is malformed, contains extra data, or differs from history.
+Plain-language conclusions are visible first; detailed engineer evidence uses native expandable
+sections. Controls are labeled, keyboard reachable, visibly focused, and responsive down to narrow
+viewports. Printing hides interactive filters.
 
-For evidence-origin assurance, run `healwright verify` against the sibling manifest before opening
-the viewer. Report generation validates content agreement but does not authenticate origin by
-itself.
+## Trust states
 
-All evidence-derived strings are HTML escaped. The report contains embedded CSS, no JavaScript, no
-remote assets, no telemetry, and no network requests after opening. Audit events already reject
-absolute screenshot paths; the viewer renders retained artifact paths as references rather than
-reading or embedding their contents.
+`Evidence validated` means history and summary are internally canonical but no manifest was supplied.
+`Evidence integrity verified` means an unsigned SHA-256 manifest matches the exact input files.
+`Evidence authenticated` additionally means the manifest HMAC matched the supplied external key and
+expected key identity.
 
-The report can still contain target keys, accessible names, selector text, project names, commit
-identifiers, and artifact paths. Treat it as potentially sensitive test evidence. Review it before
-sharing and follow [security guidance](../SECURITY.md).
+HMAC is shared-key authentication, not public-key non-repudiation. The generated HTML is not itself a
+cryptographic signature. Invalid/missing evidence is rejected before the report is created; use the
+reported `verify` command and [troubleshooting tree](TROUBLESHOOTING.md) to recover safely.
+
+## Security and privacy
+
+All evidence-derived text and data attributes are HTML escaped. The report uses a restrictive
+Content Security Policy with a hash-authorized static filter script. It has no remote assets,
+telemetry, fetches, forms, or network requirement. Script data comes from escaped DOM attributes,
+not interpolated evidence.
+
+Reports can still disclose target keys, accessible names, selector text, projects, commit IDs,
+artifact paths, and application context. Treat them as sensitive test evidence and review them before
+sharing. Screenshot paths are references; the viewer does not read or embed screenshot files.
 
 ## Output and retention
 
-Generated viewers belong under ignored output such as `test-results/`. They are not source files and
-should not be committed by default. Delete them according to the same retention policy as the source
-history and screenshots.
+Generated output belongs under ignored directories such as `test-results/`. The viewer refuses
+silent overwrite and symbolic-link replacement. Retain or delete it with the underlying evidence,
+screenshots, and traces according to the same access and retention policy.
 
-## Browser support
-
-The output uses semantic HTML and responsive CSS and is intended for current desktop browsers. The
-runtime's checked core behavior is qualified separately on Chromium, Firefox, and WebKit; see the
-[qualification scope](CROSS-BROWSER-QUALIFICATION.md).
+The committed README preview is generated by `pnpm docs:screenshot` from deterministic evidence and
+the real viewer renderer. It is illustrative and contains no customer or production data.
