@@ -105,10 +105,14 @@ function parseLockPackages(lockfile) {
 function renderSbom(packageJson, lockfile) {
   const rootPurl = packageUrl(packageJson.name, packageJson.version);
   const lockDigest = createHash('sha256').update(lockfile, 'utf8').digest('hex');
+  const variantNibble = ((Number.parseInt(lockDigest[16], 16) & 0x3) | 0x8).toString(16);
+  const serialNumber = `urn:uuid:${lockDigest.slice(0, 8)}-${lockDigest.slice(8, 12)}-5${lockDigest.slice(13, 16)}-${variantNibble}${lockDigest.slice(17, 20)}-${lockDigest.slice(20, 32)}`;
   return `${JSON.stringify(
     {
       bomFormat: 'CycloneDX',
       specVersion: '1.6',
+      // actions/attest uses this required identity to recognize CycloneDX JSON.
+      serialNumber,
       version: 1,
       metadata: {
         component: {
