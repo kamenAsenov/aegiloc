@@ -75,7 +75,7 @@ Examples:
   healwright init
   healwright validate --registry healwright.targets.json
   healwright doctor
-  healwright demo --force
+  healwright demo
   healwright attest --history test-results/healwright/history.jsonl --summary test-results/healwright/summary.json --out test-results/healwright/manifest.json
   healwright verify --manifest test-results/healwright/manifest.json
   healwright view --history test-results/healwright/history.jsonl \\
@@ -86,6 +86,7 @@ Safety:
   attest creates an integrity manifest; HMAC authentication is optional and keys stay external.
   verify detects missing, truncated, reordered, or replaced evidence and can require authentication.
   demo runs only the deterministic local repository fixture; --open is always explicit.
+  demo refuses existing output unless --force is explicit after review.
   view validates evidence and emits static local HTML; it opens a browser only with --open.
   No command rewrites tests or applies locator proposals.
 `;
@@ -478,7 +479,7 @@ export async function runCli(
         const outputRoot = resolve(root, 'test-results/realistic-demo');
         if (!parsed.force && (await pathExists(outputRoot))) {
           throw new Error(
-            `Refusing to replace existing demo output "${outputRoot}"; pass --force after reviewing it`,
+            `Refusing to replace existing demo output "${outputRoot}"; review it, then rerun explicitly with: pnpm cli demo --force`,
           );
         }
         io.stdout(

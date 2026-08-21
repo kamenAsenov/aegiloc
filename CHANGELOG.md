@@ -5,7 +5,10 @@ release tags. Package metadata is publication-ready, but no npm package is curre
 
 ## [Unreleased]
 
-No changes yet.
+### Fixed
+
+- `pnpm demo` now preserves existing demo output and requires an explicit
+  `pnpm cli demo --force` rerun after review.
 
 ## [1.0.0] - 2026-08-21
 

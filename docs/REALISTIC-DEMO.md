@@ -44,10 +44,12 @@ test-results/realistic-demo/viewer/index.html
 playwright-report/realistic-demo/index.html
 ```
 
-The command creates and verifies an unsigned integrity manifest, renders the viewer from those exact
-manifest inputs, then clears only the ignored
-`test-results/realistic-demo` directory before the next execution so demonstrations remain
-deterministic. It never deletes or edits source files.
+The command creates and verifies an unsigned integrity manifest and renders the viewer from those
+exact manifest inputs. A repeat `pnpm demo` refuses to replace `test-results/realistic-demo`; review
+the output, then rerun explicitly with `pnpm cli demo --force`. The internal
+`pnpm example:realistic` CI pipeline deliberately clears only that ignored output directory before
+execution so automated demonstrations remain deterministic. Neither path deletes or edits source
+files.
 
 Run `pnpm cli demo --force --open` to request opening explicitly, or open the static viewer with:
 

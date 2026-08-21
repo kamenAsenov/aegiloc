@@ -7,17 +7,19 @@ the same entry point as `healwright` for future installations.
 ## Guided demo
 
 ```bash
-node dist/cli.js demo --force
-node dist/cli.js demo --force --open
+pnpm demo
+pnpm cli demo --force
+pnpm cli demo --force --open
 ```
 
 `demo` runs only the deterministic repository fixture. It demonstrates ordinary Playwright, one
 guarded heal, and an ambiguous rejection; creates and verifies the evidence manifest; generates the
 local report; and prints its absolute path. `--open` is deliberate and never implied.
 
-Existing `test-results/realistic-demo` output causes refusal unless `--force` is present. If the
-platform opener is unavailable, the command remains successful after generation and prints a
-copyable path plus a warning.
+Existing `test-results/realistic-demo` output causes `pnpm demo` to refuse replacement. Review the
+existing report, then rerun explicitly with `pnpm cli demo --force`. If the platform opener is
+unavailable, the command remains successful after generation and prints a copyable path plus a
+warning.
 
 ## Help and diagnostics
 
