@@ -36,8 +36,9 @@ pnpm demo
 ```
 
 This runs ordinary Playwright, one safe locator recovery, and one ambiguous rejection; verifies the
-evidence manifest; and prints the absolute path to the v1 local report. Use
-`pnpm cli demo --force --open` only when you explicitly want to launch the browser.
+evidence manifest; and prints the absolute path to the v1 local report. A repeat `pnpm demo` refuses
+to replace the existing output. Review it, then rerun with `pnpm cli demo --force`; add `--open` only
+when you explicitly want to launch the browser: `pnpm cli demo --force --open`.
 
 ## Confirm the ordinary Playwright path
 

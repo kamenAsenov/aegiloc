@@ -131,6 +131,14 @@ test('parses the documented commands and rejects incomplete integrity options', 
   expect(() => parseCliArguments(['unknown'])).toThrow(/Unknown command/);
 });
 
+test('public demo package script preserves the CLI overwrite guard', async () => {
+  const packageJson = JSON.parse(
+    await readFile(new URL('../package.json', import.meta.url), 'utf8'),
+  ) as { scripts?: Record<string, string> };
+
+  expect(packageJson.scripts?.demo).toBe('pnpm build && node dist/cli.js demo');
+});
+
 test('runs the built CLI help as a real process smoke test', async () => {
   const cliPath = new URL('../dist/cli.js', import.meta.url);
 
@@ -372,14 +380,7 @@ test('demo is deterministic, refuses accidental replacement, and opens only on r
   };
   const first = captureIo();
 
-  expect(
-    await runCli(['demo', '--force'], {
-      io: first.io,
-      repositoryRoot,
-      runDemo,
-      openPath,
-    }),
-  ).toBe(0);
+  expect(await runCli(['demo'], { io: first.io, repositoryRoot, runDemo, openPath })).toBe(0);
   expect(first.output).toContain('ordinary Playwright, guarded healing, and ambiguous rejection');
   expect(first.output).toContain(reportPath);
   expect(calls).toEqual([`run:${repositoryRoot}`]);
@@ -387,6 +388,19 @@ test('demo is deterministic, refuses accidental replacement, and opens only on r
   const refused = captureIo();
   expect(await runCli(['demo'], { io: refused.io, repositoryRoot, runDemo, openPath })).toBe(1);
   expect(refused.errors).toContain('Refusing to replace existing demo output');
+  expect(refused.errors).toContain('review it, then rerun explicitly with: pnpm cli demo --force');
+  expect(calls).toEqual([`run:${repositoryRoot}`]);
+
+  const forced = captureIo();
+  expect(
+    await runCli(['demo', '--force'], {
+      io: forced.io,
+      repositoryRoot,
+      runDemo,
+      openPath,
+    }),
+  ).toBe(0);
+  expect(calls).toEqual([`run:${repositoryRoot}`, `run:${repositoryRoot}`]);
 
   const opened = captureIo();
   expect(
@@ -397,7 +411,12 @@ test('demo is deterministic, refuses accidental replacement, and opens only on r
       openPath,
     }),
   ).toBe(0);
-  expect(calls.at(-1)).toBe(`open:${reportPath}`);
+  expect(calls).toEqual([
+    `run:${repositoryRoot}`,
+    `run:${repositoryRoot}`,
+    `run:${repositoryRoot}`,
+    `open:${reportPath}`,
+  ]);
   expect(opened.output).toContain(`Opened ${reportPath}`);
 });
 

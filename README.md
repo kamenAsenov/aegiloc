@@ -29,8 +29,9 @@ pnpm demo
 ```
 
 The command runs the [deterministic local storefront](examples/realistic-demo), verifies its evidence
-manifest, and prints the absolute path to the report. Use `pnpm cli demo --force --open` when you
-explicitly want Healwright to open it. Existing demo output is never replaced without `--force`.
+manifest, and prints the absolute path to the report. Existing demo output is never replaced without
+`--force`: review it, then use `pnpm cli demo --force` to rerun. Add `--open` only when you explicitly
+want Healwright to open the report: `pnpm cli demo --force --open`.
 
 ![Healwright v1 evidence report](docs/assets/healwright-report-v1.png)
 
@@ -96,7 +97,7 @@ pnpm build
 node dist/cli.js doctor
 node dist/cli.js init --registry healwright.targets.json
 node dist/cli.js validate --registry healwright.targets.json
-node dist/cli.js demo --force
+node dist/cli.js demo
 node dist/cli.js view \
   --history test-results/realistic-demo/evidence/history.jsonl \
   --summary test-results/realistic-demo/evidence/summary.json \

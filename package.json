@@ -96,7 +96,7 @@
     "cli": "pnpm build && node dist/cli.js",
     "docs:check": "node scripts/verify-docs.mjs",
     "docs:screenshot": "pnpm build && node scripts/capture-report-preview.mjs",
-    "demo": "pnpm build && node dist/cli.js demo --force",
+    "demo": "pnpm build && node dist/cli.js demo",
     "evidence:attest": "pnpm build && node dist/cli.js attest --history test-results/healwright/history.jsonl --summary test-results/healwright/summary.json --out test-results/healwright/manifest.json --force",
     "evidence:manifest:verify": "node dist/cli.js verify --manifest test-results/healwright/manifest.json",
     "evidence:verify": "pnpm build && node scripts/verify-evidence.mjs",
