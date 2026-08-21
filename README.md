@@ -5,151 +5,107 @@
 
 **A conservative, deterministic self-healing layer for Playwright Test.**
 
-Current milestone: **v0.7.0 Technical Preview · experimental · pre-1.0 · cross-browser qualified**
-
-Healwright recovers from genuine UI locator drift through an explicit wrapper, inspectable scoring,
-and guarded execution. It is a developer tool, not magic AI: the same reviewed fingerprint and live
-candidates always produce the same ranking.
+Healwright recovers only proven locator drift through an explicit wrapper, semantic gates, fixed
+scoring, and guarded execution. A false-positive heal is worse than a failed heal, so weak,
+ambiguous, contradictory, protected, or stale evidence fails closed.
 
 ```ts
 await healer.target('checkout.placeOrder').click();
 ```
 
-> [!IMPORTANT]
-> A false-positive heal is worse than a failed heal. Weak, ambiguous, contradictory, protected, or
-> stale evidence fails closed.
+**v1.0.0 is a stable-API evaluation release for external review and carefully scoped pilots.** It is
+not a claim of production adoption, and the package is not published to npm.
 
-The package is not published to npm, and no `v0.7.0` tag or GitHub Release is implied by this
-technical-preview branch. Use a local checkout for evaluation.
+## Try the interactive local demo
 
-## Why it exists
-
-A selector can change while the user-facing control stays the same. Ordinary tests fail safely;
-naive healing can do something worse by interacting with a plausible but incorrect element and
-hiding a product regression.
-
-Healwright takes a narrower path: prove that the primary locator is genuinely missing, collect only
-action-compatible replacements, rank them deterministically, and execute only after every safety
-gate agrees.
-
-## Safety model in plain English
-
-- **Primary first:** Playwright runs the registered locator normally before recovery is considered.
-- **Missing means missing:** healing begins only after a timeout, no observed attachment, and a final
-  locator count of zero.
-- **Semantics before scores:** role, accessible identity, tag, and action contradictions cannot be
-  outweighed by a number.
-- **Confidence plus separation:** the best candidate must clear both a threshold and a safe margin
-  over the runner-up.
-- **Two-pass agreement:** guarded execution recollects the page and requires the same unique winner.
-- **Human-controlled change:** Healwright produces evidence and review-only proposals; it never
-  rewrites tests or registries.
-
-Assertions, business logic, authentication, test data, APIs, network failures, and real regressions
-remain ordinary test failures. Read the full [safety model](docs/SAFETY-MODEL.md) and
-[when not to use Healwright](docs/WHEN-NOT-TO-USE.md).
-
-## Quick start
-
-Requirements: Node.js 20+, pnpm 11, and Chromium for the primary demo. Firefox and WebKit are used
-by the qualification gate.
+Requirements: Node.js 22 or 24, pnpm 11, and Playwright Chromium.
 
 ```bash
 git clone https://github.com/kamenAsenov/healwright.git
 cd healwright
 pnpm install --frozen-lockfile
 pnpm exec playwright install chromium
-pnpm build
-node dist/cli.js doctor
-pnpm example:realistic
+pnpm demo
 ```
 
-The last command runs a normal checkout flow, a safe healed locator drift, an intentionally
-ambiguous rejected drift, and then generates a local static evidence report.
+The command runs the [deterministic local storefront](examples/realistic-demo), verifies its evidence
+manifest, and prints the absolute path to the report. Use `pnpm cli demo --force --open` when you
+explicitly want Healwright to open it. Existing demo output is never replaced without `--force`.
 
-## CLI usage
+![Healwright v1 evidence report](docs/assets/healwright-report-v1.png)
 
-From this unpublished checkout, run `node dist/cli.js`. A future installed package exposes the same
-commands as `healwright` through its package `bin` entry.
+| Demo case       | What happens                                                       | Result                |
+| --------------- | ------------------------------------------------------------------ | --------------------- |
+| Normal          | The ordinary Playwright locator succeeds; Healwright does nothing. | Ordinary pass         |
+| Safely healed   | One replacement clears confidence, margin, and recheck.            | `PASSED_WITH_HEALING` |
+| Ambiguous drift | Two candidates tie, so neither replacement may execute.            | Rejected safely       |
 
-```bash
-node dist/cli.js --help
-node dist/cli.js init --registry healwright.targets.json
-node dist/cli.js validate --registry healwright.targets.json
-node dist/cli.js doctor
-node dist/cli.js attest \
-  --history test-results/healwright/history.jsonl \
-  --summary test-results/healwright/summary.json \
-  --out test-results/healwright/manifest.json
-node dist/cli.js verify --manifest test-results/healwright/manifest.json
-node dist/cli.js view \
-  --history test-results/realistic-demo/evidence/history.jsonl \
-  --summary test-results/realistic-demo/evidence/summary.json \
-  --out test-results/realistic-demo/viewer --force
-```
+Start with [when to use it](docs/ADOPTION.md#when-to-use-healwright) and
+[when not to use it](docs/WHEN-NOT-TO-USE.md).
 
-`attest` can create an unsigned integrity manifest or authenticate it with an optional external
-HMAC key. `verify` detects missing, truncated, reordered, and replaced evidence. See the
-[CLI reference](docs/CLI.md) and [evidence integrity guide](docs/EVIDENCE-INTEGRITY.md).
+## The safety contract
 
-## Run the realistic demo
+- **Primary first:** Playwright runs the registered locator normally before recovery is considered.
+- **Missing means missing:** healing starts only after timeout, no observed attachment, and a final
+  count of zero.
+- **Semantics before scores:** incompatible role, accessible identity, tag, or action cannot be
+  outweighed by a number.
+- **Confidence plus separation:** the winner must clear both a threshold and a safe runner-up margin.
+- **Two-pass agreement:** guarded execution recollects the page and requires the same unique winner.
+- **Human-controlled change:** evidence and proposals are review-only; tests and registries are never
+  silently rewritten.
 
-```bash
-pnpm example:realistic
-```
+Assertions, expected values, business logic, authentication, test data, APIs, network failures, and
+real product regressions remain ordinary failures. Read the [full safety model](docs/SAFETY-MODEL.md).
 
-The deterministic local storefront demonstrates three boundaries:
+## What v1 supports
 
-1. ordinary Playwright is still the baseline when nothing drifted;
-2. a capitalization-only discount-button locator change heals with one clear semantic winner;
-3. two indistinguishable replacement checkboxes are rejected and remain unchecked.
-
-There is no external demo dependency. Read the [demo guide](docs/REALISTIC-DEMO.md) or inspect
-[`examples/realistic-demo`](examples/realistic-demo).
-
-## Open the report viewer
-
-After the realistic demo:
-
-```bash
-open test-results/realistic-demo/viewer/index.html
-```
-
-On Linux, use `xdg-open`; on Windows, use `start`. The output is a single self-contained static HTML
-file with run metrics, assessment reasoning, ranked candidates, successful heals, rejected or
-protected decisions, and sanitized evidence references. It contains no remote scripts or telemetry.
-
-See the [report viewer reference](docs/REPORT-VIEWER.md).
-
-## What it supports today
-
-- explicit `click`, `fill`, `check`, and `selectOption` target actions;
+- `click`, `fill`, `check`, and `selectOption` through `healer.target(key)`;
 - role, label, test-id, text, and CSS primary locators;
 - version-controlled JSON targets, fingerprints, policies, and JSON Schemas;
 - `off`, `observe`, `guarded`, and `strict-ci` modes;
-- accessible role/name, stable attributes, text, tag, ancestor, neighbor, and low-weight geometry
-  scoring;
+- accessible role/name, stable attributes, visible text, tag, ancestor/neighbor context, and
+  low-weight geometry scoring;
 - per-target `automatic` and `proposal-only` execution risk;
-- JSONL evidence, summaries, screenshots, visible `PASSED_WITH_HEALING`, review-only proposals, and
+- JSONL evidence, screenshots, summaries, visible healed results, review-only proposals, and
   governance budgets;
-- optional HMAC-authenticated evidence manifests with strict key-file handling;
-- qualified core runtime behavior on Chromium, Firefox, and WebKit with enforced collection budgets;
-- deterministic CycloneDX SBOMs, reproducible package checks, dependency review, and provenance-ready
-  CI artifacts;
-- a zero-dependency onboarding CLI and static evidence viewer.
+- integrity manifests plus optional HMAC authentication with external keys;
+- a self-contained local report with search, filters, decision timelines, candidate scoring, trust
+  status, and next-action guidance;
+- deterministic SBOM and package checks, immutable CI actions, and provenance/SBOM attestations.
 
-## What it intentionally does not support yet
+The full suite is Chromium-first. A focused core safety matrix qualifies Firefox and WebKit against
+the locked Playwright version; this is not a broad cross-browser claim.
 
-- healing assertions, expected values, authentication, business logic, APIs, network failures, or
-  test-data problems;
-- silent locator or source rewriting;
-- mandatory LLMs, API keys, cloud services, databases, OCR, or visual AI;
-- public-key signatures, non-repudiation, managed key storage, or long-term artifact storage;
-- a stable v1 API or production-adoption claim;
-- an npm installation path—the package remains unpublished during this preview.
+## Adopt it carefully
 
-See [known risks](docs/KNOWN-RISKS.md) and the detailed
-[technical limitations](docs/TECHNICAL-REFERENCE.md#limitations).
+The [adoption guide](docs/ADOPTION.md) covers minimal integration, fixtures and Page Objects,
+execution-risk choices, healed-pass review, proposals, CI artifacts, retention, and sensitive
+evidence. The consumer-shaped project in
+[`examples/basic-playwright`](examples/basic-playwright) imports only public package APIs and runs in
+CI. The [troubleshooting decision tree](docs/TROUBLESHOOTING.md) starts from the observed outcome
+instead of suggesting unsafe threshold changes.
+
+## CLI
+
+From a checkout, build once and run `node dist/cli.js`; an installed package would expose the same
+entry point as `healwright`.
+
+```bash
+pnpm build
+node dist/cli.js doctor
+node dist/cli.js init --registry healwright.targets.json
+node dist/cli.js validate --registry healwright.targets.json
+node dist/cli.js demo --force
+node dist/cli.js view \
+  --history test-results/realistic-demo/evidence/history.jsonl \
+  --summary test-results/realistic-demo/evidence/summary.json \
+  --manifest test-results/realistic-demo/evidence/manifest.json \
+  --out test-results/realistic-demo/viewer --force
+```
+
+See the [CLI reference](docs/CLI.md), [report guide](docs/REPORT-VIEWER.md), and
+[evidence trust guide](docs/EVIDENCE-INTEGRITY.md).
 
 ## Architecture
 
@@ -157,63 +113,51 @@ See [known risks](docs/KNOWN-RISKS.md) and the detailed
 flowchart LR
   A["Semantic target action"] --> B["Primary Playwright locator"]
   B -->|"ordinary success"| C["Normal test result"]
-  B -->|"proven missing"| D["Candidate collection"]
-  D --> E["Deterministic scoring + semantic gates"]
+  B -->|"proven missing"| D["Compatible live candidates"]
+  D --> E["Semantic gates + deterministic scoring"]
   E -->|"weak or ambiguous"| F["Fail closed + audit"]
-  E -->|"high confidence"| G["Fresh second-pass validation"]
-  G -->|"same unique winner"| H["Guarded action + PASSED_WITH_HEALING"]
-  H --> I["JSONL evidence + integrity manifest"]
-  I --> J["Static report + governance"]
+  E -->|"high confidence"| G["Fresh guarded validation"]
+  G -->|"same unique winner"| H["Action + PASSED_WITH_HEALING"]
+  H --> I["Evidence + integrity manifest"]
+  I --> J["Local report + governance"]
 ```
 
-The implementation uses public Playwright APIs only. The deeper component and evidence flow is in
-the [architecture document](docs/ARCHITECTURE.md).
+The implementation uses public Playwright APIs only. See the
+[architecture document](docs/ARCHITECTURE.md) and [technical reference](docs/TECHNICAL-REFERENCE.md).
 
-## Quality and evaluation
+## Stable v1 contract
+
+The public package exports, reporter subpath, schema subpaths, Node/Playwright ranges, and versioned
+compatibility rules are documented in the [compatibility policy](docs/COMPATIBILITY.md). The
+machine-readable inventory is checked in at [`api/public-api.json`](api/public-api.json) and verified
+by CI to catch unreviewed surface changes.
+
+- Node.js: `>=22 <25` (CI contract on 22 and 24)
+- `@playwright/test`: `>=1.50.0 <2` (release qualification locked to 1.62.1)
+- package format: strict ESM with TypeScript declarations and source maps
+
+## Verify the repository
 
 ```bash
 pnpm release:check
 ```
 
-The release gate runs formatting, documentation validation, strict lint/type checking, builds,
-package contracts, reproducibility and SBOM checks, parallel reporter tests, Chromium plus
-Firefox/WebKit qualification, evidence-manifest verification, governance, both examples, and the
-realistic demo. It does not publish, tag, push, or create a GitHub Release.
-
-## Roadmap
-
-The next priorities are API compatibility review, longer-running reliability benchmarks, public-key
-attestation options, and operational adoption guidance—not broader automatic healing. See the
-[roadmap](ROADMAP.md).
+The gate runs formatting, documentation, strict lint/type checks, API and package contracts,
+reproducibility, deterministic SBOM checks, unit/browser/adversarial suites, reporter concurrency,
+evidence, governance, consumer examples, the realistic demo, and focused Firefox/WebKit
+qualification. It does not publish to npm.
 
 ## Documentation
 
 - [Quick start](docs/QUICKSTART.md)
-- [CLI reference](docs/CLI.md)
-- [Report viewer](docs/REPORT-VIEWER.md)
-- [Evidence integrity and authentication](docs/EVIDENCE-INTEGRITY.md)
-- [Supply-chain controls](docs/SUPPLY-CHAIN.md)
+- [Adoption guide](docs/ADOPTION.md)
+- [Troubleshooting decision tree](docs/TROUBLESHOOTING.md)
+- [CLI](docs/CLI.md) and [report viewer](docs/REPORT-VIEWER.md)
+- [Evidence integrity](docs/EVIDENCE-INTEGRITY.md) and [supply chain](docs/SUPPLY-CHAIN.md)
 - [Cross-browser qualification](docs/CROSS-BROWSER-QUALIFICATION.md)
-- [Realistic demo](docs/REALISTIC-DEMO.md)
-- [Basic consumer example](examples/basic-playwright)
-- [Architecture](docs/ARCHITECTURE.md)
-- [Safety model](docs/SAFETY-MODEL.md)
-- [Known risks](docs/KNOWN-RISKS.md)
-- [When not to use Healwright](docs/WHEN-NOT-TO-USE.md)
-- [Technical reference](docs/TECHNICAL-REFERENCE.md)
-- [Governance policy](docs/POLICY.md)
-- [Product positioning](docs/PRODUCT-POSITIONING.md)
-- [v0.6.0 technical-preview notes](docs/releases/v0.6.0.md)
-- [v0.7.0 technical-preview notes](docs/releases/v0.7.0.md)
-- [Release process](docs/RELEASE-PROCESS.md)
+- [Known risks](docs/KNOWN-RISKS.md) and [non-use cases](docs/WHEN-NOT-TO-USE.md)
+- [Compatibility policy](docs/COMPATIBILITY.md) and [v1.0.0 notes](docs/releases/v1.0.0.md)
 - [Contributing](CONTRIBUTING.md) and [security reporting](SECURITY.md)
-
-## Portfolio note
-
-Healwright is a technical portfolio project demonstrating strict TypeScript framework design,
-public Playwright integration, deterministic scoring, adversarial safety testing, audit artifacts,
-package contracts, CLI design, static report generation, and CI governance. It is ready to evaluate
-and show as a technical preview, not presented as production-proven software.
 
 ## License
 

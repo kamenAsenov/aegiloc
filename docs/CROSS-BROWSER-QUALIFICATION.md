@@ -1,6 +1,6 @@
 # Cross-browser qualification
 
-Healwright remains Chromium-first for its full portfolio suite and realistic demo. v0.7 also runs a
+Healwright remains Chromium-first for its full portfolio suite and realistic demo. v1.0 also runs a
 focused core qualification suite on Playwright Firefox and WebKit.
 
 ```bash
@@ -30,3 +30,7 @@ Qualification means the checked contracts pass for the Playwright/browser versio
 lockfile and CI runner. It is not a promise about arbitrary browser versions, custom browser builds,
 mobile engines, every accessibility implementation, or every application widget. Consumers should
 run the matrix against their supported environment before relying on automatic healing.
+
+Package/API contracts run on Node.js 22 and 24 separately. Browser qualification uses the frozen
+Playwright 1.62.1 development version; the public peer range is documented in the
+[compatibility policy](COMPATIBILITY.md).

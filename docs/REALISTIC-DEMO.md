@@ -9,7 +9,7 @@ ordinary behavior, safe recovery, rejection, evidence, and the report viewer wit
 ```bash
 pnpm install --frozen-lockfile
 pnpm exec playwright install chromium
-pnpm example:realistic
+pnpm demo
 ```
 
 No public website, account, API key, Docker service, database, or network fixture is required.
@@ -44,11 +44,12 @@ test-results/realistic-demo/viewer/index.html
 playwright-report/realistic-demo/index.html
 ```
 
-The command creates and verifies an unsigned integrity manifest, then clears only the ignored
+The command creates and verifies an unsigned integrity manifest, renders the viewer from those exact
+manifest inputs, then clears only the ignored
 `test-results/realistic-demo` directory before the next execution so demonstrations remain
 deterministic. It never deletes or edits source files.
 
-Open the static viewer with:
+Run `pnpm cli demo --force --open` to request opening explicitly, or open the static viewer with:
 
 ```bash
 open test-results/realistic-demo/viewer/index.html

@@ -1,6 +1,6 @@
 # Evidence integrity and optional authentication
 
-Healwright v0.7 can bind canonical `history.jsonl` and `summary.json` to a strict manifest. This
+Healwright v1 can bind canonical `history.jsonl` and `summary.json` to a strict manifest. This
 detects missing, truncated, reordered, replaced, or mismatched evidence before downstream review.
 Authentication is optional: local evaluation still requires no key or external service.
 

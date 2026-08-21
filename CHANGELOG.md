@@ -7,6 +7,38 @@ release tags. Package metadata is publication-ready, but no npm package is curre
 
 No changes yet.
 
+## [1.0.0] - 2026-08-21
+
+### Added
+
+- A guided `healwright demo` / `--open` journey and deliberate `view --open` behavior with portable
+  fallback paths and overwrite protection.
+- A polished self-contained report with run/trust hierarchy, decision timelines, candidate signal
+  tables, filters, responsive and keyboard behavior, next-action guidance, and restrictive CSP.
+- Manifest-aware report generation that distinguishes canonical validation, integrity verification,
+  and optional HMAC authentication.
+- A machine-readable public API/schema/support snapshot plus SemVer and compatibility policy.
+- Adoption, Page Object/fixture, CI evidence, troubleshooting decision-tree, and v1 release guidance.
+- A reproducible screenshot of deterministic report evidence for the README.
+
+### Changed
+
+- Stable v1 support is Node.js 22/24 and `@playwright/test >=1.50.0 <2`, enforced through package
+  metadata and a Node compatibility CI matrix.
+- The development compiler is TypeScript 6.0.3, validated by strict lint, declaration build, public
+  API snapshot, package-consumer contracts, and the complete test suite.
+- README and product documentation now lead with the one-command evaluator journey and exact
+  Chromium-first / focused Firefox-WebKit scope.
+- GitHub Actions are pinned to immutable revisions with readable version comments.
+- CycloneDX output includes a deterministic lockfile-derived UUID so GitHub accepts SBOM attestation.
+
+### Security
+
+- Viewer generation binds manifest verification to the exact history and summary input paths,
+  escapes evidence in markup/data attributes, and authorizes only a hashed static filter script.
+- Demo/browser opening remains explicit, source and registries are not rewritten, and healing scope or
+  thresholds are unchanged.
+
 ## [0.7.0] - 2026-08-20 (source technical preview)
 
 Prepared for review; not tagged, published to npm, or published as a GitHub Release.
@@ -152,7 +184,8 @@ Prepared for review; not tagged, published to npm, or published as a GitHub Rele
 [0.4.0]: https://github.com/kamenAsenov/healwright/compare/v0.3.1...v0.4.0
 [0.6.0]: https://github.com/kamenAsenov/healwright/compare/v0.4.0...v0.6.0
 [0.7.0]: https://github.com/kamenAsenov/healwright/compare/v0.6.0...v0.7.0
-[Unreleased]: https://github.com/kamenAsenov/healwright/compare/v0.7.0...HEAD
+[1.0.0]: https://github.com/kamenAsenov/healwright/compare/v0.4.0...v1.0.0
+[Unreleased]: https://github.com/kamenAsenov/healwright/compare/v1.0.0...HEAD
 [0.3.1]: https://github.com/kamenAsenov/healwright/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/kamenAsenov/healwright/compare/82513a74882500d5d31a3c8d284a0727565cef77...v0.3.0
 [0.2.0]: https://github.com/kamenAsenov/healwright/tree/82513a74882500d5d31a3c8d284a0727565cef77

@@ -1,6 +1,6 @@
 # Realistic local storefront demo
 
-This deterministic example makes the v0.7 technical-preview behavior visible without depending on
+This deterministic example makes the v1.0 evaluation behavior visible without depending on
 an external site. It uses the same local checkout fixture for three intentionally different cases.
 
 ## Run it

@@ -1,7 +1,8 @@
 # Release process
 
-Healwright uses Semantic Versioning tags while the public API is pre-1.0. A tag records a verified
-repository checkpoint; npm publication is a separate, manual decision.
+Healwright uses Semantic Versioning for the stable public API described in the
+[compatibility policy](COMPATIBILITY.md). A tag records a verified repository checkpoint; npm
+publication is a separate, manual decision.
 
 ## 1. Choose the version and scope
 
@@ -10,8 +11,8 @@ repository checkpoint; npm publication is a separate, manual decision.
 - Update status text, migration guidance, examples, and the roadmap where behavior changed.
 - Keep schema versions independent unless their actual data contracts change.
 
-Pre-1.0 minor versions may change the public API with explicit migration notes. Patch versions should
-remain backward compatible.
+Within v1, breaking public API changes require a new major version. Snapshot changes require explicit
+review and compatible additions follow the documented minor/patch rules.
 
 ## 2. Prepare an isolated branch
 
