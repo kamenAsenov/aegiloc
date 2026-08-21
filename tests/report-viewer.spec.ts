@@ -1,4 +1,4 @@
-import { readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, symlink, writeFile } from 'node:fs/promises';
 
 import { expect, test } from '@playwright/test';
 
@@ -11,6 +11,7 @@ import {
   rankCandidates,
   renderReportViewer,
   serializeAuditHistory,
+  writeEvidenceManifest,
   type HealwrightAuditEvent,
 } from '../src/index.js';
 
@@ -99,7 +100,7 @@ function reportEvents(): readonly HealwrightAuditEvent[] {
   return [assessment, execution, rejected];
 }
 
-test('renders a practical report with summary, successful, and rejected sections', () => {
+test('renders a practical, self-contained v1 decision report', () => {
   const events = reportEvents();
   const summary = createAuditEvidenceSummary(events, '2026-08-18T20:01:00.000Z');
 
@@ -107,10 +108,17 @@ test('renders a practical report with summary, successful, and rejected sections
 
   expect(html).toContain('<h1>Storefront run</h1>');
   expect(html).toContain('Successful heals');
-  expect(html).toContain('Rejected and protected');
+  expect(html).toContain('Decision timeline');
+  expect(html).toContain('Passed with healing');
+  expect(html).toContain('Rejected safely');
+  expect(html).toContain('Compare ranked candidates (1)');
+  expect(html).toContain('Scoring signals');
+  expect(html).toContain('What should I do next?');
   expect(html).toContain('screenshots/before.png');
-  expect(html).toContain('v0.7.0 Technical Preview');
-  expect(html).toContain("default-src 'none'; style-src 'unsafe-inline'");
+  expect(html).toContain('v1.0.0 evaluation release');
+  expect(html).toMatch(/script-src 'sha256-[A-Za-z0-9+/=]+'/u);
+  expect(html).toContain("default-src 'none'");
+  expect(html).not.toMatch(/(?:src|href)=["']https?:/u);
 });
 
 test('escapes user-controlled evidence strings instead of creating executable markup', () => {
@@ -128,8 +136,9 @@ test('renders clear empty states for a run with no drift evidence', () => {
 
   const html = renderReportViewer([], summary);
 
-  expect(html).toContain('No locator drift assessments were recorded for this run.');
-  expect(html).toContain('No replacement locator was executed.');
+  expect(html).toContain('No locator drift assessment was recorded.');
+  expect(html).toContain('No Healwright action is required.');
+  expect(html).toContain('No locator drift evidence');
 });
 
 test('generates a self-contained report and refuses silent overwrite', async ({
@@ -150,7 +159,11 @@ test('generates a self-contained report and refuses silent overwrite', async ({
     outputDirectory,
   });
 
-  expect(generated).toMatchObject({ eventCount: 3, successfulHealingCount: 1 });
+  expect(generated).toMatchObject({
+    eventCount: 3,
+    successfulHealingCount: 1,
+    evidenceTrust: { level: 'validated' },
+  });
   expect(await readFile(generated.indexPath, 'utf8')).toContain('Healwright evidence report');
   await expect(generateReportViewer({ historyPath, summaryPath, outputDirectory })).rejects.toThrow(
     /Refusing to overwrite/,
@@ -158,6 +171,139 @@ test('generates a self-contained report and refuses silent overwrite', async ({
   await expect(
     generateReportViewer({ historyPath, summaryPath, outputDirectory, force: true }),
   ).resolves.toMatchObject({ eventCount: 3 });
+});
+
+test('verifies an integrity manifest before rendering and discloses the trust level', async ({
+  browserName,
+}, testInfo) => {
+  void browserName;
+  const events = reportEvents();
+  const historyPath = testInfo.outputPath('integrity', 'history.jsonl');
+  const summaryPath = testInfo.outputPath('integrity', 'summary.json');
+  const manifestPath = testInfo.outputPath('integrity', 'manifest.json');
+  const outputDirectory = testInfo.outputPath('integrity-viewer');
+  await mkdir(testInfo.outputPath('integrity'), { recursive: true });
+  await writeFile(historyPath, serializeAuditHistory(events), 'utf8');
+  await writeFile(
+    summaryPath,
+    `${JSON.stringify(createAuditEvidenceSummary(events, '2026-08-18T20:01:00.000Z'), null, 2)}\n`,
+    'utf8',
+  );
+  await writeEvidenceManifest({ historyPath, summaryPath, manifestPath });
+
+  const generated = await generateReportViewer({
+    historyPath,
+    summaryPath,
+    manifestPath,
+    outputDirectory,
+  });
+
+  expect(generated.evidenceTrust).toEqual({ level: 'integrity' });
+  expect(await readFile(generated.indexPath, 'utf8')).toContain('Evidence integrity verified');
+});
+
+test('refuses a symbolic-link report output directory', async ({ browserName }, testInfo) => {
+  void browserName;
+  test.skip(process.platform === 'win32', 'directory symbolic links require additional privileges');
+  const historyPath = testInfo.outputPath('symlink-history.jsonl');
+  const summaryPath = testInfo.outputPath('symlink-summary.json');
+  const realDirectory = testInfo.outputPath('real-viewer');
+  const linkedDirectory = testInfo.outputPath('linked-viewer');
+  await writeFile(historyPath, serializeAuditHistory([]), 'utf8');
+  await writeFile(
+    summaryPath,
+    `${JSON.stringify(createAuditEvidenceSummary([], '2026-08-18T20:01:00.000Z'), null, 2)}\n`,
+    'utf8',
+  );
+  await mkdir(realDirectory, { recursive: true });
+  await symlink(realDirectory, linkedDirectory, 'dir');
+
+  await expect(
+    generateReportViewer({
+      historyPath,
+      summaryPath,
+      outputDirectory: linkedDirectory,
+      force: true,
+    }),
+  ).rejects.toThrow(/cannot be a symbolic link/);
+});
+
+test('renders authenticated evidence only after key verification', async ({
+  browserName,
+}, testInfo) => {
+  void browserName;
+  const events = reportEvents();
+  const historyPath = testInfo.outputPath('authenticated', 'history.jsonl');
+  const summaryPath = testInfo.outputPath('authenticated', 'summary.json');
+  const manifestPath = testInfo.outputPath('authenticated', 'manifest.json');
+  const key = Buffer.alloc(32, 0x41);
+  await mkdir(testInfo.outputPath('authenticated'), { recursive: true });
+  await writeFile(historyPath, serializeAuditHistory(events), 'utf8');
+  await writeFile(
+    summaryPath,
+    `${JSON.stringify(createAuditEvidenceSummary(events, '2026-08-18T20:01:00.000Z'), null, 2)}\n`,
+    'utf8',
+  );
+  await writeEvidenceManifest({
+    historyPath,
+    summaryPath,
+    manifestPath,
+    authentication: { key, keyId: 'release-evidence' },
+  });
+
+  const generated = await generateReportViewer({
+    historyPath,
+    summaryPath,
+    manifestPath,
+    outputDirectory: testInfo.outputPath('authenticated-viewer'),
+    key,
+    expectedKeyId: 'release-evidence',
+    requireAuthenticated: true,
+  });
+
+  expect(generated.evidenceTrust).toEqual({
+    level: 'authenticated',
+    keyId: 'release-evidence',
+  });
+  expect(await readFile(generated.indexPath, 'utf8')).toContain('Evidence authenticated');
+});
+
+test('refuses a valid manifest that describes different report input paths', async ({
+  browserName,
+}, testInfo) => {
+  void browserName;
+  const events = reportEvents();
+  const manifestHistoryPath = testInfo.outputPath('manifest-source', 'history.jsonl');
+  const manifestSummaryPath = testInfo.outputPath('manifest-source', 'summary.json');
+  const manifestPath = testInfo.outputPath('manifest-source', 'manifest.json');
+  const otherHistoryPath = testInfo.outputPath('other-source', 'history.jsonl');
+  const otherSummaryPath = testInfo.outputPath('other-source', 'summary.json');
+  const history = serializeAuditHistory(events);
+  const summary = `${JSON.stringify(createAuditEvidenceSummary(events, '2026-08-18T20:01:00.000Z'), null, 2)}\n`;
+  await Promise.all([
+    mkdir(testInfo.outputPath('manifest-source'), { recursive: true }),
+    mkdir(testInfo.outputPath('other-source'), { recursive: true }),
+  ]);
+  await Promise.all([
+    writeFile(manifestHistoryPath, history, 'utf8'),
+    writeFile(manifestSummaryPath, summary, 'utf8'),
+    writeFile(otherHistoryPath, history, 'utf8'),
+    writeFile(otherSummaryPath, summary, 'utf8'),
+  ]);
+  await writeEvidenceManifest({
+    historyPath: manifestHistoryPath,
+    summaryPath: manifestSummaryPath,
+    manifestPath,
+  });
+
+  await expect(
+    generateReportViewer({
+      historyPath: otherHistoryPath,
+      summaryPath: otherSummaryPath,
+      manifestPath,
+      outputDirectory: testInfo.outputPath('mismatched-viewer'),
+    }),
+  ).rejects.toThrow(/inputs do not match the verified evidence manifest/);
 });
 
 test('rejects a summary that does not match canonical history', async ({

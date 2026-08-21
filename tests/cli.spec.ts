@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process';
-import { chmod, readFile, symlink, writeFile } from 'node:fs/promises';
+import { chmod, mkdir, readFile, symlink, writeFile } from 'node:fs/promises';
 import { promisify } from 'node:util';
 
 import { expect, test } from '@playwright/test';
@@ -9,6 +9,7 @@ import {
   createAuditEvidenceSummary,
   serializeAuditHistory,
   writeAuditEvidence,
+  writeEvidenceManifest,
 } from '../src/index.js';
 
 const execFileAsync = promisify(execFile);
@@ -30,6 +31,11 @@ function captureIo(): { readonly io: CliIo; output: string; errors: string } {
 }
 
 test('parses the documented commands and rejects incomplete integrity options', () => {
+  expect(parseCliArguments(['demo', '--force', '--open'])).toEqual({
+    command: 'demo',
+    force: true,
+    open: true,
+  });
   expect(parseCliArguments(['init', '--registry', 'targets.json', '--force'])).toEqual({
     command: 'init',
     registryPath: 'targets.json',
@@ -63,6 +69,36 @@ test('parses the documented commands and rejects incomplete integrity options', 
     manifestPath: 'manifest.json',
     requireAuthenticated: true,
   });
+  expect(
+    parseCliArguments([
+      'view',
+      '--history',
+      'history.jsonl',
+      '--summary',
+      'summary.json',
+      '--out',
+      'report',
+      '--manifest',
+      'manifest.json',
+      '--key-file',
+      'key',
+      '--key-id',
+      'release-key',
+      '--require-authenticated',
+      '--open',
+    ]),
+  ).toEqual({
+    command: 'view',
+    historyPath: 'history.jsonl',
+    summaryPath: 'summary.json',
+    outputDirectory: 'report',
+    force: false,
+    open: true,
+    manifestPath: 'manifest.json',
+    keyFilePath: 'key',
+    expectedKeyId: 'release-key',
+    requireAuthenticated: true,
+  });
   expect(() =>
     parseCliArguments([
       'attest',
@@ -80,6 +116,18 @@ test('parses the documented commands and rejects incomplete integrity options', 
     parseCliArguments(['verify', '--manifest', 'manifest.json', '--key-id', 'key']),
   ).toThrow(/requires --key-file/);
   expect(() => parseCliArguments(['view', '--history', 'history.jsonl'])).toThrow(/view requires/);
+  expect(() =>
+    parseCliArguments([
+      'view',
+      '--history',
+      'history.jsonl',
+      '--summary',
+      'summary.json',
+      '--out',
+      'report',
+      '--require-authenticated',
+    ]),
+  ).toThrow(/requires --manifest/);
   expect(() => parseCliArguments(['unknown'])).toThrow(/Unknown command/);
 });
 
@@ -89,6 +137,7 @@ test('runs the built CLI help as a real process smoke test', async () => {
   const result = await execFileAsync(process.execPath, [cliPath.pathname, '--help']);
 
   expect(result.stdout).toContain('healwright init');
+  expect(result.stdout).toContain('healwright demo');
   expect(result.stdout).toContain('healwright attest');
   expect(result.stdout).toContain('No command rewrites tests');
 });
@@ -299,7 +348,134 @@ test('view creates validated static HTML through the CLI', async ({ browserName 
     ),
   ).toBe(0);
   expect(capture.output).toContain('including 0 successful heal(s)');
+  expect(capture.output).toContain('trust=validated');
   expect(await readFile(`${reportPath}/index.html`, 'utf8')).toContain(
-    'No locator drift assessments were recorded',
+    'No locator drift assessment was recorded',
   );
+});
+
+test('demo is deterministic, refuses accidental replacement, and opens only on request', async ({
+  browserName,
+}, testInfo) => {
+  void browserName;
+  const repositoryRoot = testInfo.outputPath('demo-repository');
+  const reportPath = `${repositoryRoot}/test-results/realistic-demo/viewer/index.html`;
+  const calls: string[] = [];
+  const runDemo = async (root: string): Promise<void> => {
+    calls.push(`run:${root}`);
+    await mkdir(`${root}/test-results/realistic-demo/viewer`, { recursive: true });
+    await writeFile(reportPath, '<!doctype html><title>demo</title>\n', 'utf8');
+  };
+  const openPath = (path: string): Promise<void> => {
+    calls.push(`open:${path}`);
+    return Promise.resolve();
+  };
+  const first = captureIo();
+
+  expect(
+    await runCli(['demo', '--force'], {
+      io: first.io,
+      repositoryRoot,
+      runDemo,
+      openPath,
+    }),
+  ).toBe(0);
+  expect(first.output).toContain('ordinary Playwright, guarded healing, and ambiguous rejection');
+  expect(first.output).toContain(reportPath);
+  expect(calls).toEqual([`run:${repositoryRoot}`]);
+
+  const refused = captureIo();
+  expect(await runCli(['demo'], { io: refused.io, repositoryRoot, runDemo, openPath })).toBe(1);
+  expect(refused.errors).toContain('Refusing to replace existing demo output');
+
+  const opened = captureIo();
+  expect(
+    await runCli(['demo', '--force', '--open'], {
+      io: opened.io,
+      repositoryRoot,
+      runDemo,
+      openPath,
+    }),
+  ).toBe(0);
+  expect(calls.at(-1)).toBe(`open:${reportPath}`);
+  expect(opened.output).toContain(`Opened ${reportPath}`);
+});
+
+test('view verifies the supplied manifest and opens only after successful generation', async ({
+  browserName,
+}, testInfo) => {
+  void browserName;
+  const historyPath = testInfo.outputPath('manifest-view', 'history.jsonl');
+  const summaryPath = testInfo.outputPath('manifest-view', 'summary.json');
+  const manifestPath = testInfo.outputPath('manifest-view', 'manifest.json');
+  const outputDirectory = testInfo.outputPath('manifest-report');
+  await writeAuditEvidence([], {
+    historyPath,
+    summaryPath,
+    generatedAt: '2026-08-21T09:00:00.000Z',
+  });
+  await writeEvidenceManifest({ historyPath, summaryPath, manifestPath });
+  let openedPath: string | undefined;
+  const capture = captureIo();
+
+  expect(
+    await runCli(
+      [
+        'view',
+        '--history',
+        historyPath,
+        '--summary',
+        summaryPath,
+        '--manifest',
+        manifestPath,
+        '--out',
+        outputDirectory,
+        '--open',
+      ],
+      {
+        cwd: testInfo.outputDir,
+        io: capture.io,
+        openPath: (path) => {
+          openedPath = path;
+          return Promise.resolve();
+        },
+      },
+    ),
+  ).toBe(0);
+  expect(capture.output).toContain('trust=integrity');
+  expect(openedPath).toBe(`${outputDirectory}/index.html`);
+});
+
+test('demo reports a missing artifact and an opener failure without hiding the report path', async ({
+  browserName,
+}, testInfo) => {
+  void browserName;
+  const missingRoot = testInfo.outputPath('missing-demo-repository');
+  const missing = captureIo();
+  expect(
+    await runCli(['demo', '--force'], {
+      io: missing.io,
+      repositoryRoot: missingRoot,
+      runDemo: () => Promise.resolve(),
+    }),
+  ).toBe(1);
+  expect(missing.errors).toContain('without generating the expected report');
+
+  const openRoot = testInfo.outputPath('open-demo-repository');
+  const reportPath = `${openRoot}/test-results/realistic-demo/viewer/index.html`;
+  const openFailure = captureIo();
+  expect(
+    await runCli(['demo', '--force', '--open'], {
+      io: openFailure.io,
+      repositoryRoot: openRoot,
+      runDemo: async () => {
+        await mkdir(`${openRoot}/test-results/realistic-demo/viewer`, { recursive: true });
+        await writeFile(reportPath, '<!doctype html>\n', 'utf8');
+      },
+      openPath: () => Promise.reject(new Error('no desktop session')),
+    }),
+  ).toBe(0);
+  expect(openFailure.errors).toContain('could not open the report automatically');
+  expect(openFailure.errors).toContain(reportPath);
+  expect(openFailure.errors).toContain('Try:');
 });

@@ -1,6 +1,8 @@
+import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { access, lstat, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { verifyEvidenceManifest, writeEvidenceManifest } from './evidence-manifest.js';
 import { generateReportViewer } from './report-viewer.js';
@@ -9,6 +11,7 @@ import { loadTargetRegistry } from './registry.js';
 export type CliCommand =
   | { readonly command: 'help' }
   | { readonly command: 'doctor' }
+  | { readonly command: 'demo'; readonly force: boolean; readonly open: boolean }
   | { readonly command: 'init'; readonly registryPath: string; readonly force: boolean }
   | { readonly command: 'validate'; readonly registryPath: string }
   | {
@@ -33,6 +36,11 @@ export type CliCommand =
       readonly summaryPath: string;
       readonly outputDirectory: string;
       readonly force: boolean;
+      readonly open: boolean;
+      readonly manifestPath?: string;
+      readonly keyFilePath?: string;
+      readonly expectedKeyId?: string;
+      readonly requireAuthenticated: boolean;
     };
 
 export interface CliIo {
@@ -43,9 +51,13 @@ export interface CliIo {
 export interface RunCliOptions {
   readonly cwd?: string;
   readonly io?: CliIo;
+  /** Overrides the package root for deterministic CLI integration tests. */
+  readonly repositoryRoot?: string;
+  readonly runDemo?: (repositoryRoot: string) => Promise<void>;
+  readonly openPath?: (path: string) => Promise<void>;
 }
 
-const HELP = `Healwright v0.7.0 Technical Preview
+const HELP = `Healwright v1.0.0 Evaluation Release
 
 Conservative, deterministic self-healing for Playwright Test.
 
@@ -54,24 +66,27 @@ Usage:
   healwright init [--registry <path>] [--force]
   healwright validate --registry <path>
   healwright doctor
+  healwright demo [--force] [--open]
   healwright attest --history <path> --summary <path> --out <manifest> [--key-file <path> --key-id <id>] [--force]
   healwright verify --manifest <path> [--key-file <path>] [--key-id <id>] [--require-authenticated]
-  healwright view --history <path> --summary <path> --out <dir> [--force]
+  healwright view --history <path> --summary <path> --out <dir> [--manifest <path>] [--key-file <path> --key-id <id>] [--require-authenticated] [--force] [--open]
 
 Examples:
   healwright init
   healwright validate --registry healwright.targets.json
   healwright doctor
+  healwright demo --force
   healwright attest --history test-results/healwright/history.jsonl --summary test-results/healwright/summary.json --out test-results/healwright/manifest.json
   healwright verify --manifest test-results/healwright/manifest.json
   healwright view --history test-results/healwright/history.jsonl \\
-    --summary test-results/healwright/summary.json --out healwright-report
+    --summary test-results/healwright/summary.json --out healwright-report --open
 
 Safety:
   init never overwrites an existing registry unless --force is explicit.
   attest creates an integrity manifest; HMAC authentication is optional and keys stay external.
   verify detects missing, truncated, reordered, or replaced evidence and can require authentication.
-  view validates that the summary matches canonical history and emits static local HTML.
+  demo runs only the deterministic local repository fixture; --open is always explicit.
+  view validates evidence and emits static local HTML; it opens a browser only with --open.
   No command rewrites tests or applies locator proposals.
 `;
 
@@ -146,6 +161,13 @@ export function parseCliArguments(arguments_: readonly string[]): CliCommand {
     case 'doctor':
       rejectUnknownOptions(options, [], []);
       return { command };
+    case 'demo':
+      rejectUnknownOptions(options, [], ['--force', '--open']);
+      return {
+        command,
+        force: options.includes('--force'),
+        open: options.includes('--open'),
+      };
     case 'init': {
       rejectUnknownOptions(options, ['--registry'], ['--force']);
       return {
@@ -211,12 +233,28 @@ export function parseCliArguments(arguments_: readonly string[]): CliCommand {
       };
     }
     case 'view': {
-      rejectUnknownOptions(options, ['--history', '--summary', '--out'], ['--force']);
+      rejectUnknownOptions(
+        options,
+        ['--history', '--summary', '--out', '--manifest', '--key-file', '--key-id'],
+        ['--force', '--open', '--require-authenticated'],
+      );
       const historyPath = optionValue(options, '--history');
       const summaryPath = optionValue(options, '--summary');
       const outputDirectory = optionValue(options, '--out');
+      const manifestPath = optionValue(options, '--manifest');
+      const keyFilePath = optionValue(options, '--key-file');
+      const expectedKeyId = optionValue(options, '--key-id');
       if (historyPath === undefined || summaryPath === undefined || outputDirectory === undefined) {
         throw new TypeError('view requires --history <path>, --summary <path>, and --out <dir>');
+      }
+      if (keyFilePath !== undefined && manifestPath === undefined) {
+        throw new TypeError('view requires --manifest when --key-file is provided');
+      }
+      if (expectedKeyId !== undefined && keyFilePath === undefined) {
+        throw new TypeError('view requires --key-file when --key-id is provided');
+      }
+      if (options.includes('--require-authenticated') && manifestPath === undefined) {
+        throw new TypeError('view requires --manifest with --require-authenticated');
       }
       return {
         command,
@@ -224,6 +262,11 @@ export function parseCliArguments(arguments_: readonly string[]): CliCommand {
         summaryPath,
         outputDirectory,
         force: options.includes('--force'),
+        open: options.includes('--open'),
+        requireAuthenticated: options.includes('--require-authenticated'),
+        ...(manifestPath === undefined ? {} : { manifestPath }),
+        ...(keyFilePath === undefined ? {} : { keyFilePath }),
+        ...(expectedKeyId === undefined ? {} : { expectedKeyId }),
       };
     }
     default:
@@ -279,9 +322,88 @@ async function readEvidenceKey(path: string): Promise<Buffer> {
   return readFile(path);
 }
 
+function repositoryRoot(): string {
+  return fileURLToPath(new URL('..', import.meta.url));
+}
+
+async function runRepositoryDemo(root: string): Promise<void> {
+  const pnpmExecutable = process.env.npm_execpath;
+  const command = pnpmExecutable === undefined ? 'pnpm' : process.execPath;
+  const arguments_ = [
+    ...(pnpmExecutable === undefined ? [] : [pnpmExecutable]),
+    'example:realistic',
+  ];
+  await new Promise<void>((resolvePromise, reject) => {
+    const child = spawn(command, arguments_, {
+      cwd: root,
+      env: process.env,
+      stdio: 'inherit',
+    });
+    child.once('error', reject);
+    child.once('exit', (code, signal) => {
+      if (code === 0) {
+        resolvePromise();
+        return;
+      }
+      reject(
+        new Error(
+          `realistic demo failed${signal === null ? ` with exit ${String(code)}` : ` from signal ${signal}`}`,
+        ),
+      );
+    });
+  });
+}
+
+async function openLocalPath(path: string): Promise<void> {
+  const command =
+    process.platform === 'darwin'
+      ? 'open'
+      : process.platform === 'win32'
+        ? 'rundll32.exe'
+        : 'xdg-open';
+  const arguments_ = process.platform === 'win32' ? ['url.dll,FileProtocolHandler', path] : [path];
+  await new Promise<void>((resolvePromise, reject) => {
+    const child = spawn(command, arguments_, {
+      detached: true,
+      stdio: 'ignore',
+    });
+    child.once('error', reject);
+    child.once('spawn', () => {
+      child.unref();
+      resolvePromise();
+    });
+  });
+}
+
+function manualOpenCommand(path: string): string {
+  const quotedPath = JSON.stringify(path);
+  return process.platform === 'darwin'
+    ? `open ${quotedPath}`
+    : process.platform === 'win32'
+      ? `start "" ${quotedPath}`
+      : `xdg-open ${quotedPath}`;
+}
+
+async function openIfRequested(
+  requested: boolean,
+  path: string,
+  opener: (path: string) => Promise<void>,
+  io: CliIo,
+): Promise<void> {
+  if (!requested) return;
+  try {
+    await opener(path);
+    io.stdout(`Opened ${path}\n`);
+  } catch (error) {
+    io.stderr(
+      `healwright: could not open the report automatically (${messageForError(error)}). Open this path manually: ${path}\nTry: ${manualOpenCommand(path)}\n`,
+    );
+  }
+}
+
 async function runDoctor(io: CliIo, cwd: string): Promise<number> {
   const nodeMajor = Number.parseInt(process.versions.node.split('.')[0] ?? '', 10);
-  const nodeReady = Number.isInteger(nodeMajor) && nodeMajor >= 20;
+  const nodeReady = Number.isInteger(nodeMajor) && nodeMajor >= 22 && nodeMajor < 25;
   const require = createRequire(import.meta.url);
   let playwrightReady = true;
   try {
@@ -298,7 +420,11 @@ async function runDoctor(io: CliIo, cwd: string): Promise<number> {
   );
   const localRegistryReady = await pathExists(resolve(cwd, 'healwright.targets.json'));
   const checks = [
-    { label: `Node.js ${process.versions.node} (requires 20+)`, passed: nodeReady, required: true },
+    {
+      label: `Node.js ${process.versions.node} (requires 22.x or 24.x)`,
+      passed: nodeReady,
+      required: true,
+    },
     { label: '@playwright/test is resolvable', passed: playwrightReady, required: true },
     { label: 'compiled CLI artifact is present', passed: buildReady, required: true },
     { label: 'basic example registry is present', passed: exampleReady, required: false },
@@ -329,6 +455,8 @@ export async function runCli(
 ): Promise<number> {
   const io = options.io ?? defaultIo();
   const cwd = options.cwd ?? process.cwd();
+  const runDemo = options.runDemo ?? runRepositoryDemo;
+  const opener = options.openPath ?? openLocalPath;
   let parsed: CliCommand;
   try {
     parsed = parseCliArguments(arguments_);
@@ -344,6 +472,28 @@ export async function runCli(
         return 0;
       case 'doctor':
         return await runDoctor(io, cwd);
+      case 'demo': {
+        const root = options.repositoryRoot ?? repositoryRoot();
+        const reportPath = resolve(root, 'test-results/realistic-demo/viewer/index.html');
+        const outputRoot = resolve(root, 'test-results/realistic-demo');
+        if (!parsed.force && (await pathExists(outputRoot))) {
+          throw new Error(
+            `Refusing to replace existing demo output "${outputRoot}"; pass --force after reviewing it`,
+          );
+        }
+        io.stdout(
+          'Running the deterministic local demo: ordinary Playwright, guarded healing, and ambiguous rejection.\n',
+        );
+        await runDemo(root);
+        if (!(await pathExists(reportPath))) {
+          throw new Error(`demo completed without generating the expected report: ${reportPath}`);
+        }
+        io.stdout(
+          `Demo complete. Evidence was verified and the local report is ready:\n${reportPath}\nNext: review the healed and rejected decisions; no source or registry was changed.\n`,
+        );
+        await openIfRequested(parsed.open, reportPath, opener, io);
+        return 0;
+      }
       case 'init': {
         const registryPath = resolve(cwd, parsed.registryPath);
         await mkdir(dirname(registryPath), { recursive: true });
@@ -405,15 +555,28 @@ export async function runCli(
         return 0;
       }
       case 'view': {
+        const key =
+          parsed.keyFilePath === undefined
+            ? undefined
+            : await readEvidenceKey(resolve(cwd, parsed.keyFilePath));
         const result = await generateReportViewer({
           historyPath: resolve(cwd, parsed.historyPath),
           summaryPath: resolve(cwd, parsed.summaryPath),
           outputDirectory: resolve(cwd, parsed.outputDirectory),
           force: parsed.force,
+          ...(parsed.manifestPath === undefined
+            ? {}
+            : { manifestPath: resolve(cwd, parsed.manifestPath) }),
+          ...(key === undefined ? {} : { key }),
+          ...(parsed.expectedKeyId === undefined ? {} : { expectedKeyId: parsed.expectedKeyId }),
+          ...(parsed.requireAuthenticated
+            ? { requireAuthenticated: parsed.requireAuthenticated }
+            : {}),
         });
         io.stdout(
-          `Generated ${result.indexPath} from ${String(result.eventCount)} event(s), including ${String(result.successfulHealingCount)} successful heal(s).\n`,
+          `Generated ${result.indexPath} from ${String(result.eventCount)} event(s), including ${String(result.successfulHealingCount)} successful heal(s); trust=${result.evidenceTrust.level}.\n`,
         );
+        await openIfRequested(parsed.open, result.indexPath, opener, io);
         return 0;
       }
     }

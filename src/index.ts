@@ -168,6 +168,7 @@ export {
   renderReportViewer,
   type GenerateReportViewerOptions,
   type GeneratedReportViewer,
+  type ReportEvidenceTrust,
   type RenderReportViewerOptions,
 } from './report-viewer.js';
 export type {

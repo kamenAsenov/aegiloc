@@ -1,6 +1,6 @@
 {
   "name": "healwright",
-  "version": "0.7.0",
+  "version": "1.0.0",
   "private": false,
   "description": "A conservative, deterministic self-healing layer for Playwright Test.",
   "license": "MIT",
@@ -46,6 +46,7 @@
   },
   "files": [
     "dist",
+    "api/public-api.json",
     "src",
     "registry/*.schema.json",
     "performance/*.json",
@@ -73,6 +74,7 @@
     "scripts/verify-reproducible-pack.mjs",
     "README.md",
     "docs/*.md",
+    "docs/assets/*.png",
     "docs/releases/*.md",
     "CONTRIBUTING.md",
     "SECURITY.md",
@@ -85,29 +87,33 @@
   },
   "packageManager": "pnpm@11.19.0",
   "engines": {
-    "node": ">=20"
+    "node": ">=22 <25"
   },
   "scripts": {
+    "api:snapshot": "pnpm build && node scripts/generate-api-snapshot.mjs",
+    "api:snapshot:check": "pnpm build && node scripts/generate-api-snapshot.mjs --check",
     "build": "tsc -p tsconfig.build.json",
     "cli": "pnpm build && node dist/cli.js",
     "docs:check": "node scripts/verify-docs.mjs",
+    "docs:screenshot": "pnpm build && node scripts/capture-report-preview.mjs",
+    "demo": "pnpm build && node dist/cli.js demo --force",
     "evidence:attest": "pnpm build && node dist/cli.js attest --history test-results/healwright/history.jsonl --summary test-results/healwright/summary.json --out test-results/healwright/manifest.json --force",
     "evidence:manifest:verify": "node dist/cli.js verify --manifest test-results/healwright/manifest.json",
     "evidence:verify": "pnpm build && node scripts/verify-evidence.mjs",
     "example:verify": "pnpm build && tsc -p examples/basic-playwright/tsconfig.json && playwright test --config=examples/basic-playwright/playwright.config.ts",
-    "example:realistic": "node scripts/reset-realistic-demo.mjs && pnpm build && tsc -p examples/realistic-demo/tsconfig.json && playwright test --config=examples/realistic-demo/playwright.config.ts && node dist/cli.js attest --history test-results/realistic-demo/evidence/history.jsonl --summary test-results/realistic-demo/evidence/summary.json --out test-results/realistic-demo/evidence/manifest.json && node dist/cli.js verify --manifest test-results/realistic-demo/evidence/manifest.json && node dist/cli.js view --history test-results/realistic-demo/evidence/history.jsonl --summary test-results/realistic-demo/evidence/summary.json --out test-results/realistic-demo/viewer",
+    "example:realistic": "node scripts/reset-realistic-demo.mjs && pnpm build && tsc -p examples/realistic-demo/tsconfig.json && playwright test --config=examples/realistic-demo/playwright.config.ts && node dist/cli.js attest --history test-results/realistic-demo/evidence/history.jsonl --summary test-results/realistic-demo/evidence/summary.json --out test-results/realistic-demo/evidence/manifest.json && node dist/cli.js verify --manifest test-results/realistic-demo/evidence/manifest.json && node dist/cli.js view --history test-results/realistic-demo/evidence/history.jsonl --summary test-results/realistic-demo/evidence/summary.json --manifest test-results/realistic-demo/evidence/manifest.json --out test-results/realistic-demo/viewer",
     "governance:evaluate": "pnpm build && node scripts/evaluate-governance.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint .",
-    "package:check": "pnpm build && pnpm package:contracts && node scripts/verify-pack.mjs",
+    "package:check": "pnpm build && node scripts/generate-api-snapshot.mjs --check && pnpm package:contracts && node scripts/verify-pack.mjs",
     "package:contracts": "tsc -p tsconfig.package-test.json && node scripts/verify-package.mjs",
     "package:reproducible": "node scripts/verify-reproducible-pack.mjs",
     "prepack": "pnpm build && pnpm package:contracts",
     "prepublishOnly": "node scripts/guard-publish.mjs && pnpm release:check",
     "proposal:generate": "pnpm build && node scripts/propose-heals.mjs",
     "proposal:verify": "pnpm build && node scripts/verify-proposals.mjs",
-    "release:check": "pnpm format:check && pnpm docs:check && pnpm lint && pnpm typecheck && pnpm build && pnpm package:check && pnpm package:reproducible && pnpm supply-chain:sbom && pnpm supply-chain:sbom:check && pnpm test:reporter:parallel && pnpm test && pnpm evidence:verify && pnpm evidence:attest && pnpm evidence:manifest:verify && pnpm governance:evaluate && pnpm test:cross-browser && pnpm example:verify && pnpm example:realistic",
+    "release:check": "pnpm format:check && pnpm docs:check && pnpm lint && pnpm typecheck && pnpm build && pnpm api:snapshot:check && pnpm package:check && pnpm package:reproducible && pnpm supply-chain:sbom && pnpm supply-chain:sbom:check && pnpm test:reporter:parallel && pnpm test && pnpm evidence:verify && pnpm evidence:attest && pnpm evidence:manifest:verify && pnpm governance:evaluate && pnpm test:cross-browser && pnpm example:verify && pnpm example:realistic",
     "supply-chain:sbom": "node scripts/generate-sbom.mjs --out test-results/supply-chain/sbom.cdx.json",
     "supply-chain:sbom:check": "node scripts/generate-sbom.mjs --out test-results/supply-chain/sbom.cdx.json --check",
     "typecheck": "tsc --noEmit",
@@ -134,7 +140,7 @@
     "test:scoring": "playwright test --config=playwright.unit.config.ts tests/scoring.spec.ts",
     "test:scoring:property": "playwright test --config=playwright.unit.config.ts tests/scoring.property.spec.ts",
     "test:governance": "pnpm build && playwright test --config=playwright.unit.config.ts tests/governance.spec.ts tests/governance-cli.spec.ts tests/governance-ci-contract.spec.ts",
-    "test:unit": "pnpm build && playwright test --config=playwright.unit.config.ts tests/audit.spec.ts tests/classification.spec.ts tests/cli.spec.ts tests/evidence.spec.ts tests/evidence-manifest.spec.ts tests/governance.spec.ts tests/governance-cli.spec.ts tests/governance-ci-contract.spec.ts tests/modes.spec.ts tests/portfolio-contracts.spec.ts tests/proposals.spec.ts tests/registry.spec.ts tests/registry-schema-parity.spec.ts tests/registry-validation.expanded.spec.ts tests/reporter.spec.ts tests/report-viewer.spec.ts tests/safety-contracts.expanded.spec.ts tests/scoring.spec.ts tests/scoring.property.spec.ts tests/scoring-boundaries.expanded.spec.ts tests/scoring-unicode.spec.ts tests/semantic-eligibility.spec.ts tests/supply-chain.spec.ts"
+    "test:unit": "pnpm build && playwright test --config=playwright.unit.config.ts tests/api-compatibility.spec.ts tests/audit.spec.ts tests/classification.spec.ts tests/cli.spec.ts tests/evidence.spec.ts tests/evidence-manifest.spec.ts tests/governance.spec.ts tests/governance-cli.spec.ts tests/governance-ci-contract.spec.ts tests/modes.spec.ts tests/portfolio-contracts.spec.ts tests/proposals.spec.ts tests/registry.spec.ts tests/registry-schema-parity.spec.ts tests/registry-validation.expanded.spec.ts tests/reporter.spec.ts tests/report-viewer.spec.ts tests/safety-contracts.expanded.spec.ts tests/scoring.spec.ts tests/scoring.property.spec.ts tests/scoring-boundaries.expanded.spec.ts tests/scoring-unicode.spec.ts tests/semantic-eligibility.spec.ts tests/supply-chain.spec.ts"
   },
   "peerDependencies": {
     "@playwright/test": ">=1.50.0 <2"
@@ -148,7 +154,7 @@
     "fast-check": "^4.9.0",
     "globals": "^17.11.0",
     "prettier": "^3.9.6",
-    "typescript": "^5.9.3",
+    "typescript": "^6.0.3",
     "typescript-eslint": "^8.67.0"
   }
 }

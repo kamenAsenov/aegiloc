@@ -23,6 +23,7 @@ import {
   type HealingProposal,
   type CandidateEligibility,
   type TargetRegistry,
+  type ReportEvidenceTrust,
 } from 'healwright';
 import HealwrightReporter, {
   DEFAULT_EVIDENCE_OUTPUT_DIRECTORY,
@@ -121,3 +122,5 @@ void generateReportViewer({
   summaryPath: 'test-results/healwright/summary.json',
   outputDirectory: 'test-results/healwright/viewer',
 });
+const reportTrust: ReportEvidenceTrust = { level: 'integrity' };
+void reportTrust;

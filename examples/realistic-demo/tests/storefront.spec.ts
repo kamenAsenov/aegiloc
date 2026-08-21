@@ -29,7 +29,7 @@ async function demoHealer(page: Page, testInfo: TestInfo, inMemory?: InMemoryAud
     ),
     resultSink: new PlaywrightHealingResultSink(testInfo),
     auditProvenance: createPlaywrightAuditProvenance(testInfo, {
-      runId: 'realistic-demo-v0.7',
+      runId: 'realistic-demo-v1.0',
     }),
   });
 }
