@@ -72,7 +72,8 @@ Environment: macOS, Node.js `24.19.0`, pnpm `11.19.0`.
   - 4 parallel healing tests, 244 Chromium tests, and 88 focused Firefox/WebKit tests;
   - 10 canonical evidence events, an integrity manifest, and governance PASS with 0 violations;
   - 1 basic consumer test and 3 realistic demo tests.
-- [ ] pull-request dependency review, quality, and supply-chain jobs
+- [x] pull-request dependency review, Node 22/24 compatibility, quality, and supply-chain jobs — all
+      passed in [CI run 32504809275](https://github.com/kamenAsenov/healwright/actions/runs/32504809275).
 - [x] release branch diff/security/package audit — `git diff --check` passed, no repository-local
       absolute paths or common credential patterns were found, the committed screenshot is a
       1440×1040 PNG, and the dry-run package contains the reviewed 173-file manifest.
