@@ -21,6 +21,24 @@ export class TargetActionNotAllowedError extends Error {
   }
 }
 
+export type TargetContextFailure =
+  | 'pathname-mismatch'
+  | 'frame-missing'
+  | 'frame-ambiguous'
+  | 'frame-not-iframe'
+  | 'container-missing'
+  | 'container-ambiguous';
+
+export class TargetContextError extends Error {
+  public constructor(
+    public readonly targetKey: string,
+    public readonly failure: TargetContextFailure,
+  ) {
+    super(`Target "${targetKey}" context is not uniquely valid: ${failure}`);
+    this.name = 'TargetContextError';
+  }
+}
+
 export class MissingPrimaryLocatorError extends Error {
   public constructor(
     public readonly targetKey: string,
@@ -36,14 +54,14 @@ export class MissingPrimaryLocatorError extends Error {
 
 export class AuditWriteError extends Error {
   public constructor(targetKey: string, cause: unknown) {
-    super(`Failed to write Healwright audit event for target "${targetKey}"`, { cause });
+    super(`Failed to write Aegiloc audit event for target "${targetKey}"`, { cause });
     this.name = 'AuditWriteError';
   }
 }
 
 export class ArtifactCaptureError extends Error {
   public constructor(targetKey: string, cause: unknown) {
-    super(`Failed to capture Healwright artifact for target "${targetKey}"`, { cause });
+    super(`Failed to capture Aegiloc artifact for target "${targetKey}"`, { cause });
     this.name = 'ArtifactCaptureError';
   }
 }
@@ -57,7 +75,7 @@ export class HealingResultWriteError extends Error {
 
 export class ProposalHistoryError extends Error {
   public constructor(line: number, message: string, cause?: unknown) {
-    super(`Invalid Healwright history at line ${line}: ${message}`, {
+    super(`Invalid Aegiloc history at line ${line}: ${message}`, {
       ...(cause === undefined ? {} : { cause }),
     });
     this.name = 'ProposalHistoryError';
@@ -66,7 +84,7 @@ export class ProposalHistoryError extends Error {
 
 export class ProposalBundleValidationError extends Error {
   public constructor(path: string, message: string, cause?: unknown) {
-    super(`Invalid Healwright proposal bundle at ${path}: ${message}`, {
+    super(`Invalid Aegiloc proposal bundle at ${path}: ${message}`, {
       ...(cause === undefined ? {} : { cause }),
     });
     this.name = 'ProposalBundleValidationError';
@@ -75,7 +93,7 @@ export class ProposalBundleValidationError extends Error {
 
 export class AuditEvidenceError extends Error {
   public constructor(message: string, cause?: unknown) {
-    super(`Invalid Healwright audit evidence: ${message}`, {
+    super(`Invalid Aegiloc audit evidence: ${message}`, {
       ...(cause === undefined ? {} : { cause }),
     });
     this.name = 'AuditEvidenceError';
@@ -84,7 +102,7 @@ export class AuditEvidenceError extends Error {
 
 export class GovernancePolicyError extends Error {
   public constructor(path: string, message: string, cause?: unknown) {
-    super(`Invalid Healwright governance policy at ${path}: ${message}`, {
+    super(`Invalid Aegiloc governance policy at ${path}: ${message}`, {
       ...(cause === undefined ? {} : { cause }),
     });
     this.name = 'GovernancePolicyError';
@@ -93,7 +111,7 @@ export class GovernancePolicyError extends Error {
 
 export class GovernanceEvidenceError extends Error {
   public constructor(message: string, cause?: unknown) {
-    super(`Invalid Healwright governance evidence: ${message}`, {
+    super(`Invalid Aegiloc governance evidence: ${message}`, {
       ...(cause === undefined ? {} : { cause }),
     });
     this.name = 'GovernanceEvidenceError';

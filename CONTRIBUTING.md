@@ -1,20 +1,20 @@
-# Contributing to Healwright
+# Contributing to Aegiloc
 
-Thank you for helping make locator recovery safer and easier to inspect. Healwright is pre-1.0, so
-small, focused contributions with explicit safety reasoning are preferred over broad behavior
-changes.
+Thank you for helping make locator recovery safer and easier to inspect. Aegiloc v1 has a stable
+public evaluation contract, so small, focused contributions with explicit safety reasoning are
+preferred over broad behavior changes.
 
 ## Local setup
 
 Requirements:
 
-- Node.js 20 or newer;
+- Node.js 22 or 24;
 - pnpm 11, as declared by `packageManager`;
 - Chromium installed through Playwright.
 
 ```bash
-git clone https://github.com/kamenAsenov/healwright.git
-cd healwright
+git clone https://github.com/kamenAsenov/aegiloc.git
+cd aegiloc
 pnpm install --frozen-lockfile
 pnpm exec playwright install chromium
 pnpm build
@@ -44,6 +44,7 @@ pnpm test:registry
 pnpm test:healing
 pnpm test:healing:adversarial
 pnpm test:governance
+pnpm test:proposals
 pnpm example:verify
 ```
 
@@ -59,7 +60,7 @@ governance, the consumer example, and a package dry run. It does not publish any
 
 ## Safety expectations
 
-Healwright treats a false-positive heal as worse than a failed heal. A change must not:
+Aegiloc treats a false-positive heal as worse than a failed heal. A change must not:
 
 - heal assertions, expected results, authentication, business logic, test data, or network errors;
 - reinterpret actionability, delayed rendering, strictness, or product failures as locator drift;

@@ -1,13 +1,16 @@
 import type { Page } from '@playwright/test';
 import {
   DEFAULT_PROPOSAL_MINIMUM_OBSERVATIONS,
+  DEFAULT_FINGERPRINT_PROPOSAL_MINIMUM_OBSERVATIONS,
   InMemoryAuditSink,
+  InMemoryFingerprintObservationSink,
   NoopHealingResultSink,
   createHealer,
   createAuditProvenance,
   createAuditEvidenceSummary,
   evaluateCandidateEligibility,
   generateHealingProposals,
+  generateFingerprintProposals,
   generateReportViewer,
   parseEvidenceManifest,
   renderHealingProposalReport,
@@ -19,17 +22,18 @@ import {
   writeAuditEvidence,
   writeEvidenceManifest,
   type EvidenceManifest,
-  type HealwrightAuditEvent,
+  type AegilocAuditEvent,
   type HealingProposal,
   type CandidateEligibility,
   type TargetRegistry,
+  type PrimaryFingerprintObservation,
   type ReportEvidenceTrust,
-} from 'healwright';
-import HealwrightReporter, {
+} from 'aegiloc';
+import AegilocReporter, {
   DEFAULT_EVIDENCE_OUTPUT_DIRECTORY,
   healingStatusLines,
-  type HealwrightReporterOptions,
-} from 'healwright/reporter';
+  type AegilocReporterOptions,
+} from 'aegiloc/reporter';
 
 declare const page: Page;
 
@@ -65,12 +69,12 @@ const healer = createHealer({
 
 const target = healer.target('checkout.submit');
 void target.click;
-void HealwrightReporter;
+void AegilocReporter;
 void healingStatusLines;
 void DEFAULT_EVIDENCE_OUTPUT_DIRECTORY;
 const reporterOptions = {
-  outputDirectory: 'artifacts/healwright',
-} satisfies HealwrightReporterOptions;
+  outputDirectory: 'artifacts/aegiloc',
+} satisfies AegilocReporterOptions;
 void reporterOptions;
 const eligibility: CandidateEligibility = evaluateCandidateEligibility(
   registry.targets['checkout.submit'].fingerprint,
@@ -88,22 +92,22 @@ const eligibility: CandidateEligibility = evaluateCandidateEligibility(
 );
 void eligibility;
 
-declare const history: readonly HealwrightAuditEvent[];
+declare const history: readonly AegilocAuditEvent[];
 const evidenceSummary = createAuditEvidenceSummary(history, '2026-08-16T00:00:00.000Z');
 void evidenceSummary;
 void writeAuditEvidence(history, {
-  historyPath: 'test-results/healwright/history.jsonl',
-  summaryPath: 'test-results/healwright/summary.json',
+  historyPath: 'test-results/aegiloc/history.jsonl',
+  summaryPath: 'test-results/aegiloc/summary.json',
 });
 declare const evidenceManifest: EvidenceManifest;
 void parseEvidenceManifest(JSON.stringify(evidenceManifest));
 void writeEvidenceManifest({
-  historyPath: 'test-results/healwright/history.jsonl',
-  summaryPath: 'test-results/healwright/summary.json',
-  manifestPath: 'test-results/healwright/manifest.json',
+  historyPath: 'test-results/aegiloc/history.jsonl',
+  summaryPath: 'test-results/aegiloc/summary.json',
+  manifestPath: 'test-results/aegiloc/manifest.json',
 });
 void verifyEvidenceManifest({
-  manifestPath: 'test-results/healwright/manifest.json',
+  manifestPath: 'test-results/aegiloc/manifest.json',
   requireAuthenticated: false,
 });
 const proposalBundle = generateHealingProposals(history, registry, {
@@ -118,9 +122,16 @@ const parsedBundle = parseHealingProposalBundle(JSON.stringify(proposalBundle));
 void verifyHealingProposalBundle(parsedBundle, registry);
 void renderReportViewer(history, evidenceSummary);
 void generateReportViewer({
-  historyPath: 'test-results/healwright/history.jsonl',
-  summaryPath: 'test-results/healwright/summary.json',
-  outputDirectory: 'test-results/healwright/viewer',
+  historyPath: 'test-results/aegiloc/history.jsonl',
+  summaryPath: 'test-results/aegiloc/summary.json',
+  outputDirectory: 'test-results/aegiloc/viewer',
 });
 const reportTrust: ReportEvidenceTrust = { level: 'integrity' };
 void reportTrust;
+
+declare const fingerprintObservations: readonly PrimaryFingerprintObservation[];
+const fingerprintProposals = generateFingerprintProposals(fingerprintObservations, registry, {
+  minimumObservations: DEFAULT_FINGERPRINT_PROPOSAL_MINIMUM_OBSERVATIONS,
+});
+void fingerprintProposals;
+void new InMemoryFingerprintObservationSink();

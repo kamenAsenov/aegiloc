@@ -1,6 +1,6 @@
 # Supply-chain controls
 
-Healwright v1.0 keeps source and CI controls independent from npm publication.
+Aegiloc v1.1 keeps source and CI controls independent from npm publication.
 
 ## Local checks
 
@@ -37,6 +37,6 @@ remain evaluation inputs until a maintainer separately authorizes a release.
 ## Verification boundary
 
 Reproducible bytes make independently built tarballs comparable. GitHub attestations bind the CI
-artifact to a workflow identity. Neither proves that Healwright is free of vulnerabilities or that
+artifact to a workflow identity. Neither proves that Aegiloc is free of vulnerabilities or that
 the package should be deployed. Review dependencies, source, workflow permissions, and release
 intent independently.

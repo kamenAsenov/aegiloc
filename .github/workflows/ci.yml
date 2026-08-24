@@ -101,7 +101,7 @@ jobs:
       - name: Run test suite
         run: pnpm test
 
-      - name: Verify canonical Healwright evidence
+      - name: Verify canonical Aegiloc evidence
         run: pnpm evidence:verify
 
       - name: Create evidence integrity manifest
@@ -110,19 +110,19 @@ jobs:
       - name: Verify evidence integrity manifest
         run: pnpm evidence:manifest:verify
 
-      - name: Evaluate Healwright governance policy
+      - name: Evaluate Aegiloc governance policy
         run: pnpm governance:evaluate
 
       - name: Qualify Firefox and WebKit
         run: pnpm test:cross-browser
 
-      - name: Upload Healwright evidence
+      - name: Upload Aegiloc evidence
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          name: healwright-evidence
+          name: aegiloc-evidence
           path: |
-            test-results/healwright/
+            test-results/aegiloc/
             governance/policy.json
           if-no-files-found: warn
           retention-days: 14
@@ -182,7 +182,7 @@ jobs:
       - name: Upload package and SBOM
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          name: healwright-supply-chain
+          name: aegiloc-supply-chain
           path: |
             test-results/supply-chain/*.tgz
             test-results/supply-chain/sbom.cdx.json

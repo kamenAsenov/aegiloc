@@ -2,7 +2,7 @@
 
 ## Honest description
 
-Healwright is an evaluation-stage deterministic self-healing layer for Playwright Test. The v1.0.1
+Aegiloc is an evaluation-stage deterministic self-healing layer for Playwright Test. The v1.1
 release has a stable inventoried public API and remains focused on safe locator-drift
 recovery, inspectable evidence, human-reviewed proposals, local CLI onboarding, a static evidence
 viewer, optional evidence authentication, cross-browser qualification, and CI governance.
@@ -20,7 +20,7 @@ replacement for sound test design.
 
 ## Value proposition
 
-Healwright demonstrates that locator recovery can be bounded by explicit contracts:
+Aegiloc demonstrates that locator recovery can be bounded by explicit contracts:
 
 - semantic targets and policies are reviewed as JSON;
 - ordinary Playwright behavior stays on the primary path;
@@ -35,7 +35,7 @@ Healwright demonstrates that locator recovery can be bounded by explicit contrac
 
 ## Non-goals
 
-Healwright is not:
+Aegiloc is not:
 
 - a general-purpose AI testing agent;
 - a visual-diff, OCR, or computer-vision system;
@@ -47,7 +47,7 @@ Healwright is not:
 
 ## Compared with naive self-healing
 
-| Concern           | Naive approach                           | Healwright approach                                   |
+| Concern           | Naive approach                           | Aegiloc approach                                      |
 | ----------------- | ---------------------------------------- | ----------------------------------------------------- |
 | Trigger           | Any locator/action failure               | Proven missing primary locator only                   |
 | Selection         | First plausible or opaque recommendation | Deterministic ranking plus mandatory semantic gates   |
@@ -65,6 +65,6 @@ make different valid tradeoffs.
 The repository is ready for external evaluation and carefully scoped pilots. It has a stable v1
 compatibility contract, runnable demo, conservative boundaries, Chromium-first full suite, focused
 Firefox/WebKit qualification, and hardened evidence/delivery controls. It remains unpublished to npm
-and is not production-proven. The unscoped npm name is occupied by an unrelated project, so this
-release is evaluated from its source checkout. Longer reliability runs and real operational adoption
-evidence remain future work.
+and is not production-proven, so this release is evaluated from its source checkout. Longer
+reliability runs, external break-corpus metrics, and real operational adoption evidence remain
+future work.

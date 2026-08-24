@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { defineConfig, devices } from '@playwright/test';
 
 const repositoryRoot = fileURLToPath(new URL('../..', import.meta.url));
-const healwrightReporter = fileURLToPath(import.meta.resolve('healwright/reporter'));
+const aegilocReporter = fileURLToPath(import.meta.resolve('aegiloc/reporter'));
 const reportOutput = fileURLToPath(
   new URL('../../playwright-report/basic-playwright', import.meta.url),
 );
@@ -17,7 +17,7 @@ export default defineConfig({
   retries: 0,
   reporter: [
     ['line'],
-    [healwrightReporter, { outputDirectory: 'test-results/basic-playwright/evidence' }],
+    [aegilocReporter, { outputDirectory: 'test-results/basic-playwright/evidence' }],
     ['html', { open: 'never', outputFolder: reportOutput }],
   ],
   outputDir: testOutput,

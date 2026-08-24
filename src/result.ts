@@ -70,7 +70,7 @@ export class PlaywrightHealingResultSink implements HealingResultSink {
     });
 
     for (const screenshot of result.screenshots) {
-      await this.testInfo.attach(`healwright-${screenshot.phase}-${result.executionEventId}`, {
+      await this.testInfo.attach(`aegiloc-${screenshot.phase}-${result.executionEventId}`, {
         path: screenshot.filePath,
         contentType: screenshot.contentType,
       });

@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-Healwright is experimental and pre-1.0. Security and safety fixes are applied to the latest code on
+Aegiloc v1 has a stable evaluation API. Security and safety fixes are applied to the latest code on
 `main`; older tags are retained for reproducibility but are not maintained as separate support
 lines.
 
@@ -24,7 +24,7 @@ Include, when safe:
 
 ## High-priority issue classes
 
-The following are security or safety issues for Healwright:
+The following are security or safety issues for Aegiloc:
 
 - a false-positive heal that executes an incompatible or ambiguous element;
 - bypass of confidence, margin, semantic identity, uniqueness, revalidation, or execution-risk
@@ -43,7 +43,7 @@ unsafe outcomes above.
 ## Evidence and generated report handling
 
 Treat JSONL history, summaries, health output, screenshots, traces, Playwright reports, and static
-Healwright viewers as potentially sensitive test artifacts. They can contain accessible names,
+Aegiloc viewers as potentially sensitive test artifacts. They can contain accessible names,
 target keys, application structure, commit identifiers, and retained screenshot paths.
 
 - keep generated output under ignored, access-controlled directories;
@@ -53,7 +53,7 @@ target keys, application structure, commit identifiers, and retained screenshot 
 - do not add credentials, tokens, customer data, or real filled form values to demo evidence;
 - delete the viewer when deleting its source evidence so a stale copy is not retained separately.
 
-The v0.7 viewer escapes evidence strings and has no remote assets or scripts. That reduces rendering
+The v1.1 viewer escapes evidence strings and has no remote assets or remote scripts. That reduces rendering
 risk but does not make the underlying evidence public-safe. Verify a trusted evidence manifest
 before relying on the report; viewer generation alone does not authenticate origin.
 

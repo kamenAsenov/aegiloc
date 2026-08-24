@@ -1,8 +1,8 @@
-# When not to use Healwright
+# When not to use Aegiloc
 
 Do not use automatic healing when a wrong interaction could be worse than an obvious test failure.
 
-Keep an action outside Healwright or mark its target `proposal-only` when it:
+Keep an action outside Aegiloc or mark its target `proposal-only` when it:
 
 - submits payment, transfers money, deletes data, changes permissions, or triggers another
   irreversible operation;
@@ -19,5 +19,5 @@ Do not adopt the technical preview if the team cannot review target fingerprints
 safely, investigate `PASSED_WITH_HEALING`, and keep ordinary Playwright failures visible.
 
 Good uses are narrow, reversible locator-drift experiments on reviewed controls where ambiguity
-must fail closed. Healwright is not a replacement for accessible product markup, resilient primary
+must fail closed. Aegiloc is not a replacement for accessible product markup, resilient primary
 locators, page-object maintenance, or human test ownership.

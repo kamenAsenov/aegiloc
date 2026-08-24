@@ -36,10 +36,7 @@ async function guardedHarness(
     primaryActionTimeoutMs: 300,
     auditSink,
     resultSink,
-    screenshotCapture: new FileScreenshotCapture(
-      page,
-      testInfo.outputPath('healwright-screenshots'),
-    ),
+    screenshotCapture: new FileScreenshotCapture(page, testInfo.outputPath('aegiloc-screenshots')),
     ...(candidateCollector === undefined ? {} : { candidateCollector }),
   });
 

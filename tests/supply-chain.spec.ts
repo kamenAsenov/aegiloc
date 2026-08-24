@@ -36,7 +36,7 @@ test('generates a deterministic sorted CycloneDX inventory from the frozen lockf
   expect(sbom).toMatchObject({
     bomFormat: 'CycloneDX',
     specVersion: '1.6',
-    metadata: { component: { name: 'healwright', version: '1.0.1' } },
+    metadata: { component: { name: 'aegiloc', version: '1.1.0' } },
   });
   expect(sbom.serialNumber).toMatch(
     /^urn:uuid:[a-f0-9]{8}-[a-f0-9]{4}-5[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/u,

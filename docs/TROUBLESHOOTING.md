@@ -3,7 +3,7 @@
 Start from what you observed. Do not lower thresholds merely to turn a failure green.
 
 ```text
-Can `healwright doctor` complete?
+Can `aegiloc doctor` complete?
 ├─ No → Fix the reported Node/build/Playwright prerequisite, then rerun doctor.
 └─ Yes
    ├─ Did the primary action succeed normally?

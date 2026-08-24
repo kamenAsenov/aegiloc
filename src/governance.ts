@@ -2,11 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { readFile, mkdir, rename, unlink, writeFile } from 'node:fs/promises';
 import { basename, dirname, join, resolve } from 'node:path';
 
-import type {
-  HealingAuditEvent,
-  HealingExecutionAuditEvent,
-  HealwrightAuditEvent,
-} from './audit.js';
+import type { HealingAuditEvent, HealingExecutionAuditEvent, AegilocAuditEvent } from './audit.js';
 import { canonicalizeAuditEvents } from './evidence.js';
 import { GovernanceEvidenceError, GovernancePolicyError } from './errors.js';
 import {
@@ -458,13 +454,13 @@ function validatePolicyReferences(policy: GovernancePolicy, registry: TargetRegi
 }
 
 function buildAttempts(
-  inputEvents: readonly HealwrightAuditEvent[],
+  inputEvents: readonly AegilocAuditEvent[],
   registry: TargetRegistry,
 ): {
   readonly attempts: readonly Omit<Attempt, 'waived'>[];
   readonly discardedRetryAttempts: number;
 } {
-  let events: readonly HealwrightAuditEvent[];
+  let events: readonly AegilocAuditEvent[];
   try {
     events = canonicalizeAuditEvents(inputEvents);
   } catch (error) {
@@ -595,7 +591,7 @@ function addLimitViolation(
 }
 
 export function evaluateGovernance(
-  events: readonly HealwrightAuditEvent[],
+  events: readonly AegilocAuditEvent[],
   registry: TargetRegistry,
   policy?: GovernancePolicy,
   { evaluatedAt = new Date().toISOString() }: EvaluateGovernanceOptions = {},
@@ -838,7 +834,7 @@ function markdown(value: string): string {
 
 export function renderHealthSummary(summary: HealthSummary): string {
   const lines = [
-    '# Healwright health summary',
+    '# Aegiloc health summary',
     '',
     `**Status:** ${summary.status.toUpperCase()} · **Evaluated:** ${summary.evaluatedAt}`,
     '',

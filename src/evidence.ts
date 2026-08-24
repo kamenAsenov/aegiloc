@@ -5,13 +5,13 @@ import { basename, dirname, join, resolve } from 'node:path';
 import {
   AUDIT_ATTACHMENT_CONTENT_TYPE,
   AUDIT_ATTACHMENT_PREFIX,
-  type HealwrightAuditEvent,
+  type AegilocAuditEvent,
 } from './audit.js';
 import { AuditEvidenceError } from './errors.js';
 import { parseAuditHistory } from './proposals.js';
 import type { TargetAction } from './types.js';
 
-export const AUDIT_EVIDENCE_SUMMARY_SCHEMA_VERSION = 1 as const;
+export const AUDIT_EVIDENCE_SUMMARY_SCHEMA_VERSION = 2 as const;
 
 export interface AuditAttachment {
   readonly name: string;
@@ -26,6 +26,29 @@ export interface AuditEvidenceTargetSummary {
   readonly assessmentCount: number;
   readonly executionCount: number;
   readonly successfulHealingCount: number;
+  readonly executionProfile: 'automatic' | 'proposal-only' | 'mixed' | 'unknown';
+  readonly ambiguityCount: number;
+  readonly ambiguityRate: number;
+  readonly lowConfidenceCount: number;
+  readonly semanticRejectionCount: number;
+  readonly protectedAssessmentCount: number;
+  readonly distinctRunCount: number;
+  readonly healingRate: number;
+  readonly chronicDrift: boolean;
+  readonly firstDriftAt?: string;
+  readonly lastDriftAt?: string;
+  readonly timeSinceFirstDriftMs?: number;
+  readonly scoreRange?: {
+    readonly minimum: number;
+    readonly average: number;
+    readonly maximum: number;
+  };
+  readonly marginRange?: {
+    readonly minimum: number;
+    readonly average: number;
+    readonly maximum: number;
+  };
+  readonly recentOutcomes: readonly ('healed' | 'rejected' | 'protected' | 'failed' | 'observed')[];
 }
 
 export interface AuditEvidenceSummary {
@@ -72,15 +95,28 @@ function sortedUniqueNumbers(values: readonly number[]): readonly number[] {
   return [...new Set(values)].sort((left, right) => left - right);
 }
 
-function eventOrder(left: HealwrightAuditEvent, right: HealwrightAuditEvent): number {
+function rounded(value: number): number {
+  return Math.round(value * 1_000_000) / 1_000_000;
+}
+
+function range(values: readonly number[]): AuditEvidenceTargetSummary['scoreRange'] {
+  if (values.length === 0) return undefined;
+  return {
+    minimum: Math.min(...values),
+    average: rounded(values.reduce((total, value) => total + value, 0) / values.length),
+    maximum: Math.max(...values),
+  };
+}
+
+function eventOrder(left: AegilocAuditEvent, right: AegilocAuditEvent): number {
   const timestampOrder = left.timestamp.localeCompare(right.timestamp);
   return timestampOrder === 0 ? left.eventId.localeCompare(right.eventId) : timestampOrder;
 }
 
 export function canonicalizeAuditEvents(
-  events: readonly HealwrightAuditEvent[],
-): readonly HealwrightAuditEvent[] {
-  const byId = new Map<string, HealwrightAuditEvent>();
+  events: readonly AegilocAuditEvent[],
+): readonly AegilocAuditEvent[] {
+  const byId = new Map<string, AegilocAuditEvent>();
   for (const event of events) {
     const existing = byId.get(event.eventId);
     if (existing !== undefined && JSON.stringify(existing) !== JSON.stringify(event)) {
@@ -93,7 +129,7 @@ export function canonicalizeAuditEvents(
 
 export function auditEventsFromAttachments(
   attachments: readonly AuditAttachment[],
-): readonly HealwrightAuditEvent[] {
+): readonly AegilocAuditEvent[] {
   return attachments.flatMap((attachment) => {
     if (
       attachment.contentType !== AUDIT_ATTACHMENT_CONTENT_TYPE ||
@@ -123,7 +159,7 @@ export function auditEventsFromAttachments(
     } else {
       throw new AuditEvidenceError(`attachment "${attachment.name}" has an unsupported body`);
     }
-    let events: readonly HealwrightAuditEvent[];
+    let events: readonly AegilocAuditEvent[];
     try {
       const parsed = JSON.parse(contents) as unknown;
       events = parseAuditHistory(JSON.stringify(parsed));
@@ -144,7 +180,7 @@ export function auditEventsFromAttachments(
 }
 
 export function createAuditEvidenceSummary(
-  inputEvents: readonly HealwrightAuditEvent[],
+  inputEvents: readonly AegilocAuditEvent[],
   generatedAt = new Date().toISOString(),
 ): AuditEvidenceSummary {
   if (
@@ -196,21 +232,102 @@ export function createAuditEvidenceSummary(
       const targetExecutions = targetEvents.filter(
         (event) => event.eventType === 'locator-heal-execution',
       );
+      const targetAssessments = targetEvents.filter(
+        (event) => event.eventType === 'locator-drift-assessed',
+      );
+      const successfulHealingCount = targetExecutions.filter(
+        (event) => event.status === 'succeeded',
+      ).length;
+      const risks = new Set(
+        targetAssessments.flatMap((event) =>
+          event.executionPolicy?.risk === undefined ? [] : [event.executionPolicy.risk],
+        ),
+      );
+      const executionProfile =
+        risks.size === 0
+          ? 'unknown'
+          : risks.size > 1
+            ? 'mixed'
+            : risks.has('proposal-only')
+              ? 'proposal-only'
+              : 'automatic';
+      const firstDriftAt = targetAssessments[0]?.timestamp;
+      const lastDriftAt = targetAssessments.at(-1)?.timestamp;
+      const executionByAssessment = new Map(
+        targetExecutions.map((execution) => [execution.parentEventId, execution]),
+      );
+      const recentOutcomes = targetAssessments.slice(-10).map((assessment) => {
+        const execution = executionByAssessment.get(assessment.eventId);
+        if (execution?.status === 'succeeded') return 'healed' as const;
+        if (execution?.status === 'failed') return 'failed' as const;
+        if (assessment.executionPolicy?.risk === 'proposal-only') return 'protected' as const;
+        if (
+          assessment.modeDecision === 'rejected' ||
+          assessment.modeDecision === 'strict-ci-failure'
+        ) {
+          return 'rejected' as const;
+        }
+        return 'observed' as const;
+      });
+      const distinctRunCount = new Set(
+        targetAssessments.flatMap((event) =>
+          event.provenance?.runId === undefined ? [] : [event.provenance.runId],
+        ),
+      ).size;
+      const ambiguityCount = targetAssessments.filter(
+        (event) => event.assessment.reason === 'ambiguous',
+      ).length;
+      const scoreRange = range(
+        targetAssessments.flatMap((event) => {
+          const score = event.rankedCandidates[0]?.score;
+          return score === undefined ? [] : [score];
+        }),
+      );
+      const marginRange = range(targetAssessments.map((event) => event.assessment.margin));
       return {
         targetKey,
         actions: sortedUnique(targetEvents.map((event) => event.action)),
-        assessmentCount: targetEvents.filter(
-          (event) => event.eventType === 'locator-drift-assessed',
-        ).length,
+        assessmentCount: targetAssessments.length,
         executionCount: targetExecutions.length,
-        successfulHealingCount: targetExecutions.filter((event) => event.status === 'succeeded')
-          .length,
+        successfulHealingCount,
+        executionProfile,
+        ambiguityCount,
+        ambiguityRate:
+          targetAssessments.length === 0 ? 0 : rounded(ambiguityCount / targetAssessments.length),
+        lowConfidenceCount: targetAssessments.filter(
+          (event) => event.assessment.reason === 'low-confidence',
+        ).length,
+        semanticRejectionCount: targetAssessments.filter(
+          (event) => event.assessment.reason === 'semantic-ineligible',
+        ).length,
+        protectedAssessmentCount: targetAssessments.filter(
+          (event) => event.executionPolicy?.risk === 'proposal-only',
+        ).length,
+        distinctRunCount,
+        healingRate:
+          targetAssessments.length === 0
+            ? 0
+            : rounded(successfulHealingCount / targetAssessments.length),
+        chronicDrift: targetAssessments.length >= 3 && distinctRunCount >= 3,
+        ...(firstDriftAt === undefined ? {} : { firstDriftAt }),
+        ...(lastDriftAt === undefined ? {} : { lastDriftAt }),
+        ...(firstDriftAt === undefined
+          ? {}
+          : {
+              timeSinceFirstDriftMs: Math.max(
+                0,
+                Date.parse(generatedAt) - Date.parse(firstDriftAt),
+              ),
+            }),
+        ...(scoreRange === undefined ? {} : { scoreRange }),
+        ...(marginRange === undefined ? {} : { marginRange }),
+        recentOutcomes,
       };
     }),
   };
 }
 
-export function serializeAuditHistory(events: readonly HealwrightAuditEvent[]): string {
+export function serializeAuditHistory(events: readonly AegilocAuditEvent[]): string {
   const canonical = canonicalizeAuditEvents(events);
   return canonical.length === 0
     ? ''
@@ -231,7 +348,7 @@ async function atomicWrite(filePath: string, contents: string): Promise<void> {
 }
 
 export async function writeAuditEvidence(
-  inputEvents: readonly HealwrightAuditEvent[],
+  inputEvents: readonly AegilocAuditEvent[],
   options: WriteAuditEvidenceOptions,
 ): Promise<AuditEvidenceSummary> {
   if (resolve(options.historyPath) === resolve(options.summaryPath)) {

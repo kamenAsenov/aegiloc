@@ -1,6 +1,6 @@
 # Static report viewer
 
-The v1 report viewer turns canonical JSONL history and its exact matching summary into a single local
+The v1.1 report viewer turns canonical JSONL history and its exact matching summary into a single local
 `index.html`. It is the main evaluation surface, not a hosted dashboard.
 
 ## Open the guided demo
@@ -15,7 +15,7 @@ The command prints the absolute report path. For deliberate opening:
 pnpm cli demo --force --open
 ```
 
-To generate from another run, use `healwright view` with history, summary, and preferably their
+To generate from another run, use `aegiloc view` with history, summary, and preferably their
 manifest. See the [CLI reference](CLI.md#generate-and-open-the-viewer).
 
 ## What the report explains
@@ -26,6 +26,8 @@ manifest. See the [CLI reference](CLI.md#generate-and-open-the-viewer).
 - primary locator → candidate decision → guarded execution/rejection timeline;
 - confidence, required threshold, runner-up margin, semantic gate, and execution risk;
 - expandable ranked candidates with exact per-signal match, weight, and contribution;
+- historical target health with run/healing/ambiguity/low-confidence rates, score and margin ranges,
+  drift age, protected attempts, and recent outcomes;
 - sanitized screenshot references and outcome-specific next actions;
 - search and filters for target/evidence text, action, outcome, and decision reason.
 

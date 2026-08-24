@@ -12,10 +12,10 @@ import {
   renderReportViewer,
   serializeAuditHistory,
   writeEvidenceManifest,
-  type HealwrightAuditEvent,
+  type AegilocAuditEvent,
 } from '../src/index.js';
 
-function reportEvents(): readonly HealwrightAuditEvent[] {
+function reportEvents(): readonly AegilocAuditEvent[] {
   const rankedCandidates = rankCandidates(
     {
       accessibleRole: 'button',
@@ -109,13 +109,15 @@ test('renders a practical, self-contained v1 decision report', () => {
   expect(html).toContain('<h1>Storefront run</h1>');
   expect(html).toContain('Successful heals');
   expect(html).toContain('Decision timeline');
+  expect(html).toContain('Historical target health');
+  expect(html).toContain('Heal rate');
   expect(html).toContain('Passed with healing');
   expect(html).toContain('Rejected safely');
   expect(html).toContain('Compare ranked candidates (1)');
   expect(html).toContain('Scoring signals');
   expect(html).toContain('What should I do next?');
   expect(html).toContain('screenshots/before.png');
-  expect(html).toContain('v1.0.1 evaluation release');
+  expect(html).toContain('v1.1.0 evaluation release');
   expect(html).toMatch(/script-src 'sha256-[A-Za-z0-9+/=]+'/u);
   expect(html).toContain("default-src 'none'");
   expect(html).not.toMatch(/(?:src|href)=["']https?:/u);
@@ -137,7 +139,7 @@ test('renders clear empty states for a run with no drift evidence', () => {
   const html = renderReportViewer([], summary);
 
   expect(html).toContain('No locator drift assessment was recorded.');
-  expect(html).toContain('No Healwright action is required.');
+  expect(html).toContain('No Aegiloc action is required.');
   expect(html).toContain('No locator drift evidence');
 });
 
@@ -164,7 +166,7 @@ test('generates a self-contained report and refuses silent overwrite', async ({
     successfulHealingCount: 1,
     evidenceTrust: { level: 'validated' },
   });
-  expect(await readFile(generated.indexPath, 'utf8')).toContain('Healwright evidence report');
+  expect(await readFile(generated.indexPath, 'utf8')).toContain('Aegiloc evidence report');
   await expect(generateReportViewer({ historyPath, summaryPath, outputDirectory })).rejects.toThrow(
     /Refusing to overwrite/,
   );

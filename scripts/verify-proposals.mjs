@@ -4,10 +4,10 @@ import {
   loadHealingProposalBundle,
   loadTargetRegistry,
   verifyHealingProposalBundle,
-} from 'healwright';
+} from 'aegiloc';
 
 const defaults = {
-  proposal: 'test-results/healwright/proposals.json',
+  proposal: 'test-results/aegiloc/proposals.json',
   registry: 'registry/targets.json',
 };
 

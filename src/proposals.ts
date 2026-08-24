@@ -9,14 +9,16 @@ import {
   type AuditRankedCandidate,
   type HealingAuditEvent,
   type HealingExecutionAuditEvent,
-  type HealwrightAuditEvent,
+  type AegilocAuditEvent,
 } from './audit.js';
 import { ProposalHistoryError } from './errors.js';
 import { SUPPORTED_ARIA_ROLES } from './registry.js';
 import { CANDIDATE_ELIGIBILITY_REASONS } from './scoring.js';
+import type { LocatorSuggestionEvidence } from './suggestions.js';
 import {
   EXECUTION_RISKS,
   TARGET_ACTIONS,
+  resolveExecutionRisk,
   type PrimaryLocatorDefinition,
   type RoleLocatorDefinition,
   type TargetAction,
@@ -24,10 +26,10 @@ import {
   type TargetRegistry,
 } from './types.js';
 
-export const HEALING_PROPOSAL_SCHEMA_VERSION = 2 as const;
+export const HEALING_PROPOSAL_SCHEMA_VERSION = 3 as const;
 export const DEFAULT_PROPOSAL_MINIMUM_OBSERVATIONS = 3;
 export const HEALING_PROPOSAL_SCHEMA_URL =
-  'https://github.com/kamenAsenov/healwright/registry/healing-proposals.schema.json';
+  'https://github.com/kamenAsenov/aegiloc/registry/healing-proposals.schema.json';
 
 export type HealingProposalRejectionReason =
   | 'insufficient-evidence'
@@ -41,6 +43,7 @@ export type HealingProposalRejectionReason =
   | 'stale-policy'
   | 'unknown-target'
   | 'unsupported-candidate'
+  | 'missing-locator-evidence'
   | 'already-current';
 
 export interface HealingProposalEvidence {
@@ -67,15 +70,23 @@ export interface HealingProposal {
   readonly schemaVersion: typeof HEALING_PROPOSAL_SCHEMA_VERSION;
   readonly proposalId: string;
   readonly status: 'review-required';
+  readonly source: 'automatic-execution' | 'proposal-only-observation';
   readonly targetKey: string;
   readonly action: TargetAction;
   readonly targetDefinitionHash: string;
   readonly currentPrimary: PrimaryLocatorDefinition;
-  readonly suggestedPrimary: RoleLocatorDefinition;
+  readonly suggestedPrimary: PrimaryLocatorDefinition;
+  readonly locatorAlternatives: readonly LocatorSuggestionEvidence[];
+  readonly registryPatch: readonly [
+    { readonly op: 'test'; readonly path: string; readonly value: PrimaryLocatorDefinition },
+    { readonly op: 'replace'; readonly path: string; readonly value: PrimaryLocatorDefinition },
+  ];
   readonly candidate: {
     readonly role: RoleLocatorDefinition['role'];
     readonly accessibleName: string;
     readonly tag: string;
+    readonly stableAttributes?: Readonly<Record<string, string>>;
+    readonly visibleText?: string;
   };
   readonly evidence: HealingProposalEvidence;
 }
@@ -108,11 +119,13 @@ interface ProposalObservation {
   readonly action: TargetAction;
   readonly targetDefinitionHash: string;
   readonly currentPrimary: PrimaryLocatorDefinition;
-  readonly suggestedPrimary: RoleLocatorDefinition;
+  readonly suggestedPrimary: PrimaryLocatorDefinition;
+  readonly locatorAlternatives: readonly LocatorSuggestionEvidence[];
+  readonly source: HealingProposal['source'];
   readonly candidate: HealingProposal['candidate'];
   readonly candidateId: string;
   readonly assessmentEventId: string;
-  readonly executionEventId: string;
+  readonly executionEventId?: string;
   readonly timestamp: string;
   readonly score: number;
   readonly margin: number;
@@ -140,6 +153,13 @@ function isNonEmptyString(value: unknown): value is string {
 
 function isTargetAction(value: unknown): value is TargetAction {
   return typeof value === 'string' && TARGET_ACTIONS.includes(value as TargetAction);
+}
+
+function isLocatorType(value: unknown): value is PrimaryLocatorDefinition['type'] {
+  return (
+    typeof value === 'string' &&
+    ['role', 'label', 'testId', 'text', 'placeholder', 'title', 'altText', 'css'].includes(value)
+  );
 }
 
 function isProbability(value: unknown): value is number {
@@ -297,7 +317,9 @@ function requireAssessmentEvent(
       candidate.rank < 1 ||
       !isProbability(candidate.score) ||
       (candidate.role !== undefined && !isNonEmptyString(candidate.role)) ||
-      (candidate.accessibleName !== undefined && !isNonEmptyString(candidate.accessibleName))
+      (candidate.accessibleName !== undefined && !isNonEmptyString(candidate.accessibleName)) ||
+      (candidate.visibleText !== undefined && typeof candidate.visibleText !== 'string') ||
+      (candidate.stableAttributes !== undefined && !isRecord(candidate.stableAttributes))
     ) {
       throw new ProposalHistoryError(line, 'ranked candidate is malformed');
     }
@@ -317,6 +339,25 @@ function requireAssessmentEvent(
         candidate.eligibility.eligible !== (candidate.eligibility.reasons.length === 0)
       ) {
         throw new ProposalHistoryError(line, 'ranked candidate eligibility is malformed');
+      }
+    }
+  }
+  if (value.locatorSuggestions !== undefined) {
+    if (!Array.isArray(value.locatorSuggestions)) {
+      throw new ProposalHistoryError(line, 'locatorSuggestions must be an array');
+    }
+    for (const suggestion of value.locatorSuggestions) {
+      if (
+        !isRecord(suggestion) ||
+        !isLocatorType(suggestion.strategy) ||
+        !isRecord(suggestion.locator) ||
+        suggestion.locator.type !== suggestion.strategy ||
+        typeof suggestion.matchCount !== 'number' ||
+        !Number.isInteger(suggestion.matchCount) ||
+        suggestion.matchCount < 0 ||
+        typeof suggestion.matchesCandidate !== 'boolean'
+      ) {
+        throw new ProposalHistoryError(line, 'locator suggestion evidence is malformed');
       }
     }
   }
@@ -407,7 +448,7 @@ function requireExecutionEvent(
   }
 }
 
-function parseAuditEvent(value: unknown, line: number): HealwrightAuditEvent {
+function parseAuditEvent(value: unknown, line: number): AegilocAuditEvent {
   if (!isRecord(value)) {
     throw new ProposalHistoryError(line, 'expected a JSON object');
   }
@@ -425,8 +466,8 @@ function parseAuditEvent(value: unknown, line: number): HealwrightAuditEvent {
   }
 }
 
-export function parseAuditHistory(contents: string): readonly HealwrightAuditEvent[] {
-  const events: HealwrightAuditEvent[] = [];
+export function parseAuditHistory(contents: string): readonly AegilocAuditEvent[] {
+  const events: AegilocAuditEvent[] = [];
   const eventIds = new Set<string>();
   for (const [index, rawLine] of contents.split(/\r?\n/).entries()) {
     const line = rawLine.trim();
@@ -452,7 +493,7 @@ export function parseAuditHistory(contents: string): readonly HealwrightAuditEve
 
 export async function loadAuditHistory(
   filePath: string | URL,
-): Promise<readonly HealwrightAuditEvent[]> {
+): Promise<readonly AegilocAuditEvent[]> {
   return parseAuditHistory(await readFile(filePath, 'utf8'));
 }
 
@@ -544,6 +585,26 @@ function candidateFromAssessment(
   return top;
 }
 
+function locatorEvidenceFromAssessment(assessment: HealingAuditEvent):
+  | {
+      readonly suggestedPrimary: PrimaryLocatorDefinition;
+      readonly alternatives: readonly LocatorSuggestionEvidence[];
+    }
+  | undefined {
+  const alternatives = (assessment.locatorSuggestions ?? []).filter(
+    (suggestion) =>
+      suggestion.matchCount === 1 &&
+      suggestion.matchesCandidate &&
+      suggestion.strategy === suggestion.locator.type,
+  );
+  const suggestedPrimary = alternatives[0]?.locator;
+  return suggestedPrimary === undefined ? undefined : { suggestedPrimary, alternatives };
+}
+
+function registryPrimaryPath(targetKey: string): string {
+  return `/targets/${targetKey.replace(/~/g, '~0').replace(/\//g, '~1')}/primary`;
+}
+
 function createProposal(observations: readonly ProposalObservation[]): HealingProposal {
   const first = observations[0];
   if (first === undefined) {
@@ -555,11 +616,17 @@ function createProposal(observations: readonly ProposalObservation[]): HealingPr
   const unsigned = {
     schemaVersion: HEALING_PROPOSAL_SCHEMA_VERSION,
     status: 'review-required',
+    source: first.source,
     targetKey: first.targetKey,
     action: first.action,
     targetDefinitionHash: first.targetDefinitionHash,
     currentPrimary: first.currentPrimary,
     suggestedPrimary: first.suggestedPrimary,
+    locatorAlternatives: first.locatorAlternatives,
+    registryPatch: [
+      { op: 'test', path: registryPrimaryPath(first.targetKey), value: first.currentPrimary },
+      { op: 'replace', path: registryPrimaryPath(first.targetKey), value: first.suggestedPrimary },
+    ],
     candidate: first.candidate,
     evidence: {
       occurrenceCount: observations.length,
@@ -584,7 +651,9 @@ function createProposal(observations: readonly ProposalObservation[]): HealingPr
         observations.map((observation) => observation.assessmentEventId),
       ),
       executionEventIds: sortedUnique(
-        observations.map((observation) => observation.executionEventId),
+        observations.flatMap((observation) =>
+          observation.executionEventId === undefined ? [] : [observation.executionEventId],
+        ),
       ),
       screenshotPaths: sortedUnique(
         observations.flatMap((observation) => observation.screenshotPaths),
@@ -610,6 +679,7 @@ function rejectionPriority(
     'stale-primary',
     'stale-policy',
     'unsupported-candidate',
+    'missing-locator-evidence',
     'already-current',
   ];
   return priority.find((reason) => reasons.has(reason));
@@ -621,7 +691,7 @@ export interface GenerateHealingProposalOptions {
 }
 
 export function generateHealingProposals(
-  events: readonly HealwrightAuditEvent[],
+  events: readonly AegilocAuditEvent[],
   registry: TargetRegistry,
   {
     minimumObservations = DEFAULT_PROPOSAL_MINIMUM_OBSERVATIONS,
@@ -727,12 +797,12 @@ export function generateHealingProposals(
       group.rejectionReasons.add('stale-policy');
       continue;
     }
-    const suggestedPrimary = {
-      type: 'role',
-      role: candidate.role as RoleLocatorDefinition['role'],
-      name: candidate.accessibleName,
-      exact: true,
-    } as const;
+    const locatorEvidence = locatorEvidenceFromAssessment(assessment);
+    if (locatorEvidence === undefined) {
+      group.rejectionReasons.add('missing-locator-evidence');
+      continue;
+    }
+    const suggestedPrimary = locatorEvidence.suggestedPrimary;
     if (primaryEquals(definition.primary, suggestedPrimary)) {
       group.rejectionReasons.add('already-current');
       continue;
@@ -744,10 +814,16 @@ export function generateHealingProposals(
       targetDefinitionHash: targetDefinitionHash(definition),
       currentPrimary: definition.primary,
       suggestedPrimary,
+      locatorAlternatives: locatorEvidence.alternatives,
+      source: 'automatic-execution',
       candidate: {
-        role: suggestedPrimary.role,
+        role: candidate.role as RoleLocatorDefinition['role'],
         accessibleName: candidate.accessibleName,
         tag: candidate.tag,
+        ...(candidate.stableAttributes === undefined
+          ? {}
+          : { stableAttributes: candidate.stableAttributes }),
+        ...(candidate.visibleText === undefined ? {} : { visibleText: candidate.visibleText }),
       },
       candidateId: execution.candidateId,
       assessmentEventId: assessment.eventId,
@@ -757,6 +833,97 @@ export function generateHealingProposals(
       margin: assessment.assessment.margin,
       screenshotPaths: execution.screenshots.map((screenshot) => screenshot.path),
       provenance: assessmentProvenance,
+      ignoredLegacyCount: 0,
+    });
+  }
+
+  for (const assessment of assessments.values()) {
+    const definition = registry.targets[assessment.targetKey];
+    if (definition === undefined || resolveExecutionRisk(definition.policy) !== 'proposal-only') {
+      continue;
+    }
+    const group = getGroup(groups, assessment.targetKey, assessment.action);
+    group.occurrenceCount += 1;
+    if (usedAssessmentIds.has(assessment.eventId)) {
+      group.rejectionReasons.add('inconsistent-audit-chain');
+      continue;
+    }
+    usedAssessmentIds.add(assessment.eventId);
+    if (!primaryEquals(definition.primary, assessment.primaryLocator)) {
+      group.rejectionReasons.add('stale-primary');
+      continue;
+    }
+    if (
+      !definition.policy.healing.enabled ||
+      !definition.policy.allowedActions.includes(assessment.action) ||
+      assessment.collection.status !== 'completed' ||
+      !assessment.assessment.eligible ||
+      assessment.assessment.topCandidateId === undefined
+    ) {
+      group.rejectionReasons.add('inconsistent-audit-chain');
+      continue;
+    }
+    const provenance = assessment.provenance;
+    if (provenance === undefined) {
+      group.legacyOccurrenceCount += 1;
+      continue;
+    }
+    const candidate = assessment.rankedCandidates[0];
+    if (
+      candidate?.id !== assessment.assessment.topCandidateId ||
+      candidate.rank !== 1 ||
+      candidate.eligibility?.eligible !== true ||
+      candidate.role === undefined ||
+      candidate.accessibleName === undefined ||
+      !SUPPORTED_ARIA_ROLES.includes(candidate.role as RoleLocatorDefinition['role']) ||
+      !/^[a-z][a-z0-9-]*$/.test(candidate.tag)
+    ) {
+      group.rejectionReasons.add('unsupported-candidate');
+      continue;
+    }
+    if (
+      assessment.assessment.confidenceThreshold !== definition.policy.healing.confidenceThreshold ||
+      assessment.assessment.minimumScoreMargin !== definition.policy.healing.minimumScoreMargin ||
+      candidate.score < definition.policy.healing.confidenceThreshold ||
+      assessment.assessment.margin < definition.policy.healing.minimumScoreMargin
+    ) {
+      group.rejectionReasons.add('stale-policy');
+      continue;
+    }
+    const locatorEvidence = locatorEvidenceFromAssessment(assessment);
+    if (locatorEvidence === undefined) {
+      group.rejectionReasons.add('missing-locator-evidence');
+      continue;
+    }
+    if (primaryEquals(definition.primary, locatorEvidence.suggestedPrimary)) {
+      group.rejectionReasons.add('already-current');
+      continue;
+    }
+
+    group.observations.push({
+      targetKey: assessment.targetKey,
+      action: assessment.action,
+      targetDefinitionHash: targetDefinitionHash(definition),
+      currentPrimary: definition.primary,
+      suggestedPrimary: locatorEvidence.suggestedPrimary,
+      locatorAlternatives: locatorEvidence.alternatives,
+      source: 'proposal-only-observation',
+      candidate: {
+        role: candidate.role as RoleLocatorDefinition['role'],
+        accessibleName: candidate.accessibleName,
+        tag: candidate.tag,
+        ...(candidate.stableAttributes === undefined
+          ? {}
+          : { stableAttributes: candidate.stableAttributes }),
+        ...(candidate.visibleText === undefined ? {} : { visibleText: candidate.visibleText }),
+      },
+      candidateId: candidate.id,
+      assessmentEventId: assessment.eventId,
+      timestamp: assessment.timestamp,
+      score: candidate.score,
+      margin: assessment.assessment.margin,
+      screenshotPaths: [],
+      provenance,
       ignoredLegacyCount: 0,
     });
   }
@@ -791,7 +958,14 @@ export function generateHealingProposals(
       continue;
     }
     const identities = new Set(
-      group.observations.map((observation) => canonicalJson(observation.suggestedPrimary)),
+      group.observations.map((observation) =>
+        canonicalJson({
+          suggestedPrimary: observation.suggestedPrimary,
+          locatorAlternatives: observation.locatorAlternatives,
+          source: observation.source,
+          candidate: observation.candidate,
+        }),
+      ),
     );
     if (identities.size !== 1) {
       rejections.push({
@@ -882,7 +1056,7 @@ function markdownCell(value: string): string {
 
 export function renderHealingProposalReport(bundle: HealingProposalBundle): string {
   const lines = [
-    '# Healwright locator proposals',
+    '# Aegiloc locator proposals',
     '',
     '> Review required: this report never edits test source or the locator registry.',
     '',
@@ -902,7 +1076,7 @@ export function renderHealingProposalReport(bundle: HealingProposalBundle): stri
     );
     for (const proposal of bundle.proposals) {
       lines.push(
-        `| ${markdownCell(proposal.targetKey)} | ${proposal.action} | role=${markdownCell(proposal.suggestedPrimary.role)} name=${markdownCell(proposal.suggestedPrimary.name ?? '')} | ${proposal.evidence.distinctRunCount} | ${proposal.evidence.occurrenceCount} | ${proposal.evidence.minimumScore.toFixed(6)} | ${proposal.evidence.minimumMargin.toFixed(6)} | \`${proposal.proposalId}\` |`,
+        `| ${markdownCell(proposal.targetKey)} | ${proposal.action} | ${markdownCell(JSON.stringify(proposal.suggestedPrimary))} | ${proposal.evidence.distinctRunCount} | ${proposal.evidence.occurrenceCount} | ${proposal.evidence.minimumScore.toFixed(6)} | ${proposal.evidence.minimumMargin.toFixed(6)} | \`${proposal.proposalId}\` |`,
       );
     }
     lines.push('');
@@ -913,6 +1087,7 @@ export function renderHealingProposalReport(bundle: HealingProposalBundle): stri
         `### ${markdownCell(proposal.targetKey)} · ${proposal.action}`,
         '',
         `- Target definition: \`${proposal.targetDefinitionHash}\``,
+        `- Evidence source: \`${proposal.source}\``,
         `- Run IDs: ${proposal.evidence.runIds.map((id) => `\`${markdownCell(id)}\``).join(', ')}`,
         `- Test IDs: ${proposal.evidence.testIds.map((id) => `\`${markdownCell(id)}\``).join(', ')}`,
         `- Projects: ${proposal.evidence.projectNames.map((name) => `\`${markdownCell(name)}\``).join(', ')}`,
@@ -920,8 +1095,10 @@ export function renderHealingProposalReport(bundle: HealingProposalBundle): stri
         `- Ignored legacy observations: ${proposal.evidence.ignoredLegacyCount}`,
         `- Current primary: \`${markdownCell(JSON.stringify(proposal.currentPrimary))}\``,
         `- Suggested primary: \`${markdownCell(JSON.stringify(proposal.suggestedPrimary))}\``,
+        `- Unique alternatives: ${proposal.locatorAlternatives.map((suggestion) => `\`${markdownCell(JSON.stringify(suggestion.locator))}\``).join(', ')}`,
+        `- JSON Patch preview: \`${markdownCell(JSON.stringify(proposal.registryPatch))}\``,
         `- Assessment events: ${proposal.evidence.assessmentEventIds.map((id) => `\`${markdownCell(id)}\``).join(', ')}`,
-        `- Execution events: ${proposal.evidence.executionEventIds.map((id) => `\`${markdownCell(id)}\``).join(', ')}`,
+        `- Execution events: ${proposal.evidence.executionEventIds.length === 0 ? 'none (proposal-only observation)' : proposal.evidence.executionEventIds.map((id) => `\`${markdownCell(id)}\``).join(', ')}`,
         `- Screenshots: ${
           proposal.evidence.screenshotPaths.length === 0
             ? 'none recorded'

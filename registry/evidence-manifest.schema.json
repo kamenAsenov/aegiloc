@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/kamenAsenov/healwright/registry/evidence-manifest.schema.json",
-  "title": "Healwright evidence manifest",
+  "$id": "https://github.com/kamenAsenov/aegiloc/registry/evidence-manifest.schema.json",
+  "title": "Aegiloc evidence manifest",
   "type": "object",
   "additionalProperties": false,
   "required": ["schemaVersion", "generatedAt", "files"],

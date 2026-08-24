@@ -1,6 +1,6 @@
 # Portfolio summary
 
-Healwright is a stable-API evaluation framework for conservative Playwright locator recovery. It
+Aegiloc is a stable-API evaluation framework for conservative Playwright locator recovery. It
 proves genuine locator drift, ranks compatible replacements deterministically, executes only under
 guarded policy, and preserves evidence for human and CI review.
 
@@ -10,7 +10,8 @@ guarded policy, and preserves evidence for human and CI review.
 - public Playwright API integration for locators, accessibility snapshots, reporters, and artifacts;
 - deterministic weighted scoring with Unicode-safe normalization and seeded property tests;
 - runtime/JSON Schema parity for registries, proposals, evidence, policy, and health outputs;
-- canonical JSONL evidence, screenshots, review-only proposals, and tamper/stale-state detection;
+- context-scoped candidate discovery, canonical JSONL evidence, screenshots, uniqueness-verified
+  locator alternatives, and review-only locator/fingerprint proposals;
 - optional authenticated evidence manifests with truncation, replacement, and order detection;
 - post-run governance with budgets, baselines, retry handling, and exact expiring waivers;
 - a compiled onboarding CLI, escaped static report viewer, and realistic safe-versus-ambiguous demo.
@@ -32,12 +33,12 @@ and budget-only waivers keep recovery bounded and inspectable.
 
 ## Honest limitations
 
-Healwright is a v1.0.1 evaluation release with a stable inventoried API and no npm publication. It has no demonstrated production
-adoption, optional HMAC is not public-key non-repudiation, and it intentionally does not auto-apply
-locator changes.
+Aegiloc is a v1.1 evaluation release with a stable inventoried API and no npm publication. It has no
+demonstrated production adoption, optional HMAC is not public-key non-repudiation, and it
+intentionally does not auto-apply locator or fingerprint changes.
 
 ## Suggested LinkedIn Featured description
 
-> Healwright is a stable-API evaluation framework for safer Playwright self-healing: deterministic locator recovery, guarded execution, evidence trails, proposal review, and CI governance without silent source rewrites.
+> Aegiloc is a stable-API evaluation framework for safer Playwright self-healing: deterministic locator recovery, guarded execution, evidence trails, proposal review, and CI governance without silent source rewrites.
 
 The description is 217 characters, within LinkedIn's 280-character target.

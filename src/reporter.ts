@@ -4,14 +4,14 @@ import { join } from 'node:path';
 import type { Reporter, TestCase, TestResult } from '@playwright/test/reporter';
 
 import { auditEventsFromAttachments, writeAuditEvidence } from './evidence.js';
-import type { HealwrightAuditEvent } from './audit.js';
+import type { AegilocAuditEvent } from './audit.js';
 import { AuditEvidenceError } from './errors.js';
 import { parseAuditHistory } from './proposals.js';
 import { PASSED_WITH_HEALING } from './result.js';
 
-export const DEFAULT_EVIDENCE_OUTPUT_DIRECTORY = 'test-results/healwright' as const;
+export const DEFAULT_EVIDENCE_OUTPUT_DIRECTORY = 'test-results/aegiloc' as const;
 
-export interface HealwrightReporterOptions {
+export interface AegilocReporterOptions {
   readonly outputDirectory?: string;
 }
 
@@ -29,15 +29,15 @@ export function healingStatusLines(test: TestCase, result: TestResult): readonly
     .map((attachment) => `${PASSED_WITH_HEALING} ${testTitle} · ${attachment.name}`);
 }
 
-export default class HealwrightReporter implements Reporter {
-  readonly #events: HealwrightAuditEvent[] = [];
+export default class AegilocReporter implements Reporter {
+  readonly #events: AegilocAuditEvent[] = [];
   readonly #outputDirectory: string;
 
   public constructor({
     outputDirectory = DEFAULT_EVIDENCE_OUTPUT_DIRECTORY,
-  }: HealwrightReporterOptions = {}) {
+  }: AegilocReporterOptions = {}) {
     if (typeof outputDirectory !== 'string' || outputDirectory.trim() === '') {
-      throw new TypeError('Healwright reporter outputDirectory must be a non-empty string');
+      throw new TypeError('Aegiloc reporter outputDirectory must be a non-empty string');
     }
     this.#outputDirectory = outputDirectory;
   }
@@ -59,7 +59,7 @@ export default class HealwrightReporter implements Reporter {
 
   public async onEnd(): Promise<void> {
     const historyPath = join(this.#outputDirectory, 'history.jsonl');
-    let existingEvents: readonly HealwrightAuditEvent[] = [];
+    let existingEvents: readonly AegilocAuditEvent[] = [];
     try {
       existingEvents = parseAuditHistory(await readFile(historyPath, 'utf8'));
     } catch (error) {
@@ -77,7 +77,7 @@ export default class HealwrightReporter implements Reporter {
       summaryPath: join(this.#outputDirectory, 'summary.json'),
     });
     process.stdout.write(
-      `HEALWRIGHT_EVIDENCE ${summary.events.total} event(s), ${summary.executions.succeeded} successful heal(s) · ${this.#outputDirectory}\n`,
+      `AEGILOC_EVIDENCE ${summary.events.total} event(s), ${summary.executions.succeeded} successful heal(s) · ${this.#outputDirectory}\n`,
     );
   }
 }

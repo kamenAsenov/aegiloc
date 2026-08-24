@@ -1,167 +1,167 @@
-# Healwright
+# Aegiloc
 
-[![CI](https://github.com/kamenAsenov/healwright/actions/workflows/ci.yml/badge.svg)](https://github.com/kamenAsenov/healwright/actions/workflows/ci.yml)
+[![CI](https://github.com/kamenAsenov/aegiloc/actions/workflows/ci.yml/badge.svg)](https://github.com/kamenAsenov/aegiloc/actions/workflows/ci.yml)
+[![Version](https://img.shields.io/badge/version-1.1.0-2f81f7.svg)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 **A conservative, deterministic self-healing layer for Playwright Test.**
 
-Healwright recovers only proven locator drift through an explicit wrapper, semantic gates, fixed
-scoring, and guarded execution. A false-positive heal is worse than a failed heal, so weak,
-ambiguous, contradictory, protected, or stale evidence fails closed.
+Aegiloc (aegis + locator) recovers only proven locator drift. It keeps Playwright's normal action
+path intact, rejects ambiguity, protects high-risk actions, and turns every exceptional pass into
+reviewable evidence. A false-positive heal is worse than a failed heal.
 
 ```ts
 await healer.target('checkout.placeOrder').click();
 ```
 
-**v1.0.1 is a stable-API evaluation release for external review and carefully scoped pilots.** It is
-not a claim of production adoption. This repository is not published to npm; the unscoped
-`healwright` name is currently occupied by an unrelated project, so evaluate this code from the
-source checkout below.
+**v1.1.0 is a stable-API evaluation release for external review and carefully scoped pilots.** It
+is not a claim of production adoption. No Aegiloc package has been published to npm; evaluate the
+project from this source repository.
 
-## Try the interactive local demo
+## See it work
 
 Requirements: Node.js 22 or 24, pnpm 11, and Playwright Chromium.
 
 ```bash
-git clone https://github.com/kamenAsenov/healwright.git
-cd healwright
+git clone https://github.com/kamenAsenov/aegiloc.git
+cd aegiloc
 pnpm install --frozen-lockfile
 pnpm exec playwright install chromium
 pnpm demo
 ```
 
-The command runs the [deterministic local storefront](examples/realistic-demo), verifies its evidence
-manifest, and prints the absolute path to `test-results/realistic-demo/viewer/index.html`. Existing
-demo output is never replaced without `--force`: review it, then use `pnpm cli demo --force` to
-rerun. Add `--open` only when you explicitly want Healwright to open the report:
-`pnpm cli demo --force --open`.
+The deterministic demo shows an ordinary pass, a safe heal, and an ambiguous rejection, then opens
+nothing by default and prints the local evidence-report path. Existing output is protected: review
+it before explicitly rerunning with `pnpm cli demo --force`. Use
+`pnpm cli demo --force --open` only when you deliberately want to open the report. The complete flow
+is checked in under [`examples/realistic-demo`](examples/realistic-demo).
 
-![Healwright v1 evidence report](docs/assets/healwright-report-v1.png)
+![Aegiloc evidence report](docs/assets/aegiloc-report-v1.png)
 
-| Demo case       | What happens                                                       | Result                |
-| --------------- | ------------------------------------------------------------------ | --------------------- |
-| Normal          | The ordinary Playwright locator succeeds; Healwright does nothing. | Ordinary pass         |
-| Safely healed   | One replacement clears confidence, margin, and recheck.            | `PASSED_WITH_HEALING` |
-| Ambiguous drift | Two candidates tie, so neither replacement may execute.            | Rejected safely       |
+| Demo case       | Decision                                                         | Result                |
+| --------------- | ---------------------------------------------------------------- | --------------------- |
+| Normal          | The registered locator succeeds; Aegiloc stays out of the way.   | Ordinary pass         |
+| Safe drift      | One candidate clears semantics, confidence, margin, and recheck. | `PASSED_WITH_HEALING` |
+| Ambiguous drift | Two candidates remain plausible; neither may execute.            | Rejected safely       |
 
-Start with [when to use it](docs/ADOPTION.md#when-to-use-healwright) and
-[when not to use it](docs/WHEN-NOT-TO-USE.md).
+## Safety is the product
 
-## The safety contract
-
-- **Primary first:** Playwright runs the registered locator normally before recovery is considered.
-- **Missing means missing:** healing starts only after timeout, no observed attachment, and a final
+- **Primary first:** the registered locator gets normal Playwright waiting and actionability.
+- **Missing means missing:** healing begins only after timeout, no observed attachment, and a final
   count of zero.
-- **Semantics before scores:** incompatible role, accessible identity, tag, or action cannot be
-  outweighed by a number.
-- **Confidence plus separation:** the winner must clear both a threshold and a safe runner-up margin.
+- **Context before candidates:** an optional exact pathname, unique frame, and unique container
+  must match before discovery begins.
+- **Semantics before scores:** action, role, accessible identity, and tag compatibility are hard
+  gates, not weights that another signal can outweigh.
+- **Confidence plus separation:** the winner must clear a threshold and a safe runner-up margin.
 - **Two-pass agreement:** guarded execution recollects the page and requires the same unique winner.
-- **Human-controlled change:** evidence and proposals are review-only; tests and registries are never
-  silently rewritten.
+- **Human-controlled maintenance:** locator and fingerprint changes are review-only JSON Patch
+  previews. Aegiloc never rewrites tests or registries.
 
 Assertions, expected values, business logic, authentication, test data, APIs, network failures, and
-real product regressions remain ordinary failures. Read the [full safety model](docs/SAFETY-MODEL.md).
+real product regressions remain ordinary failures. Read the [safety model](docs/SAFETY-MODEL.md) and
+[non-use cases](docs/WHEN-NOT-TO-USE.md) before enabling guarded execution.
 
-## What v1 supports
+## v1.1 capability map
 
-- `click`, `fill`, `check`, and `selectOption` through `healer.target(key)`;
-- role, label, test-id, text, and CSS primary locators;
-- version-controlled JSON targets, fingerprints, policies, and JSON Schemas;
-- `off`, `observe`, `guarded`, and `strict-ci` modes;
-- accessible role/name, stable attributes, visible text, tag, ancestor/neighbor context, and
-  low-weight geometry scoring;
-- per-target `automatic` and `proposal-only` execution risk;
-- JSONL evidence, screenshots, summaries, visible healed results, review-only proposals, and
-  governance budgets;
-- integrity manifests plus optional HMAC authentication with external keys;
-- a self-contained local report with search, filters, decision timelines, candidate scoring, trust
-  status, and next-action guidance;
-- deterministic SBOM and package checks, immutable CI actions, and provenance/SBOM attestations.
+| Area             | Supported contract                                                                      |
+| ---------------- | --------------------------------------------------------------------------------------- |
+| Actions          | `click`, `fill`, `check`, `uncheck`, `selectOption`, `hover`, `focus`                   |
+| Primary locators | role, label, test-id, text, placeholder, title, alt text, CSS                           |
+| Target scope     | exact pathname, unique frame, unique container                                          |
+| Signals          | role/name, stable attributes, text, tag, ancestor/neighbor context, low-weight geometry |
+| Runtime modes    | `off`, `observe`, `guarded`, `strict-ci`                                                |
+| Execution risk   | `automatic` or `proposal-only` per target                                               |
+| Evidence         | JSONL, ranked candidates, before/after screenshots, summaries, integrity manifests      |
+| Review loop      | unique locator suggestions, consensus proposals, opt-in fingerprint observations        |
+| Operations       | health trends, budgets, baselines, waivers, static local report                         |
 
-The full suite is Chromium-first. A focused core safety matrix qualifies Firefox and WebKit against
-the locked Playwright version; this is not a broad cross-browser claim.
+No LLM, API key, cloud service, Docker, database, OCR, or visual AI is required. Candidate scoring is
+fixed and replayable. Aegiloc uses public Playwright APIs only.
 
-## Adopt it carefully
+## Minimal integration
 
-The [adoption guide](docs/ADOPTION.md) covers minimal integration, fixtures and Page Objects,
-execution-risk choices, healed-pass review, proposals, CI artifacts, retention, and sensitive
-evidence. The consumer-shaped project in
-[`examples/basic-playwright`](examples/basic-playwright) imports only public package APIs and runs in
-CI. The [troubleshooting decision tree](docs/TROUBLESHOOTING.md) starts from the observed outcome
-instead of suggesting unsafe threshold changes.
+Keep targets in reviewed JSON, then use the typed fixture or construct a healer directly:
 
-## CLI
+```ts
+import { expect } from '@playwright/test';
+import { createAegilocTest, loadTargetRegistry } from 'aegiloc';
 
-From a checkout, build once and run `node dist/cli.js`; an installed package would expose the same
-entry point as `healwright`.
+const registry = await loadTargetRegistry('aegiloc.targets.json');
+const test = createAegilocTest({
+  registry,
+  mode: 'guarded',
+  runId: (testInfo) => process.env.GITHUB_RUN_ID ?? testInfo.testId,
+});
 
-```bash
-pnpm build
-node dist/cli.js doctor
-node dist/cli.js init --registry healwright.targets.json
-node dist/cli.js validate --registry healwright.targets.json
-node dist/cli.js demo
-node dist/cli.js view \
-  --history test-results/realistic-demo/evidence/history.jsonl \
-  --summary test-results/realistic-demo/evidence/summary.json \
-  --manifest test-results/realistic-demo/evidence/manifest.json \
-  --out test-results/realistic-demo/viewer --force
+test('applies a discount', async ({ healer, page }) => {
+  await healer.target('checkout.applyDiscount').click();
+  await expect(page.getByRole('status')).toHaveText('Discount applied');
+});
 ```
 
-See the [CLI reference](docs/CLI.md), [report guide](docs/REPORT-VIEWER.md), and
-[evidence trust guide](docs/EVIDENCE-INTEGRITY.md).
+The assertion remains ordinary Playwright code. See the runnable
+[`examples/basic-playwright`](examples/basic-playwright), the full
+[adoption guide](docs/ADOPTION.md), and the [technical reference](docs/TECHNICAL-REFERENCE.md).
 
-## Architecture
+## How a decision flows
 
 ```mermaid
 flowchart LR
-  A["Semantic target action"] --> B["Primary Playwright locator"]
-  B -->|"ordinary success"| C["Normal test result"]
+  A["Semantic target action"] --> B["Context + primary locator"]
+  B -->|"ordinary success"| C["Normal Playwright result"]
   B -->|"proven missing"| D["Compatible live candidates"]
   D --> E["Semantic gates + deterministic scoring"]
   E -->|"weak or ambiguous"| F["Fail closed + audit"]
-  E -->|"high confidence"| G["Fresh guarded validation"]
+  E -->|"high confidence"| G["Fresh guarded revalidation"]
   G -->|"same unique winner"| H["Action + PASSED_WITH_HEALING"]
-  H --> I["Evidence + integrity manifest"]
-  I --> J["Local report + governance"]
+  H --> I["Evidence, review proposals, health analytics"]
 ```
 
-The implementation uses public Playwright APIs only. See the
-[architecture document](docs/ARCHITECTURE.md) and [technical reference](docs/TECHNICAL-REFERENCE.md).
+The design draws practical lessons from mature and experimental locator-recovery projects while
+keeping a deliberately smaller trust boundary. The
+[comparative research](docs/COMPARATIVE-RESEARCH.md) records those influences and the capabilities
+Aegiloc intentionally does not copy.
 
-## Stable v1 contract
+## CLI and local evidence
 
-The public package exports, reporter subpath, schema subpaths, Node/Playwright ranges, and versioned
-compatibility rules are documented in the [compatibility policy](docs/COMPATIBILITY.md). The
-machine-readable inventory is checked in at [`api/public-api.json`](api/public-api.json) and verified
-by CI to catch unreviewed surface changes.
+```bash
+pnpm build
+pnpm cli doctor
+pnpm cli init --registry aegiloc.targets.json
+pnpm cli validate --registry aegiloc.targets.json
+pnpm proposal:generate
+pnpm fingerprint:propose
+pnpm governance:evaluate
+```
 
-- Node.js: `>=22 <25` (CI contract on 22 and 24)
-- `@playwright/test`: `>=1.50.0 <2` (release qualification locked to 1.62.1)
-- package format: strict ESM with TypeScript declarations and source maps
+The CLI does not upload evidence, apply proposals, edit test source, publish packages, or open a
+browser unless an explicit command and flag request it. See the [CLI reference](docs/CLI.md),
+[report viewer](docs/REPORT-VIEWER.md), and [evidence integrity guide](docs/EVIDENCE-INTEGRITY.md).
 
-## Verify the repository
+## Compatibility and verification
+
+- Node.js `>=22 <25`; CI covers Node 22 and 24.
+- Playwright Test `>=1.50.0 <2`; release qualification is locked to 1.62.1.
+- Strict ESM, TypeScript declarations, source maps, versioned JSON Schemas.
+- Full suite on Chromium; focused safety qualification on Firefox and WebKit.
+- Public API inventory: [`api/public-api.json`](api/public-api.json).
 
 ```bash
 pnpm release:check
 ```
 
-The gate runs formatting, documentation, strict lint/type checks, API and package contracts,
-reproducibility, deterministic SBOM checks, unit/browser/adversarial suites, reporter concurrency,
-evidence, governance, consumer examples, the realistic demo, and focused Firefox/WebKit
-qualification. It does not publish to npm.
+The release gate covers formatting, docs, lint, strict types, public API and package contracts,
+reproducibility, SBOM, unit/browser/adversarial suites, reporter concurrency, evidence, governance,
+examples, and the focused browser matrix. It never publishes to npm.
 
 ## Documentation
 
-- [Quick start](docs/QUICKSTART.md)
-- [Adoption guide](docs/ADOPTION.md)
-- [Troubleshooting decision tree](docs/TROUBLESHOOTING.md)
-- [CLI](docs/CLI.md) and [report viewer](docs/REPORT-VIEWER.md)
-- [Evidence integrity](docs/EVIDENCE-INTEGRITY.md) and [supply chain](docs/SUPPLY-CHAIN.md)
-- [Cross-browser qualification](docs/CROSS-BROWSER-QUALIFICATION.md)
-- [Known risks](docs/KNOWN-RISKS.md) and [non-use cases](docs/WHEN-NOT-TO-USE.md)
-- [Compatibility policy](docs/COMPATIBILITY.md) and [v1.0.1 notes](docs/releases/v1.0.1.md)
-- [Contributing](CONTRIBUTING.md) and [security reporting](SECURITY.md)
+- [Quick start](docs/QUICKSTART.md) · [Adoption](docs/ADOPTION.md) · [Troubleshooting](docs/TROUBLESHOOTING.md)
+- [Architecture](docs/ARCHITECTURE.md) · [Technical reference](docs/TECHNICAL-REFERENCE.md)
+- [Safety model](docs/SAFETY-MODEL.md) · [Known risks](docs/KNOWN-RISKS.md)
+- [Compatibility](docs/COMPATIBILITY.md) · [v1.1 migration](docs/MIGRATION-v1.1.md)
+- [v1.1 release notes](docs/releases/v1.1.0.md) · [Roadmap](ROADMAP.md)
 
 ## License
 

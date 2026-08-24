@@ -2,7 +2,7 @@
 
 This document retains the detailed operational material that would make the project README too
 dense for first-time readers. Start with the [README](../README.md) and
-[architecture](ARCHITECTURE.md) if you are new to Healwright.
+[architecture](ARCHITECTURE.md) if you are new to Aegiloc.
 
 ## Runtime modes
 
@@ -14,7 +14,7 @@ dense for first-time readers. Start with the [README](../README.md) and
 | `strict-ci` | Ranks for diagnostics but always records a strict CI failure decision                                |
 
 `guarded` is the default. A first-pass `eligible` result is necessary but never sufficient to
-execute. Healwright recollects and reranks the live page, requires the same winner and safe margin,
+execute. Aegiloc recollects and reranks the live page, requires the same winner and safe margin,
 checks current execution risk, then resolves an exact accessible role/name/tag locator. A candidate
 test ID further narrows the locator when available. Exactly one element must match.
 
@@ -55,9 +55,25 @@ values.
 }
 ```
 
-Supported primary locator types are role, label, test-id, text, and CSS. Supported wrapper actions
-are `click`, `fill`, `check`, and `selectOption`. Every action checks its allowlist before resolving
-the primary locator.
+Supported primary locator types are role, label, test-id, text, placeholder, title, alt text, and
+CSS. Supported wrapper actions are `click`, `fill`, `check`, `uncheck`, `selectOption`, `hover`, and
+`focus`. Every action checks its allowlist before resolving the primary locator.
+
+Targets may optionally declare exact context:
+
+```json
+{
+  "context": {
+    "pathname": "/checkout",
+    "frame": { "type": "title", "value": "Secure payment", "exact": true },
+    "container": { "type": "role", "role": "region", "name": "Payment", "exact": true }
+  }
+}
+```
+
+The pathname must match exactly. A frame owner and container must each resolve uniquely. Any context
+mismatch raises `TargetContextError` before candidate collection, so another route, frame, or
+repeated component cannot donate a candidate.
 
 `automatic` permits guarded execution after every safety gate passes. `proposal-only` collects and
 ranks evidence but never executes a replacement. Older v0.3 registries without `executionRisk`
@@ -87,7 +103,7 @@ candidates but cannot compensate for mandatory semantic failures. Stable assessm
 `eligible`, `disabled`, `no-candidates`, `semantic-ineligible`, `low-confidence`, and `ambiguous`.
 
 ```ts
-import { assessCandidates, collectCandidates, rankCandidates } from 'healwright';
+import { assessCandidates, collectCandidates, rankCandidates } from 'aegiloc';
 
 const definition = registry.targets['checkout.placeOrder'];
 const candidates = await collectCandidates(page, 'click');
@@ -117,10 +133,10 @@ import {
   JsonlAuditSink,
   PlaywrightAttachmentAuditSink,
   createHealer,
-} from 'healwright';
+} from 'aegiloc';
 
 const auditSink = new CompositeAuditSink([
-  new JsonlAuditSink(testInfo.outputPath('healwright-history.jsonl')),
+  new JsonlAuditSink(testInfo.outputPath('aegiloc-history.jsonl')),
   new PlaywrightAttachmentAuditSink(testInfo),
 ]);
 
@@ -134,11 +150,11 @@ is preserved and never emits a passing marker.
 ## Reporter and canonical history
 
 For parallel runs, `PlaywrightAttachmentAuditSink` sends typed attachments to the coordinator. The
-Healwright reporter writes:
+Aegiloc reporter writes:
 
 ```text
-test-results/healwright/history.jsonl
-test-results/healwright/summary.json
+test-results/aegiloc/history.jsonl
+test-results/aegiloc/summary.json
 ```
 
 The summary covers assessment decisions, execution outcomes, target/action counts, successful
@@ -152,7 +168,7 @@ pnpm evidence:verify
 
 For proposal-quality evidence, configure one stable run ID per suite execution and reuse it across
 retries. `GITHUB_RUN_ID` works in GitHub Actions; local independent runs can set
-`HEALWRIGHT_RUN_ID`. Falling back to a test ID is safe for auditing but repeated executions will not
+`AEGILOC_RUN_ID`. Falling back to a test ID is safe for auditing but repeated executions will not
 count as independent proposal evidence.
 
 ## Reviewable locator proposals
@@ -161,10 +177,10 @@ Generate local review artifacts with:
 
 ```bash
 pnpm proposal:generate -- \
-  --history test-results/healwright/history.jsonl \
+  --history test-results/aegiloc/history.jsonl \
   --registry registry/targets.json \
-  --json test-results/healwright/proposals.json \
-  --markdown test-results/healwright/proposals.md
+  --json test-results/aegiloc/proposals.json \
+  --markdown test-results/aegiloc/proposals.md
 ```
 
 The default requires three distinct provenance run IDs agreeing on the same target, action, and
@@ -177,18 +193,46 @@ provenance, reused assessments, orphaned executions, unsafe screenshot reference
 roles, missing identity, stale registry state, changed thresholds, no-longer-allowed actions,
 missing screenshot phases, conflicting candidates, and an already-current suggestion.
 
-Each accepted proposal includes the current locator, suggested exact role locator, score/margin
+Each accepted proposal includes the current locator, a uniqueness-verified Playwright-native
+suggestion, ranked alternatives, a guarded `test`-then-`replace` JSON Patch preview, score/margin
 ranges, bounded provenance, event and screenshot references, a target-definition digest, a
-deterministic SHA-256 proposal ID, and `review-required` status.
+deterministic SHA-256 proposal ID, and `review-required` status. Proposal-only targets can contribute
+assessment evidence without authorizing runtime execution.
 
 ```bash
 pnpm proposal:verify -- \
-  --proposal test-results/healwright/proposals.json \
+  --proposal test-results/aegiloc/proposals.json \
   --registry registry/targets.json
 ```
 
 Neither command modifies history, source, or registry input. Output paths are prevented from
 overwriting those inputs.
+
+## Reviewable fingerprint proposals
+
+Successful primary fingerprint capture is opt-in and writes only after the ordinary Playwright
+action succeeds. Capture failure never changes the primary action result.
+
+```ts
+const healer = createHealer({
+  page,
+  registry,
+  fingerprintObservation: { enabled: true },
+});
+```
+
+The default JSONL path is `test-results/aegiloc/fingerprints.jsonl`. Generate review artifacts with:
+
+```bash
+pnpm fingerprint:propose -- \
+  --observations test-results/aegiloc/fingerprints.jsonl \
+  --registry registry/targets.json
+```
+
+Three independent successful runs must agree on the primary, action, fingerprint, and commit
+provenance. Unknown targets, stale primaries, mixed commits, conflicting fingerprints, repeated
+single-run observations, and already-current fingerprints are rejected. The output is a review-only
+JSON Patch preview and is never applied automatically.
 
 ## Governance and health summaries
 
@@ -198,11 +242,11 @@ enforcement, retry deduplication, and exact temporary waivers.
 
 ```bash
 pnpm governance:evaluate -- \
-  --history test-results/healwright/history.jsonl \
+  --history test-results/aegiloc/history.jsonl \
   --registry registry/targets.json \
   --policy governance/policy.json \
-  --json test-results/healwright/health-summary.json \
-  --markdown test-results/healwright/health-summary.md
+  --json test-results/aegiloc/health-summary.json \
+  --markdown test-results/aegiloc/health-summary.md
 ```
 
 Exit `0` is a pass, `1` is a valid policy failure, and `2` is malformed, conflicting,
@@ -240,20 +284,22 @@ adversarial tests. Fast-check uses the fixed seed `20260815` so property failure
 
 `pnpm build` emits typed ESM to `dist/`. Intentional entry points are:
 
-- `healwright` — framework API;
-- `healwright/reporter` — Playwright reporter;
-- `healwright/registry-schema` — target registry schema;
-- `healwright/proposal-schema` — review proposal schema;
-- `healwright/evidence-summary-schema` — run summary schema;
-- `healwright/evidence-manifest-schema` — evidence integrity/authentication schema;
-- `healwright/governance-policy-schema` — governance configuration schema;
-- `healwright/health-summary-schema` — health result schema.
+- `aegiloc` — framework API;
+- `aegiloc/reporter` — Playwright reporter;
+- `aegiloc/registry-schema` — target registry schema;
+- `aegiloc/proposal-schema` — review proposal schema;
+- `aegiloc/evidence-summary-schema` — run summary schema;
+- `aegiloc/evidence-manifest-schema` — evidence integrity/authentication schema;
+- `aegiloc/fingerprint-proposal-schema` — review-only fingerprint proposal schema;
+- `aegiloc/governance-policy-schema` — governance configuration schema;
+- `aegiloc/health-summary-schema` — health result schema.
 
 `pnpm package:check` compiles an external-style consumer, imports runtime entry points through Node
-package resolution, verifies build artifacts, exercises evidence/proposal/governance CLIs and their
-tamper failures, and inspects `pnpm pack --dry-run --json`. It creates no publication.
+package resolution, verifies build artifacts, exercises evidence/locator-proposal/fingerprint-
+proposal/governance CLIs and their tamper failures, and inspects `pnpm pack --dry-run --json`. It
+creates no publication.
 
-The `healwright` package bin resolves to `dist/cli.js`. Its `attest` and `verify` commands map to the
+The `aegiloc` package bin resolves to `dist/cli.js`. Its `attest` and `verify` commands map to the
 public evidence-manifest APIs. Its `view` command is also available as the public
 `generateReportViewer` and `renderReportViewer` APIs. Report generation requires canonical
 history and an exactly matching summary and produces escaped static HTML without remote assets.
@@ -283,18 +329,17 @@ history and an exactly matching summary and produces escaped static HTML without
 
 - The full portfolio suite and realistic demo are Chromium-first; the core browser contract is also
   qualified on Firefox and WebKit through the dedicated matrix.
-- This repository is not currently published to a registry. The unscoped `healwright` npm name is
-  occupied by an unrelated project and must not be used to install this source release.
+- This repository is not currently published to a package registry; evaluate v1.1 from source.
 - Candidate collection covers common interactive HTML and ARIA patterns, not arbitrary widgets.
 - Accessible identity uses Playwright's public ARIA snapshot representation.
-- Fingerprints and registry changes remain manual; proposals have no auto-apply path.
+- Fingerprints and registry changes remain manual; both proposal formats have no auto-apply path.
 - Proposal consensus requires configured run provenance; legacy history remains readable but is not
   confidence evidence.
 - Pre-v0.3.1 history without semantic-eligibility proof is excluded from proposals.
 - v0.3 events without operation indexes conservatively treat repeated same-target actions as one
   retry identity.
-- Protected observations never execute, and the current proposal generator requires successful
-  guarded execution, so protected-only evidence cannot generate a proposal.
+- Protected observations never execute. Repeated high-confidence protected assessments may produce
+  a review-only locator proposal but can never authorize an action.
 - Commit provenance is optional, but mixed or partially recorded commits fail proposal generation.
 - Optional manifests authenticate evidence with a shared HMAC key; unsigned manifests and shared-key
   attribution still require an external trust and key-management policy.

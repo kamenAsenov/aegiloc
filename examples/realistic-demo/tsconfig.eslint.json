@@ -3,8 +3,8 @@
   "compilerOptions": {
     "baseUrl": "../..",
     "paths": {
-      "healwright": ["src/index.ts"],
-      "healwright/reporter": ["src/reporter.ts"]
+      "aegiloc": ["src/index.ts"],
+      "aegiloc/reporter": ["src/reporter.ts"]
     }
   },
   "include": ["playwright.config.ts", "tests/**/*.ts"]

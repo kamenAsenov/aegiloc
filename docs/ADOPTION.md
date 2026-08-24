@@ -1,14 +1,14 @@
 # Adoption guide
 
-## When to use Healwright
+## When to use Aegiloc
 
-Use Healwright when a small set of reviewed Playwright actions has meaningful semantic identity,
+Use Aegiloc when a small set of reviewed Playwright actions has meaningful semantic identity,
 locator-only drift is a recurring maintenance cost, and the team can retain and review exceptional
 pass evidence. Start in `observe`, then use `guarded` only for reversible, low-risk actions with a
 strong fingerprint.
 
 Do not use it to make a generally flaky suite appear green. Read [when not to use
-Healwright](WHEN-NOT-TO-USE.md) before enabling execution.
+Aegiloc](WHEN-NOT-TO-USE.md) before enabling execution.
 
 ## Minimal integration
 
@@ -46,9 +46,9 @@ Keep target definitions in a version-controlled JSON registry. The basic shape i
 Load it once and keep the wrapper explicit in the test:
 
 ```ts
-import { createHealer, loadTargetRegistry } from 'healwright';
+import { createHealer, loadTargetRegistry } from 'aegiloc';
 
-const registry = await loadTargetRegistry('healwright.targets.json');
+const registry = await loadTargetRegistry('aegiloc.targets.json');
 const healer = createHealer({ page, registry, mode: 'guarded' });
 
 await healer.target('checkout.applyDiscount').click();
@@ -59,22 +59,21 @@ artifact configuration using only public package APIs.
 
 ## Fixtures and Page Objects
 
-Create one healer per Playwright `Page` and expose it through a fixture. Page Objects should own
-semantic target keys, not private selectors that bypass the registry:
+Use the typed fixture to create one healer per Playwright `Page`. Page Objects should own semantic
+target keys, not private selectors that bypass the registry:
 
 ```ts
-import { test as base } from '@playwright/test';
-import { createHealer, type Healer } from 'healwright';
-import registry from '../healwright.targets.json' with { type: 'json' };
+import { createAegilocTest, type Healer } from 'aegiloc';
+import registry from '../aegiloc.targets.json' with { type: 'json' };
 
-export const test = base.extend<{ healer: Healer<typeof registry> }>({
-  healer: async ({ page }, use) => {
-    await use(createHealer({ page, registry, mode: 'guarded' }));
-  },
+export const test = createAegilocTest({
+  registry,
+  mode: 'observe',
+  runId: (testInfo) => process.env.GITHUB_RUN_ID ?? testInfo.testId,
 });
 
 export class CheckoutPage {
-  public constructor(private readonly healer: Healer<typeof registry>) {}
+  public constructor(private readonly healer: Healer<keyof typeof registry.targets>) {}
 
   public async applyDiscount(): Promise<void> {
     await this.healer.target('checkout.applyDiscount').click();
@@ -83,6 +82,27 @@ export class CheckoutPage {
 ```
 
 Keep assertions as normal Playwright assertions. Never wrap an expected result in healing logic.
+Move reviewed reversible targets from `observe` to `guarded` only after inspecting candidate and
+ambiguity evidence.
+
+## Scope repeated targets explicitly
+
+When the same semantic control can appear on multiple routes, in frames, or in repeated cards,
+declare exact context in the registry. A context mismatch fails before candidate discovery.
+
+```json
+{
+  "context": {
+    "pathname": "/checkout",
+    "container": {
+      "type": "role",
+      "role": "region",
+      "name": "Order summary",
+      "exact": true
+    }
+  }
+}
+```
 
 ## Choose execution risk explicitly
 
@@ -104,16 +124,21 @@ collects reviewable evidence but blocks automatic execution.
 3. Compare the winning and runner-up candidates, semantic gates, confidence, and margin.
 4. Inspect the before/after screenshots and ordinary Playwright trace where retained.
 5. Generate a proposal only after independent agreeing observations.
-6. Review any registry edit as source code. Healwright never applies it automatically.
+6. Review any registry edit as source code. Aegiloc never applies it automatically.
 
 ```bash
 pnpm proposal:generate
 pnpm proposal:verify
+pnpm fingerprint:propose
 ```
+
+Fingerprint observations are a separate opt-in review loop. They are recorded only after successful
+primary actions and can propose a fingerprint update after independent-run consensus; they never
+learn from a failed or healed action.
 
 ## CI and evidence handling
 
-Use the Healwright reporter with the ordinary Playwright reporters. Retain canonical history,
+Use the Aegiloc reporter with the ordinary Playwright reporters. Retain canonical history,
 summary, manifest, health summary, screenshots, and traces according to your data policy. These may
 contain target names, accessible text, selectors, paths, commit identifiers, and application state.
 

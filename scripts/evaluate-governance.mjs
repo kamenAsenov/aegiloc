@@ -8,14 +8,14 @@ import {
   loadTargetRegistry,
   serializeAuditHistory,
   writeHealthSummary,
-} from 'healwright';
+} from 'aegiloc';
 
 const defaults = {
-  history: 'test-results/healwright/history.jsonl',
+  history: 'test-results/aegiloc/history.jsonl',
   registry: 'registry/targets.json',
   policy: 'governance/policy.json',
-  json: 'test-results/healwright/health-summary.json',
-  markdown: 'test-results/healwright/health-summary.md',
+  json: 'test-results/aegiloc/health-summary.json',
+  markdown: 'test-results/aegiloc/health-summary.md',
 };
 
 function usage() {
@@ -107,7 +107,7 @@ async function main() {
     markdownPath,
   });
   process.stdout.write(
-    `HEALWRIGHT_GOVERNANCE ${summary.status.toUpperCase()} · ${summary.totals.attempts} attempt(s), ${summary.violations.length} violation(s)\n`,
+    `AEGILOC_GOVERNANCE ${summary.status.toUpperCase()} · ${summary.totals.attempts} attempt(s), ${summary.violations.length} violation(s)\n`,
   );
   return summary.status === 'pass' ? 0 : 1;
 }

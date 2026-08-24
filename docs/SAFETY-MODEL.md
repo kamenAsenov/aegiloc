@@ -1,6 +1,6 @@
 # Safety model
 
-Healwright is designed around one ordering principle: **a false-positive heal is worse than a failed
+Aegiloc is designed around one ordering principle: **a false-positive heal is worse than a failed
 heal**. Locator recovery is therefore a narrow exception to ordinary Playwright behavior, not a
 general retry mechanism.
 
@@ -13,7 +13,7 @@ The primary locator always runs first. Recovery begins only when all of these ch
 3. a post-failure `locator.count()` still returns zero.
 
 If the element was attached at any point, or the failure is strictness, actionability, navigation,
-page closure, or another non-timeout error, Healwright preserves the original Playwright failure.
+page closure, or another non-timeout error, Aegiloc preserves the original Playwright failure.
 
 ## Conditions required for guarded execution
 
@@ -21,6 +21,7 @@ Every condition below is mandatory:
 
 - the target exists in a strictly validated registry;
 - the requested action is explicitly allowed;
+- any exact pathname, frame, and container context resolves uniquely;
 - healing is enabled for the target;
 - the primary failure proves genuine absence;
 - a live candidate is compatible with the requested action;
@@ -35,7 +36,7 @@ Every condition below is mandatory:
 - the assessment audit event was written successfully;
 - the pre-action screenshot was captured successfully.
 
-Only then does Healwright apply the original requested action to the candidate. Actionability remains
+Only then does Aegiloc apply the original requested action to the candidate. Actionability remains
 Playwright's responsibility. A replacement action failure is recorded and propagated rather than
 turned into a pass.
 
@@ -79,9 +80,10 @@ never rescue a semantic contradiction.
 ## Why there is no automatic source rewrite
 
 A successful recovery is evidence that a reviewed locator may need updating; it is not permission
-to change the repository. Healwright can generate a proposal containing provenance, score ranges,
-margin, screenshot references, current-locator state, and an integrity hash. Its status is always
-`review-required`.
+to change the repository. Aegiloc can generate locator and fingerprint proposals containing
+provenance, review evidence, guarded JSON Patch previews, current registry state, and deterministic
+identities. Their status is always `review-required`. Fingerprint evidence is opt-in and is recorded
+only after a normal primary action succeeds.
 
 No runtime or CLI path edits tests, application code, or `registry/targets.json`. A human reviews the
 evidence and makes any change through the normal branch and pull-request process.

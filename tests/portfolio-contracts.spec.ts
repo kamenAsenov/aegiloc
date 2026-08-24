@@ -9,17 +9,19 @@ test('portfolio entry points remain concise, honest, and connected to deeper doc
   const readmeLines = readme.split('\n').length;
 
   expect(readmeLines).toBeLessThan(250);
-  expect(readme).toContain('v1.0.1 is a stable-API evaluation release');
+  expect(readme).toContain('v1.1.0 is a stable-API evaluation release');
   expect(readme).toMatch(/a false-positive heal is worse than a failed heal/i);
   expect(readme).toContain('examples/basic-playwright');
   expect(readme).toContain('examples/realistic-demo');
-  expect(readme).toContain('docs/assets/healwright-report-v1.png');
+  expect(readme).toContain('docs/assets/aegiloc-report-v1.png');
   expect(readme).toContain('docs/COMPATIBILITY.md');
   expect(readme).toContain('api/public-api.json');
   expect(readme).toContain('docs/ARCHITECTURE.md');
   expect(readme).toContain('docs/SAFETY-MODEL.md');
+  expect(readme).toContain('docs/COMPARATIVE-RESEARCH.md');
+  expect(readme).toContain('docs/MIGRATION-v1.1.md');
   expect(readme).toContain('not a claim of production adoption');
-  expect(readme).toContain('occupied by an unrelated project');
+  expect(readme).toContain('No Aegiloc package has been published to npm');
   expect(readme).not.toMatch(/enterprise-ready|enterprise-grade|trusted by|used by \d+/i);
 });
 
@@ -36,10 +38,10 @@ test('package metadata is ready for review but publication remains explicitly gu
   };
 
   expect(packageJson.private).toBe(false);
-  expect(packageJson.version).toBe('1.0.1');
-  expect(packageJson.bin?.healwright).toBe('./dist/cli.js');
+  expect(packageJson.version).toBe('1.1.0');
+  expect(packageJson.bin?.aegiloc).toBe('./dist/cli.js');
   expect(packageJson.license).toBe('MIT');
-  expect(packageJson.repository?.url).toBe('git+https://github.com/kamenAsenov/healwright.git');
+  expect(packageJson.repository?.url).toBe('git+https://github.com/kamenAsenov/aegiloc.git');
   expect(packageJson.scripts?.['prepublishOnly']).toContain('scripts/guard-publish.mjs');
   expect(packageJson.scripts?.['release:check']).toContain('pnpm example:verify');
   expect(packageJson.scripts?.['release:check']).toContain('pnpm example:realistic');
@@ -78,8 +80,8 @@ test('type-aware example linting resolves public imports before the package buil
   const eslintConfig = await readFile(new URL('../eslint.config.mjs', import.meta.url), 'utf8');
 
   expect(lintProject.compilerOptions?.paths).toEqual({
-    healwright: ['src/index.ts'],
-    'healwright/reporter': ['src/reporter.ts'],
+    aegiloc: ['src/index.ts'],
+    'aegiloc/reporter': ['src/reporter.ts'],
   });
   expect(eslintConfig).toContain("project: './examples/basic-playwright/tsconfig.eslint.json'");
   expect(eslintConfig).toContain("project: './examples/realistic-demo/tsconfig.eslint.json'");

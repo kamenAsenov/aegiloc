@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/kamenAsenov/healwright/registry/health-summary.schema.json",
-  "title": "Healwright governance health summary",
+  "$id": "https://github.com/kamenAsenov/aegiloc/registry/health-summary.schema.json",
+  "title": "Aegiloc governance health summary",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -133,6 +133,8 @@
       "uniqueItems": true,
       "items": { "$ref": "#/$defs/nonEmptyString" }
     },
-    "action": { "enum": ["click", "fill", "check", "selectOption"] }
+    "action": {
+      "enum": ["click", "fill", "check", "uncheck", "selectOption", "hover", "focus"]
+    }
   }
 }

@@ -1,11 +1,11 @@
 # Known risks
 
-Healwright v1.0.1 is an evaluation release with a stable API. Conservative design reduces some
+Aegiloc v1.1 is an evaluation release with a stable API. Conservative design reduces some
 locator-recovery risks; it does not remove the need for test ownership or product review.
 
 ## False-positive execution
 
-The highest-impact risk is executing the wrong compatible element. Healwright mitigates this with
+The highest-impact risk is executing the wrong compatible element. Aegiloc mitigates this with
 missing-locator proof, action filtering, mandatory semantic gates, confidence, runner-up margin,
 per-target execution risk, immediate revalidation, and uniqueness. These controls are not a formal
 proof of user intent. Sensitive or irreversible operations should remain `proposal-only` or outside
@@ -58,9 +58,9 @@ not prove absence of vulnerabilities or authorize publication. Attestations are 
 
 ## Distribution identity
 
-The unscoped `healwright` name on npm belongs to an unrelated project. This repository is distributed
-as a GitHub source release only; installing the unscoped npm package does not install this code. Any
-future registry distribution requires a separately reviewed package name owned by this project.
+No Aegiloc npm package has been published. This repository is distributed as a GitHub source
+release only. An exact-name availability check is not ownership or trademark clearance; any future
+registry distribution requires a fresh ownership, namespace, provenance, and legal review.
 
 ## Generated report content
 

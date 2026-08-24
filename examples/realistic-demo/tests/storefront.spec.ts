@@ -11,7 +11,7 @@ import {
   createPlaywrightAuditProvenance,
   loadTargetRegistry,
   type AuditSink,
-} from 'healwright';
+} from 'aegiloc';
 
 async function demoHealer(page: Page, testInfo: TestInfo, inMemory?: InMemoryAuditSink) {
   const registry = await loadTargetRegistry(new URL('../targets.json', import.meta.url));
@@ -23,10 +23,7 @@ async function demoHealer(page: Page, testInfo: TestInfo, inMemory?: InMemoryAud
     mode: 'guarded',
     primaryActionTimeoutMs: 300,
     auditSink: new CompositeAuditSink(auditSinks),
-    screenshotCapture: new FileScreenshotCapture(
-      page,
-      testInfo.outputPath('healwright-screenshots'),
-    ),
+    screenshotCapture: new FileScreenshotCapture(page, testInfo.outputPath('aegiloc-screenshots')),
     resultSink: new PlaywrightHealingResultSink(testInfo),
     auditProvenance: createPlaywrightAuditProvenance(testInfo, {
       runId: 'realistic-demo-v1.0',

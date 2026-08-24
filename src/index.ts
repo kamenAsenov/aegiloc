@@ -26,7 +26,7 @@ export {
   type AuditRankedCandidate,
   type AuditSink,
   type PlaywrightAuditProvenanceOptions,
-  type HealwrightAuditEvent,
+  type AegilocAuditEvent,
   type HealingAuditEvent,
   type HealingExecutionAuditEvent,
   type HealingExecutionReason,
@@ -42,9 +42,12 @@ export {
 export {
   collectCandidates,
   parseAriaIdentity,
+  snapshotLocatorCandidate,
   type AriaIdentity,
+  type CandidateCollectionOptions,
   type CandidateSnapshot,
 } from './candidates.js';
+export { resolveTargetContext, type ResolvedTargetContext } from './context.js';
 export { executePrimaryAction, type PrimaryLocatorProbe } from './classification.js';
 export {
   ArtifactCaptureError,
@@ -58,8 +61,37 @@ export {
   ProposalHistoryError,
   ProposalBundleValidationError,
   TargetActionNotAllowedError,
+  TargetContextError,
   UnknownTargetError,
+  type TargetContextFailure,
 } from './errors.js';
+export {
+  DEFAULT_FINGERPRINT_PROPOSAL_MINIMUM_OBSERVATIONS,
+  FINGERPRINT_OBSERVATION_SCHEMA_VERSION,
+  FINGERPRINT_PROPOSAL_SCHEMA_URL,
+  FINGERPRINT_PROPOSAL_SCHEMA_VERSION,
+  InMemoryFingerprintObservationSink,
+  JsonlFingerprintObservationSink,
+  NoopFingerprintObservationSink,
+  createPrimaryFingerprintObservation,
+  fingerprintFromCandidate,
+  generateFingerprintProposals,
+  loadFingerprintObservationHistory,
+  parseFingerprintObservationHistory,
+  renderFingerprintProposalReport,
+  type CreatePrimaryFingerprintObservationOptions,
+  type FingerprintObservationSink,
+  type FingerprintProposalBundle,
+  type FingerprintProposalRejectionReason,
+  type FingerprintReviewProposal,
+  type PrimaryFingerprintObservation,
+} from './fingerprints.js';
+export {
+  createAegilocTest,
+  type AegilocFixtures,
+  type AegilocTest,
+  type CreateAegilocTestOptions,
+} from './fixture.js';
 export {
   GOVERNANCE_POLICY_SCHEMA_VERSION,
   HEALTH_SUMMARY_SCHEMA_VERSION,
@@ -145,7 +177,7 @@ export {
   type HealingResultSink,
   type HealingSuccessResult,
 } from './result.js';
-export { resolvePrimaryLocator } from './locator.js';
+export { resolvePrimaryLocator, type LocatorRoot } from './locator.js';
 export {
   CANDIDATE_ELIGIBILITY_REASONS,
   SCORE_WEIGHTS,
@@ -162,6 +194,7 @@ export {
   type ScoreSignal,
 } from './scoring.js';
 export { SUPPORTED_ARIA_ROLES, loadTargetRegistry, parseTargetRegistry } from './registry.js';
+export { collectLocatorSuggestions, type LocatorSuggestionEvidence } from './suggestions.js';
 export { EXECUTION_RISKS, HEALING_MODES, TARGET_ACTIONS, resolveExecutionRisk } from './types.js';
 export {
   generateReportViewer,
@@ -173,14 +206,24 @@ export {
 } from './report-viewer.js';
 export type {
   AriaRole,
+  AltTextLocatorDefinition,
+  CssLocatorDefinition,
   ExecutionRisk,
   HealingPolicy,
   HealingMode,
+  LabelLocatorDefinition,
+  PlaceholderLocatorDefinition,
   PrimaryLocatorDefinition,
+  RegistryDefaults,
+  RoleLocatorDefinition,
   TargetAction,
+  TargetContextDefinition,
   TargetDefinition,
   TargetFingerprint,
   TargetGeometry,
   TargetPolicy,
   TargetRegistry,
+  TestIdLocatorDefinition,
+  TextLocatorDefinition,
+  TitleLocatorDefinition,
 } from './types.js';

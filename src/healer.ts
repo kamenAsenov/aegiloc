@@ -14,7 +14,7 @@ import {
   type AuditSink,
   type HealingAuditEvent,
   type HealingExecutionReason,
-  type HealwrightAuditEvent,
+  type AegilocAuditEvent,
 } from './audit.js';
 import {
   FileScreenshotCapture,
@@ -24,9 +24,16 @@ import {
 import {
   collectCandidates as collectLiveCandidates,
   resolveUniqueCandidateLocator,
+  snapshotLocatorCandidate,
+  type CandidateCollectionOptions,
   type CandidateSnapshot,
 } from './candidates.js';
 import { executePrimaryAction } from './classification.js';
+import {
+  createPrimaryFingerprintObservation,
+  JsonlFingerprintObservationSink,
+  type FingerprintObservationSink,
+} from './fingerprints.js';
 import {
   ArtifactCaptureError,
   AuditWriteError,
@@ -36,8 +43,10 @@ import {
   UnknownTargetError,
 } from './errors.js';
 import { resolvePrimaryLocator } from './locator.js';
+import { resolveTargetContext } from './context.js';
 import { ConsoleHealingResultSink, PASSED_WITH_HEALING, type HealingResultSink } from './result.js';
 import { assessCandidates, rankCandidates, type CandidateAssessment } from './scoring.js';
+import { collectLocatorSuggestions, type LocatorSuggestionEvidence } from './suggestions.js';
 import {
   HEALING_MODES,
   resolveExecutionRisk,
@@ -51,12 +60,16 @@ import {
 type ClickOptions = Parameters<Locator['click']>[0];
 type FillOptions = Parameters<Locator['fill']>[1];
 type CheckOptions = Parameters<Locator['check']>[0];
+type UncheckOptions = Parameters<Locator['uncheck']>[0];
 type SelectOptionValues = Parameters<Locator['selectOption']>[0];
 type SelectOptionOptions = Parameters<Locator['selectOption']>[1];
+type HoverOptions = Parameters<Locator['hover']>[0];
+type FocusOptions = Parameters<Locator['focus']>[0];
 
 export type CandidateCollector = (
   page: Page,
   action: TargetAction,
+  options?: CandidateCollectionOptions,
 ) => Promise<readonly CandidateSnapshot[]>;
 
 interface HealingRuntime {
@@ -66,6 +79,7 @@ interface HealingRuntime {
   readonly screenshotCapture: ScreenshotCapture;
   readonly resultSink: HealingResultSink;
   readonly auditProvenance?: AuditProvenance;
+  readonly fingerprintObservationSink?: FingerprintObservationSink;
 }
 
 interface MissingAssessment {
@@ -107,6 +121,7 @@ class HealerTarget {
     private readonly page: Page,
     private readonly key: string,
     private readonly definition: TargetDefinition,
+    private readonly testIdAttribute: string,
     private readonly primaryActionTimeoutMs: number,
     private readonly runtime: HealingRuntime,
     private readonly nextOperationIndex: (action: TargetAction) => number,
@@ -114,7 +129,7 @@ class HealerTarget {
 
   public async click(options?: ClickOptions): Promise<void> {
     this.assertActionAllowed('click');
-    const locator = this.primaryLocator();
+    const locator = await this.primaryLocator();
     const effectiveOptions = {
       ...options,
       timeout: options?.timeout ?? this.primaryActionTimeoutMs,
@@ -130,7 +145,7 @@ class HealerTarget {
 
   public async fill(value: string, options?: FillOptions): Promise<void> {
     this.assertActionAllowed('fill');
-    const locator = this.primaryLocator();
+    const locator = await this.primaryLocator();
     const effectiveOptions = {
       ...options,
       timeout: options?.timeout ?? this.primaryActionTimeoutMs,
@@ -146,7 +161,7 @@ class HealerTarget {
 
   public async check(options?: CheckOptions): Promise<void> {
     this.assertActionAllowed('check');
-    const locator = this.primaryLocator();
+    const locator = await this.primaryLocator();
     const effectiveOptions = {
       ...options,
       timeout: options?.timeout ?? this.primaryActionTimeoutMs,
@@ -160,12 +175,28 @@ class HealerTarget {
     );
   }
 
+  public async uncheck(options?: UncheckOptions): Promise<void> {
+    this.assertActionAllowed('uncheck');
+    const locator = await this.primaryLocator();
+    const effectiveOptions = {
+      ...options,
+      timeout: options?.timeout ?? this.primaryActionTimeoutMs,
+    };
+    await this.execute(
+      'uncheck',
+      locator,
+      effectiveOptions.timeout,
+      () => locator.uncheck(effectiveOptions),
+      (candidate) => candidate.uncheck(effectiveOptions),
+    );
+  }
+
   public async selectOption(
     values: SelectOptionValues,
     options?: SelectOptionOptions,
   ): Promise<readonly string[]> {
     this.assertActionAllowed('selectOption');
-    const locator = this.primaryLocator();
+    const locator = await this.primaryLocator();
     const effectiveOptions = {
       ...options,
       timeout: options?.timeout ?? this.primaryActionTimeoutMs,
@@ -179,6 +210,38 @@ class HealerTarget {
     );
   }
 
+  public async hover(options?: HoverOptions): Promise<void> {
+    this.assertActionAllowed('hover');
+    const locator = await this.primaryLocator();
+    const effectiveOptions = {
+      ...options,
+      timeout: options?.timeout ?? this.primaryActionTimeoutMs,
+    };
+    await this.execute(
+      'hover',
+      locator,
+      effectiveOptions.timeout,
+      () => locator.hover(effectiveOptions),
+      (candidate) => candidate.hover(effectiveOptions),
+    );
+  }
+
+  public async focus(options?: FocusOptions): Promise<void> {
+    this.assertActionAllowed('focus');
+    const locator = await this.primaryLocator();
+    const effectiveOptions = {
+      ...options,
+      timeout: options?.timeout ?? this.primaryActionTimeoutMs,
+    };
+    await this.execute(
+      'focus',
+      locator,
+      effectiveOptions.timeout,
+      () => locator.focus(effectiveOptions),
+      (candidate) => candidate.focus(effectiveOptions),
+    );
+  }
+
   private async execute<TResult>(
     action: TargetAction,
     locator: Locator,
@@ -186,8 +249,37 @@ class HealerTarget {
     invokePrimary: () => Promise<TResult>,
     invokeCandidate: (candidate: Locator) => Promise<TResult>,
   ): Promise<TResult> {
+    const invokeObservedPrimary = async (): Promise<TResult> => {
+      let candidate: CandidateSnapshot | undefined;
+      if (this.runtime.fingerprintObservationSink !== undefined) {
+        try {
+          candidate = await snapshotLocatorCandidate(locator, this.testIdAttribute);
+        } catch {
+          // Review-only fingerprint capture must never alter the primary Playwright outcome.
+        }
+      }
+      const result = await invokePrimary();
+      if (candidate !== undefined && this.runtime.fingerprintObservationSink !== undefined) {
+        try {
+          await this.runtime.fingerprintObservationSink.write(
+            createPrimaryFingerprintObservation({
+              ...(this.runtime.auditProvenance === undefined
+                ? {}
+                : { provenance: this.runtime.auditProvenance }),
+              targetKey: this.key,
+              action,
+              primaryLocator: this.definition.primary,
+              candidate,
+            }),
+          );
+        } catch {
+          // Observations are advisory evidence; registry and action behavior remain unchanged.
+        }
+      }
+      return result;
+    };
     if (this.runtime.mode === 'off') {
-      return invokePrimary();
+      return invokeObservedPrimary();
     }
 
     try {
@@ -196,7 +288,7 @@ class HealerTarget {
         action,
         locator,
         timeoutMs,
-        invoke: invokePrimary,
+        invoke: invokeObservedPrimary,
       });
     } catch (error) {
       if (!(error instanceof MissingPrimaryLocatorError)) {
@@ -244,7 +336,11 @@ class HealerTarget {
 
     if (this.definition.policy.healing.enabled) {
       try {
-        candidates = await this.runtime.candidateCollector(this.page, action);
+        candidates = await this.runtime.candidateCollector(
+          this.page,
+          action,
+          this.collectionOptions(),
+        );
         collectionStatus = 'completed';
       } catch (error) {
         collectionStatus = 'failed';
@@ -254,6 +350,18 @@ class HealerTarget {
 
     const rankedCandidates = rankCandidates(this.definition.fingerprint, candidates, action);
     const assessment = assessCandidates(rankedCandidates, this.definition.policy.healing);
+    let locatorSuggestions: readonly LocatorSuggestionEvidence[] | undefined;
+    if (assessment.topCandidate !== undefined) {
+      try {
+        locatorSuggestions = await collectLocatorSuggestions(
+          this.page,
+          assessment.topCandidate.candidate,
+          this.collectionOptions(),
+        );
+      } catch {
+        locatorSuggestions = [];
+      }
+    }
     const event = createHealingAuditEvent({
       ...(this.runtime.auditProvenance === undefined
         ? {}
@@ -270,6 +378,7 @@ class HealerTarget {
       ...(collectionError === undefined ? {} : { collectionError }),
       assessment,
       rankedCandidates,
+      ...(locatorSuggestions === undefined ? {} : { locatorSuggestions }),
     });
 
     await this.writeAudit(event);
@@ -417,7 +526,11 @@ class HealerTarget {
     }
     let candidates: readonly CandidateSnapshot[];
     try {
-      candidates = await this.runtime.candidateCollector(this.page, action);
+      candidates = await this.runtime.candidateCollector(
+        this.page,
+        action,
+        this.collectionOptions(),
+      );
     } catch (error) {
       return { status: 'rejected', reason: 'revalidation-changed', error };
     }
@@ -432,7 +545,11 @@ class HealerTarget {
       return { status: 'rejected', reason: 'revalidation-changed' };
     }
 
-    const locator = await resolveUniqueCandidateLocator(this.page, revalidatedCandidate);
+    const locator = await resolveUniqueCandidateLocator(
+      this.page,
+      revalidatedCandidate,
+      this.collectionOptions(),
+    );
     return locator === undefined
       ? { status: 'rejected', reason: 'candidate-not-unique' }
       : { status: 'ready', locator };
@@ -455,7 +572,7 @@ class HealerTarget {
     return event;
   }
 
-  private async writeAudit(event: HealwrightAuditEvent): Promise<void> {
+  private async writeAudit(event: AegilocAuditEvent): Promise<void> {
     try {
       await this.runtime.auditSink.write(event);
     } catch (error) {
@@ -463,8 +580,17 @@ class HealerTarget {
     }
   }
 
-  private primaryLocator(): Locator {
-    return resolvePrimaryLocator(this.page, this.definition.primary);
+  private async primaryLocator(): Promise<Locator> {
+    const context = await resolveTargetContext(this.page, this.key, this.definition.context);
+    return resolvePrimaryLocator(context.root, this.definition.primary);
+  }
+
+  private collectionOptions(): CandidateCollectionOptions {
+    return {
+      targetKey: this.key,
+      ...(this.definition.context === undefined ? {} : { context: this.definition.context }),
+      testIdAttribute: this.testIdAttribute,
+    };
   }
 
   private assertActionAllowed(action: TargetAction): void {
@@ -493,6 +619,7 @@ export class Healer<TTargetKey extends string = string> {
       this.page,
       key,
       this.registry.targets[key],
+      this.registry.defaults.testIdAttribute ?? 'data-testid',
       this.primaryActionTimeoutMs,
       this.runtime,
       (action) => {
@@ -515,6 +642,10 @@ export interface CreateHealerOptions<TTargetKey extends string = string> {
   readonly screenshotCapture?: ScreenshotCapture;
   readonly resultSink?: HealingResultSink;
   readonly auditProvenance?: AuditProvenanceInput;
+  readonly fingerprintObservation?: {
+    readonly enabled: boolean;
+    readonly sink?: FingerprintObservationSink;
+  };
 }
 
 export function createHealer<TTargetKey extends string = string>({
@@ -522,23 +653,33 @@ export function createHealer<TTargetKey extends string = string>({
   registry,
   mode = 'guarded',
   primaryActionTimeoutMs = 2_000,
-  auditSink = new JsonlAuditSink(
-    join(process.cwd(), 'test-results', 'healwright', 'history.jsonl'),
-  ),
+  auditSink = new JsonlAuditSink(join(process.cwd(), 'test-results', 'aegiloc', 'history.jsonl')),
   candidateCollector = collectLiveCandidates,
   screenshotCapture = new FileScreenshotCapture(
     page,
-    join(process.cwd(), 'test-results', 'healwright', 'screenshots'),
+    join(process.cwd(), 'test-results', 'aegiloc', 'screenshots'),
   ),
   resultSink = new ConsoleHealingResultSink(),
   auditProvenance,
+  fingerprintObservation,
 }: CreateHealerOptions<TTargetKey>): Healer<TTargetKey> {
   if (!HEALING_MODES.includes(mode)) {
-    throw new TypeError(`Unsupported Healwright mode: ${mode}`);
+    throw new TypeError(`Unsupported Aegiloc mode: ${mode}`);
   }
   if (!Number.isFinite(primaryActionTimeoutMs) || primaryActionTimeoutMs <= 0) {
     throw new TypeError('primaryActionTimeoutMs must be a finite number greater than zero');
   }
+  if (fingerprintObservation !== undefined && typeof fingerprintObservation.enabled !== 'boolean') {
+    throw new TypeError('fingerprintObservation.enabled must be a boolean');
+  }
+
+  const fingerprintObservationSink =
+    fingerprintObservation?.enabled === true
+      ? (fingerprintObservation.sink ??
+        new JsonlFingerprintObservationSink(
+          join(process.cwd(), 'test-results', 'aegiloc', 'fingerprints.jsonl'),
+        ))
+      : undefined;
 
   return new Healer(page, registry, primaryActionTimeoutMs, {
     mode,
@@ -546,6 +687,7 @@ export function createHealer<TTargetKey extends string = string>({
     candidateCollector,
     screenshotCapture,
     resultSink,
+    ...(fingerprintObservationSink === undefined ? {} : { fingerprintObservationSink }),
     ...(auditProvenance === undefined
       ? {}
       : { auditProvenance: createAuditProvenance(auditProvenance) }),

@@ -20,7 +20,14 @@ const historyPath = resolve(evidenceDirectory, 'history.jsonl');
 const summaryPath = resolve(evidenceDirectory, 'summary.json');
 const manifestPath = resolve(evidenceDirectory, 'manifest.json');
 const viewerDirectory = resolve(repositoryRoot, 'test-results/report-preview/viewer');
-const screenshotPath = resolve(repositoryRoot, 'docs/assets/healwright-report-v1.png');
+const screenshotPath = resolve(repositoryRoot, 'docs/assets/aegiloc-report-v1.png');
+const previewProvenance = {
+  runId: 'aegiloc-v1.1-preview',
+  testId: 'storefront recovery preview',
+  projectName: 'chromium',
+  retry: 0,
+  commitSha: 'abcdef0123456789',
+};
 
 const ranked = rankCandidates(
   {
@@ -46,7 +53,8 @@ const ranked = rankCandidates(
 );
 const healed = createHealingAuditEvent({
   eventId: 'preview-assessment-healed',
-  timestamp: '2026-08-21T08:00:00.000Z',
+  timestamp: '2026-08-24T08:00:00.000Z',
+  provenance: previewProvenance,
   mode: 'guarded',
   modeDecision: 'eligible',
   targetKey: 'checkout.applyDiscount',
@@ -63,7 +71,8 @@ const healed = createHealingAuditEvent({
 });
 const execution = createHealingExecutionAuditEvent({
   eventId: 'preview-execution-healed',
-  timestamp: '2026-08-21T08:00:01.000Z',
+  timestamp: '2026-08-24T08:00:01.000Z',
+  provenance: previewProvenance,
   parentEventId: healed.eventId,
   targetKey: healed.targetKey,
   action: 'click',
@@ -89,7 +98,8 @@ const execution = createHealingExecutionAuditEvent({
 });
 const rejected = createHealingAuditEvent({
   eventId: 'preview-assessment-rejected',
-  timestamp: '2026-08-21T08:00:02.000Z',
+  timestamp: '2026-08-24T08:00:02.000Z',
+  provenance: previewProvenance,
   mode: 'guarded',
   modeDecision: 'rejected',
   targetKey: 'checkout.acceptTerms',
@@ -109,7 +119,7 @@ const events = [healed, execution, rejected];
 await writeAuditEvidence(events, {
   historyPath,
   summaryPath,
-  generatedAt: '2026-08-21T08:01:00.000Z',
+  generatedAt: '2026-08-24T08:01:00.000Z',
 });
 await writeEvidenceManifest({ historyPath, summaryPath, manifestPath, force: true });
 const report = await generateReportViewer({
@@ -133,4 +143,4 @@ try {
 } finally {
   await browser.close();
 }
-process.stdout.write(`Captured deterministic v1 report preview: ${screenshotPath}\n`);
+process.stdout.write(`Captured deterministic v1.1 report preview: ${screenshotPath}\n`);

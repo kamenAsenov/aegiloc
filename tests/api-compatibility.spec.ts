@@ -24,7 +24,7 @@ test('checked-in public API inventory matches built declarations and runtime exp
     >;
     schemas: readonly { subpath: string; version: number }[];
   };
-  expect(snapshot.package).toEqual({ name: 'healwright', version: '1.0.1' });
+  expect(snapshot.package).toEqual({ name: 'aegiloc', version: '1.1.0' });
   expect(snapshot.support).toEqual({ node: '>=22 <25', playwrightTest: '>=1.50.0 <2' });
   expect(snapshot.entrypoints['.']?.runtimeExports).toEqual(
     [...(snapshot.entrypoints['.']?.runtimeExports ?? [])].sort(),
@@ -32,6 +32,8 @@ test('checked-in public API inventory matches built declarations and runtime exp
   expect(snapshot.entrypoints['.']?.runtimeExports).toEqual(
     expect.arrayContaining([
       'createHealer',
+      'createAegilocTest',
+      'generateFingerprintProposals',
       'PASSED_WITH_HEALING',
       'generateReportViewer',
       'verifyEvidenceManifest',
@@ -40,15 +42,16 @@ test('checked-in public API inventory matches built declarations and runtime exp
   expect(snapshot.entrypoints['.']?.typeOnlyExports).toEqual(
     expect.arrayContaining(['TargetRegistry', 'ReportEvidenceTrust', 'HealingMode']),
   );
-  expect(snapshot.schemas).toHaveLength(6);
+  expect(snapshot.schemas).toHaveLength(7);
   expect(
     Object.fromEntries(snapshot.schemas.map((schema) => [schema.subpath, schema.version])),
   ).toEqual({
     './evidence-manifest-schema': 1,
-    './evidence-summary-schema': 1,
+    './evidence-summary-schema': 2,
+    './fingerprint-proposal-schema': 1,
     './governance-policy-schema': 1,
     './health-summary-schema': 1,
-    './proposal-schema': 2,
+    './proposal-schema': 3,
     './registry-schema': 1,
   });
 });
