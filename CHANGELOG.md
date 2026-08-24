@@ -1,14 +1,34 @@
 # Changelog
 
 All notable changes to Healwright are documented here. The project follows Semantic Versioning for
-release tags. Package metadata is publication-ready, but no npm package is currently published.
+release tags. This repository is not published to npm; the unscoped package name is occupied by an
+unrelated project.
 
 ## [Unreleased]
+
+## [1.0.1] - 2026-08-23
 
 ### Fixed
 
 - `pnpm demo` now preserves existing demo output and requires an explicit
   `pnpm cli demo --force` rerun after review.
+- Troubleshooting now points repeat demo runs to the same explicit force command as the CLI error.
+- Evaluator documentation now warns that the unscoped npm package name belongs to an unrelated
+  project and that this release must be run from its source checkout.
+
+### Changed
+
+- Current release identity, report preview, and evaluator-facing documentation now consistently
+  describe the v1.0.1 stable-API evaluation release.
+- The CI demo step now uses evaluation-release wording instead of the earlier technical-preview
+  label.
+- Focused Firefox/WebKit qualification now uses the same single-worker execution locally and in CI,
+  avoiding resource-contention noise without changing coverage or performance budgets.
+
+### Security
+
+- Healing scope, thresholds, schemas, and public APIs are unchanged; ambiguous or unsafe candidates
+  continue to fail closed.
 
 ## [1.0.0] - 2026-08-21
 
@@ -188,7 +208,8 @@ Prepared for review; not tagged, published to npm, or published as a GitHub Rele
 [0.6.0]: https://github.com/kamenAsenov/healwright/compare/v0.4.0...v0.6.0
 [0.7.0]: https://github.com/kamenAsenov/healwright/compare/v0.6.0...v0.7.0
 [1.0.0]: https://github.com/kamenAsenov/healwright/compare/v0.4.0...v1.0.0
-[Unreleased]: https://github.com/kamenAsenov/healwright/compare/v1.0.0...HEAD
+[1.0.1]: https://github.com/kamenAsenov/healwright/compare/v1.0.0...v1.0.1
+[Unreleased]: https://github.com/kamenAsenov/healwright/compare/v1.0.1...HEAD
 [0.3.1]: https://github.com/kamenAsenov/healwright/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/kamenAsenov/healwright/compare/82513a74882500d5d31a3c8d284a0727565cef77...v0.3.0
 [0.2.0]: https://github.com/kamenAsenov/healwright/tree/82513a74882500d5d31a3c8d284a0727565cef77

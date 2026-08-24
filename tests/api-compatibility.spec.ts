@@ -24,7 +24,7 @@ test('checked-in public API inventory matches built declarations and runtime exp
     >;
     schemas: readonly { subpath: string; version: number }[];
   };
-  expect(snapshot.package).toEqual({ name: 'healwright', version: '1.0.0' });
+  expect(snapshot.package).toEqual({ name: 'healwright', version: '1.0.1' });
   expect(snapshot.support).toEqual({ node: '>=22 <25', playwrightTest: '>=1.50.0 <2' });
   expect(snapshot.entrypoints['.']?.runtimeExports).toEqual(
     [...(snapshot.entrypoints['.']?.runtimeExports ?? [])].sort(),

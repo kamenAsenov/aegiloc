@@ -11,7 +11,9 @@ pnpm test:cross-browser
 The qualification covers ordinary locators, candidate collection contracts, drift classification,
 all four healed actions, adversarial ambiguity and role contradictions, execution risk, modes,
 guarded second-pass behavior, and the candidate-collection performance budget. The current matrix
-runs 44 scenarios per additional browser.
+runs 44 scenarios per additional browser. It uses one worker in both local and CI runs so timing and
+performance contracts are measured without worker-level browser contention; this does not change
+the checked scenarios or their budgets.
 
 ## Performance contract
 

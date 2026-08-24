@@ -1,6 +1,6 @@
 # Portfolio summary
 
-Healwright is an experimental TypeScript framework for conservative Playwright locator recovery. It
+Healwright is a stable-API evaluation framework for conservative Playwright locator recovery. It
 proves genuine locator drift, ranks compatible replacements deterministically, executes only under
 guarded policy, and preserves evidence for human and CI review.
 
@@ -32,12 +32,12 @@ and budget-only waivers keep recovery bounded and inspectable.
 
 ## Honest limitations
 
-Healwright is a v1.0.0 evaluation release with a stable inventoried API and no npm publication. It has no demonstrated production
+Healwright is a v1.0.1 evaluation release with a stable inventoried API and no npm publication. It has no demonstrated production
 adoption, optional HMAC is not public-key non-repudiation, and it intentionally does not auto-apply
 locator changes.
 
 ## Suggested LinkedIn Featured description
 
-> Healwright is an experimental TypeScript framework for safer Playwright self-healing: deterministic locator recovery, guarded execution, evidence trails, proposal review, and CI governance without silent source rewrites.
+> Healwright is a stable-API evaluation framework for safer Playwright self-healing: deterministic locator recovery, guarded execution, evidence trails, proposal review, and CI governance without silent source rewrites.
 
-The description is 221 characters, within LinkedIn's 280-character target.
+The description is 217 characters, within LinkedIn's 280-character target.

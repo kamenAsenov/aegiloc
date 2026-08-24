@@ -1,8 +1,9 @@
 # CLI reference
 
-Healwright v1.0.0 includes a dependency-free CLI for local evaluation. The package is not published
-to npm, so repository commands use `node dist/cli.js` after `pnpm build`. The package `bin` exposes
-the same entry point as `healwright` for future installations.
+Healwright v1.0.1 includes a dependency-free CLI for local evaluation. This repository is not
+published to npm, and the unscoped `healwright` name is occupied by an unrelated project. Repository
+commands use `node dist/cli.js` after `pnpm build`; the package artifact exposes the same entry point
+as `healwright` for a future authorized distribution.
 
 ## Guided demo
 

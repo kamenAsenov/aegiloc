@@ -1,6 +1,8 @@
 # Quick start
 
-This guide runs Healwright from a local checkout. The package is not published to npm.
+This guide runs Healwright from a local checkout. This repository is not published to npm, and the
+unscoped `healwright` package name is occupied by an unrelated project. Do not install that package
+to evaluate this repository.
 
 ## Prerequisites
 

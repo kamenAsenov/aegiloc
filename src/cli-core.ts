@@ -57,7 +57,7 @@ export interface RunCliOptions {
   readonly openPath?: (path: string) => Promise<void>;
 }
 
-const HELP = `Healwright v1.0.0 Evaluation Release
+const HELP = `Healwright v1.0.1 Evaluation Release
 
 Conservative, deterministic self-healing for Playwright Test.
 

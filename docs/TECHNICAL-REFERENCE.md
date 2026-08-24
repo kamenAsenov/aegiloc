@@ -283,7 +283,8 @@ history and an exactly matching summary and produces escaped static HTML without
 
 - The full portfolio suite and realistic demo are Chromium-first; the core browser contract is also
   qualified on Firefox and WebKit through the dedicated matrix.
-- The package is not currently published to a registry.
+- This repository is not currently published to a registry. The unscoped `healwright` npm name is
+  occupied by an unrelated project and must not be used to install this source release.
 - Candidate collection covers common interactive HTML and ARIA patterns, not arbitrary widgets.
 - Accessible identity uses Playwright's public ARIA snapshot representation.
 - Fingerprints and registry changes remain manual; proposals have no auto-apply path.
