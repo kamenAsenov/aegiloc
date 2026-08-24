@@ -96,6 +96,30 @@ test('CSS locator supports a scoped explicit selector', async ({ page }) => {
   await expect(locator).toHaveText('Order');
 });
 
+test('placeholder, title, and alt-text locators use public Playwright queries', async ({
+  page,
+}) => {
+  await page.setContent(`
+    <input placeholder="Account email">
+    <button title="Save settings">Save</button>
+    <img alt="Aegiloc safety shield" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=">
+  `);
+
+  await expect(
+    resolvePrimaryLocator(page, { type: 'placeholder', value: 'Account email', exact: true }),
+  ).toHaveCount(1);
+  await expect(
+    resolvePrimaryLocator(page, { type: 'title', value: 'Save settings', exact: true }),
+  ).toHaveText('Save');
+  await expect(
+    resolvePrimaryLocator(page, {
+      type: 'altText',
+      value: 'Aegiloc safety shield',
+      exact: true,
+    }),
+  ).toHaveCount(1);
+});
+
 test('resolved locators remain live across a DOM replacement', async ({ page }) => {
   await page.setContent('<button data-version="1">Continue</button>');
   const locator = resolvePrimaryLocator(page, {

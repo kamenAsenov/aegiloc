@@ -1,4 +1,4 @@
-# Healwright roadmap
+# Aegiloc roadmap
 
 This roadmap starts from the verified `v0.2.0` baseline. It orders work by safety value: evidence
 integrity and operational reliability come before broader healing behavior. A false-positive heal
@@ -128,7 +128,19 @@ Status: implemented in `v1.0.0`.
 - Consumer, Page Object/fixture, execution-risk, CI evidence, and troubleshooting guidance.
 - Immutable GitHub Action pins and GitHub-compatible deterministic CycloneDX identity.
 
-## Post-v1 opportunities
+### v1.1 — Aegiloc identity and bounded maintenance intelligence
+
+Status: implemented for `v1.1.0`.
+
+- Exact route, frame, and container context gates before candidate discovery.
+- Expanded Playwright-native locators and low-risk wrapper actions.
+- Live uniqueness-verified locator suggestions and review-only JSON Patch previews.
+- Successful-primary fingerprint capture with independent-run proposal consensus.
+- Typed Playwright fixture integration and richer historical target-health analytics.
+- Comparative open-source research, migration guidance, and a unified Aegiloc package/repository
+  identity.
+
+## Post-v1.1 opportunities
 
 1. Collect long-running soak, memory, and performance trend evidence across supported Node and locked
    browser versions.
@@ -138,10 +150,12 @@ Status: implemented in `v1.0.0`.
    outcomes once real usage exists.
 5. Qualify future Playwright minors through an automated compatibility lane before expanding the peer
    support floor.
+6. Benchmark abstention and false-positive behavior against a reviewed external locator-break
+   corpus before making any production-effectiveness claim.
 
 ## Deliberate non-goals
 
-Healwright will not heal assertions, expected results, business logic, authentication, test data,
+Aegiloc will not heal assertions, expected results, business logic, authentication, test data,
 network failures, or genuine product regressions. It will not silently rewrite tests or the target
 registry. LLMs, OCR, visual AI, external services, databases, and API keys remain unnecessary for
 the core framework.

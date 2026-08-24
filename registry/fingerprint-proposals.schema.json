@@ -1,0 +1,139 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/kamenAsenov/aegiloc/registry/fingerprint-proposals.schema.json",
+  "title": "Aegiloc fingerprint proposal bundle",
+  "description": "Review-only fingerprint changes derived from successful primary locator observations.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schemaVersion",
+    "generatedAt",
+    "minimumObservations",
+    "proposals",
+    "rejections"
+  ],
+  "properties": {
+    "$schema": {
+      "const": "https://github.com/kamenAsenov/aegiloc/registry/fingerprint-proposals.schema.json"
+    },
+    "schemaVersion": { "const": 1 },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "minimumObservations": { "type": "integer", "minimum": 2 },
+    "proposals": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/proposal" }
+    },
+    "rejections": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/rejection" }
+    }
+  },
+  "$defs": {
+    "nonEmptyString": { "type": "string", "pattern": "\\S" },
+    "hash": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "fingerprint": { "$ref": "targets.schema.json#/$defs/fingerprint" },
+    "patchPath": { "type": "string", "pattern": "^/targets/[^/]+/fingerprint$" },
+    "proposal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "proposalId",
+        "status",
+        "targetKey",
+        "currentFingerprint",
+        "suggestedFingerprint",
+        "registryPatch",
+        "evidence"
+      ],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "proposalId": { "$ref": "#/$defs/hash" },
+        "status": { "const": "review-required" },
+        "targetKey": { "$ref": "#/$defs/nonEmptyString" },
+        "currentFingerprint": { "$ref": "#/$defs/fingerprint" },
+        "suggestedFingerprint": { "$ref": "#/$defs/fingerprint" },
+        "registryPatch": {
+          "type": "array",
+          "prefixItems": [{ "$ref": "#/$defs/testPatch" }, { "$ref": "#/$defs/replacePatch" }],
+          "items": false,
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "evidence": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "occurrenceCount",
+            "distinctRunCount",
+            "runIds",
+            "observationEventIds",
+            "firstSeen",
+            "lastSeen"
+          ],
+          "properties": {
+            "occurrenceCount": { "type": "integer", "minimum": 2 },
+            "distinctRunCount": { "type": "integer", "minimum": 2 },
+            "runIds": {
+              "type": "array",
+              "minItems": 2,
+              "uniqueItems": true,
+              "items": { "$ref": "#/$defs/nonEmptyString" }
+            },
+            "observationEventIds": {
+              "type": "array",
+              "minItems": 2,
+              "uniqueItems": true,
+              "items": { "$ref": "#/$defs/nonEmptyString" }
+            },
+            "firstSeen": { "type": "string", "format": "date-time" },
+            "lastSeen": { "type": "string", "format": "date-time" },
+            "commitSha": { "type": "string", "pattern": "^[a-f0-9]{7,64}$" }
+          }
+        }
+      }
+    },
+    "testPatch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op", "path", "value"],
+      "properties": {
+        "op": { "const": "test" },
+        "path": { "$ref": "#/$defs/patchPath" },
+        "value": { "$ref": "#/$defs/fingerprint" }
+      }
+    },
+    "replacePatch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op", "path", "value"],
+      "properties": {
+        "op": { "const": "replace" },
+        "path": { "$ref": "#/$defs/patchPath" },
+        "value": { "$ref": "#/$defs/fingerprint" }
+      }
+    },
+    "rejection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["targetKey", "reason", "occurrenceCount"],
+      "properties": {
+        "targetKey": { "$ref": "#/$defs/nonEmptyString" },
+        "reason": {
+          "enum": [
+            "unknown-target",
+            "stale-primary",
+            "action-not-allowed",
+            "missing-provenance",
+            "mixed-commits",
+            "conflicting-fingerprints",
+            "insufficient-independent-runs",
+            "already-current"
+          ]
+        },
+        "occurrenceCount": { "type": "integer", "minimum": 1 }
+      }
+    }
+  }
+}

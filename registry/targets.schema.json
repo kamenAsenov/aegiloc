@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/kamenAsenov/healwright/registry/targets.schema.json",
-  "title": "Healwright target registry",
+  "$id": "https://github.com/kamenAsenov/aegiloc/registry/targets.schema.json",
+  "title": "Aegiloc target registry",
   "type": "object",
   "additionalProperties": false,
   "required": ["version", "defaults", "targets"],
@@ -118,7 +118,11 @@
       "required": ["confidenceThreshold", "minimumScoreMargin"],
       "properties": {
         "confidenceThreshold": { "$ref": "#/$defs/probability" },
-        "minimumScoreMargin": { "$ref": "#/$defs/probability" }
+        "minimumScoreMargin": { "$ref": "#/$defs/probability" },
+        "testIdAttribute": {
+          "type": "string",
+          "pattern": "^[A-Za-z_:][A-Za-z0-9_.:-]*$"
+        }
       }
     },
     "target": {
@@ -127,9 +131,23 @@
       "required": ["description", "primary", "fingerprint", "policy"],
       "properties": {
         "description": { "$ref": "#/$defs/nonEmptyString" },
+        "context": { "$ref": "#/$defs/context" },
         "primary": { "$ref": "#/$defs/primary" },
         "fingerprint": { "$ref": "#/$defs/fingerprint" },
         "policy": { "$ref": "#/$defs/policy" }
+      }
+    },
+    "context": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "pathname": {
+          "type": "string",
+          "pattern": "^/[^?#]*$"
+        },
+        "frame": { "$ref": "#/$defs/primary" },
+        "container": { "$ref": "#/$defs/primary" }
       }
     },
     "primary": {
@@ -150,7 +168,9 @@
           "additionalProperties": false,
           "required": ["type", "value"],
           "properties": {
-            "type": { "enum": ["label", "text"] },
+            "type": {
+              "enum": ["label", "text", "placeholder", "title", "altText"]
+            },
             "value": { "$ref": "#/$defs/nonEmptyString" },
             "exact": { "type": "boolean" }
           }
@@ -209,7 +229,9 @@
           "type": "array",
           "minItems": 1,
           "uniqueItems": true,
-          "items": { "enum": ["click", "fill", "check", "selectOption"] }
+          "items": {
+            "enum": ["click", "fill", "check", "uncheck", "selectOption", "hover", "focus"]
+          }
         },
         "executionRisk": { "enum": ["automatic", "proposal-only"] },
         "healing": {

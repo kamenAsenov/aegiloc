@@ -1,6 +1,6 @@
 # Release process
 
-Healwright uses Semantic Versioning for the stable public API described in the
+Aegiloc uses Semantic Versioning for the stable public API described in the
 [compatibility policy](COMPATIBILITY.md). A tag records a verified repository checkpoint; npm
 publication is a separate, manual decision.
 
@@ -86,9 +86,8 @@ for a future publication decision, but the `prepublishOnly` guard requires the m
 exact confirmation value documented by `scripts/guard-publish.mjs` and then runs the full release
 gate.
 
-The unscoped `healwright` npm name is currently occupied by an unrelated project. Before any future
-registry distribution, choose and verify a package name this project owns; never publish over or
-represent the unrelated package. Then additionally verify:
+Before any future registry distribution, freshly verify package-name ownership and legal clearance;
+an earlier exact-name availability search is not a reservation. Then additionally verify:
 
 - package-name ownership and registry access;
 - the exact tarball contents and package provenance;

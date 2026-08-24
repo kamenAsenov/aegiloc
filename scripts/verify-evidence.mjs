@@ -2,11 +2,11 @@ import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
 
-import { createAuditEvidenceSummary, loadAuditHistory, serializeAuditHistory } from 'healwright';
+import { createAuditEvidenceSummary, loadAuditHistory, serializeAuditHistory } from 'aegiloc';
 
 const defaults = {
-  history: 'test-results/healwright/history.jsonl',
-  summary: 'test-results/healwright/summary.json',
+  history: 'test-results/aegiloc/history.jsonl',
+  summary: 'test-results/aegiloc/summary.json',
 };
 
 function usage() {

@@ -126,7 +126,7 @@ test('createHealer rejects unsupported runtime modes', () => {
       registry,
       mode: 'unsafe-auto' as HealingMode,
     }),
-  ).toThrow('Unsupported Healwright mode: unsafe-auto');
+  ).toThrow('Unsupported Aegiloc mode: unsafe-auto');
 });
 
 test('createHealer rejects nonpositive and nonfinite classification timeouts', () => {
@@ -259,7 +259,7 @@ test('Playwright healing results add one annotation and structured attachments i
   ]);
   expect(attachmentNames).toEqual([
     'PASSED_WITH_HEALING · submit click via button:submit:0',
-    'healwright-before-execution-1',
-    'healwright-after-execution-1',
+    'aegiloc-before-execution-1',
+    'aegiloc-after-execution-1',
   ]);
 });

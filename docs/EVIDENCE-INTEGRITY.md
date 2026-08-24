@@ -1,6 +1,6 @@
 # Evidence integrity and optional authentication
 
-Healwright v1 can bind canonical `history.jsonl` and `summary.json` to a strict manifest. This
+Aegiloc v1 can bind canonical `history.jsonl` and `summary.json` to a strict manifest. This
 detects missing, truncated, reordered, replaced, or mismatched evidence before downstream review.
 Authentication is optional: local evaluation still requires no key or external service.
 
@@ -9,10 +9,10 @@ Authentication is optional: local evaluation still requires no key or external s
 ```bash
 pnpm build
 node dist/cli.js attest \
-  --history test-results/healwright/history.jsonl \
-  --summary test-results/healwright/summary.json \
-  --out test-results/healwright/manifest.json
-node dist/cli.js verify --manifest test-results/healwright/manifest.json
+  --history test-results/aegiloc/history.jsonl \
+  --summary test-results/aegiloc/summary.json \
+  --out test-results/aegiloc/manifest.json
+node dist/cli.js verify --manifest test-results/aegiloc/manifest.json
 ```
 
 The three files must be siblings. The manifest records fixed-order SHA-256 digests and exact UTF-8
@@ -29,23 +29,23 @@ Generate at least 32 random bytes and restrict the file to its owner:
 
 ```bash
 umask 077
-openssl rand 32 > .healwright-evidence.key
-chmod 600 .healwright-evidence.key
+openssl rand 32 > .aegiloc-evidence.key
+chmod 600 .aegiloc-evidence.key
 ```
 
 Do not commit that file. Create and verify an authenticated manifest:
 
 ```bash
 node dist/cli.js attest \
-  --history test-results/healwright/history.jsonl \
-  --summary test-results/healwright/summary.json \
-  --out test-results/healwright/manifest.json \
-  --key-file .healwright-evidence.key \
+  --history test-results/aegiloc/history.jsonl \
+  --summary test-results/aegiloc/summary.json \
+  --out test-results/aegiloc/manifest.json \
+  --key-file .aegiloc-evidence.key \
   --key-id ci-2026-q3
 
 node dist/cli.js verify \
-  --manifest test-results/healwright/manifest.json \
-  --key-file .healwright-evidence.key \
+  --manifest test-results/aegiloc/manifest.json \
+  --key-file .aegiloc-evidence.key \
   --key-id ci-2026-q3 \
   --require-authenticated
 ```
@@ -64,7 +64,7 @@ written to output or logged.
   possible exposure as untrusted until regenerated.
 - Record rotation dates and owners in the team's secret manager, not in the repository.
 
-Healwright accepts one verification key per invocation. Multi-key lookup and secret-manager
+Aegiloc accepts one verification key per invocation. Multi-key lookup and secret-manager
 integration belong in the calling CI workflow so the core remains provider-neutral.
 
 ## Retention

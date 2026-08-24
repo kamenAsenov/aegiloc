@@ -21,10 +21,7 @@ async function guardedHealer(page: Page, testInfo: TestInfo) {
     mode: 'guarded',
     primaryActionTimeoutMs: 300,
     auditSink: new CompositeAuditSink([memory, new PlaywrightAttachmentAuditSink(testInfo)]),
-    screenshotCapture: new FileScreenshotCapture(
-      page,
-      testInfo.outputPath('healwright-screenshots'),
-    ),
+    screenshotCapture: new FileScreenshotCapture(page, testInfo.outputPath('aegiloc-screenshots')),
     resultSink: new PlaywrightHealingResultSink(testInfo),
     auditProvenance: createPlaywrightAuditProvenance(testInfo, {
       runId: `fixture-run-${testInfo.testId}`,
@@ -59,7 +56,7 @@ function expectSuccessfulHealing(memory: InMemoryAuditSink, testInfo: TestInfo):
   ).toBe(true);
   expect(
     testInfo.attachments
-      .filter((attachment) => attachment.name.startsWith('healwright-'))
+      .filter((attachment) => attachment.name.startsWith('aegiloc-'))
       .map((attachment) => attachment.contentType),
   ).toEqual(expect.arrayContaining(['image/png', 'image/png']));
 }

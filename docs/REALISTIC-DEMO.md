@@ -17,7 +17,7 @@ No public website, account, API key, Docker service, database, or network fixtur
 ## Scenario 1: ordinary Playwright
 
 The fixture has no mutation. A normal `getByRole` locator clicks **Apply discount** and the status
-changes. Healwright is not invoked. This keeps ordinary Playwright as the baseline rather than
+changes. Aegiloc is not invoked. This keeps ordinary Playwright as the baseline rather than
 making every action dependent on recovery logic.
 
 ## Scenario 2: safe locator drift
@@ -30,7 +30,7 @@ pass, and is clicked. The test prints `PASSED_WITH_HEALING`.
 ## Scenario 3: ambiguous drift
 
 The fixture changes the terms checkbox test-id and duplicates the replacement. Both candidates have
-the same semantic signals and score. The margin is zero, Healwright rejects the assessment, neither
+the same semantic signals and score. The margin is zero, Aegiloc rejects the assessment, neither
 checkbox is checked, and no healed result is attached. The test passes because it verifies this
 fail-closed behavior.
 

@@ -17,7 +17,7 @@ import {
   renderHealthSummary,
   type ExecutionRisk,
   type GovernancePolicy,
-  type HealwrightAuditEvent,
+  type AegilocAuditEvent,
   type TargetAction,
 } from '../src/index.js';
 
@@ -54,7 +54,7 @@ function eventsFor({
   readonly projectName?: string;
   readonly runId?: string;
   readonly operationIndex?: number;
-}): readonly HealwrightAuditEvent[] {
+}): readonly AegilocAuditEvent[] {
   const ranked = rankCandidates(
     { accessibleRole: 'button', accessibleName: 'Apply discount', tag: 'button' },
     [

@@ -5,6 +5,7 @@ import { dirname } from 'node:path';
 import type { TestInfo } from '@playwright/test';
 
 import type { CapturedScreenshot } from './artifacts.js';
+import type { LocatorSuggestionEvidence } from './suggestions.js';
 import type {
   CandidateAssessment,
   CandidateEligibility,
@@ -18,12 +19,13 @@ import {
   type HealingMode,
   type PrimaryLocatorDefinition,
   type TargetAction,
+  type TargetGeometry,
 } from './types.js';
 
 export const AUDIT_SCHEMA_VERSION = 1 as const;
 export const AUDIT_PROVENANCE_VERSION = 1 as const;
-export const AUDIT_ATTACHMENT_PREFIX = 'healwright-audit-' as const;
-export const AUDIT_ATTACHMENT_CONTENT_TYPE = 'application/vnd.healwright.audit+json' as const;
+export const AUDIT_ATTACHMENT_PREFIX = 'aegiloc-audit-' as const;
+export const AUDIT_ATTACHMENT_CONTENT_TYPE = 'application/vnd.aegiloc.audit+json' as const;
 
 export interface AuditProvenanceInput {
   readonly runId: string;
@@ -60,6 +62,11 @@ export interface AuditRankedCandidate {
   readonly role?: string;
   readonly accessibleName?: string;
   readonly tag: string;
+  readonly stableAttributes?: Readonly<Record<string, string>>;
+  readonly visibleText?: string;
+  readonly ancestorText?: readonly string[];
+  readonly neighborText?: readonly string[];
+  readonly geometry?: TargetGeometry;
   readonly score: number;
   readonly details: readonly ScoreDetail[];
   readonly eligibility?: CandidateEligibility;
@@ -101,6 +108,7 @@ export interface HealingAuditEvent {
     readonly secondCandidateId?: string;
   };
   readonly rankedCandidates: readonly AuditRankedCandidate[];
+  readonly locatorSuggestions?: readonly LocatorSuggestionEvidence[];
 }
 
 export interface HealingExecutionAuditEvent {
@@ -127,7 +135,7 @@ export interface HealingExecutionAuditEvent {
   }[];
 }
 
-export type HealwrightAuditEvent = HealingAuditEvent | HealingExecutionAuditEvent;
+export type AegilocAuditEvent = HealingAuditEvent | HealingExecutionAuditEvent;
 
 export interface CreateHealingAuditEventOptions {
   readonly eventId?: string;
@@ -145,6 +153,7 @@ export interface CreateHealingAuditEventOptions {
   readonly collectionError?: unknown;
   readonly assessment: CandidateAssessment;
   readonly rankedCandidates: readonly RankedCandidate[];
+  readonly locatorSuggestions?: readonly LocatorSuggestionEvidence[];
 }
 
 export interface CreateHealingExecutionAuditEventOptions {
@@ -254,6 +263,7 @@ export function createHealingAuditEvent({
   collectionError,
   assessment,
   rankedCandidates,
+  locatorSuggestions,
 }: CreateHealingAuditEventOptions): HealingAuditEvent {
   if (operationIndex !== undefined && (!Number.isInteger(operationIndex) || operationIndex < 0)) {
     throw new TypeError('Audit operationIndex must be a non-negative integer');
@@ -313,10 +323,16 @@ export function createHealingAuditEvent({
         ? {}
         : { accessibleName: ranked.candidate.accessibleName }),
       tag: ranked.candidate.tag,
+      stableAttributes: ranked.candidate.stableAttributes,
+      visibleText: ranked.candidate.visibleText,
+      ancestorText: ranked.candidate.ancestorText,
+      neighborText: ranked.candidate.neighborText,
+      ...(ranked.candidate.geometry === undefined ? {} : { geometry: ranked.candidate.geometry }),
       score: ranked.score,
       details: ranked.details,
       ...(ranked.eligibility === undefined ? {} : { eligibility: ranked.eligibility }),
     })),
+    ...(locatorSuggestions === undefined ? {} : { locatorSuggestions }),
   };
 }
 
@@ -370,7 +386,7 @@ export function createHealingExecutionAuditEvent({
 }
 
 export interface AuditSink {
-  write(event: HealwrightAuditEvent): Promise<void>;
+  write(event: AegilocAuditEvent): Promise<void>;
 }
 
 export class NoopAuditSink implements AuditSink {
@@ -380,13 +396,13 @@ export class NoopAuditSink implements AuditSink {
 }
 
 export class InMemoryAuditSink implements AuditSink {
-  readonly #events: HealwrightAuditEvent[] = [];
+  readonly #events: AegilocAuditEvent[] = [];
 
-  public get events(): readonly HealwrightAuditEvent[] {
+  public get events(): readonly AegilocAuditEvent[] {
     return this.#events;
   }
 
-  public write(event: HealwrightAuditEvent): Promise<void> {
+  public write(event: AegilocAuditEvent): Promise<void> {
     this.#events.push(event);
     return Promise.resolve();
   }
@@ -395,7 +411,7 @@ export class InMemoryAuditSink implements AuditSink {
 export class JsonlAuditSink implements AuditSink {
   public constructor(private readonly filePath: string) {}
 
-  public async write(event: HealwrightAuditEvent): Promise<void> {
+  public async write(event: AegilocAuditEvent): Promise<void> {
     await mkdir(dirname(this.filePath), { recursive: true });
     await appendFile(this.filePath, `${JSON.stringify(event)}\n`, 'utf8');
   }
@@ -404,7 +420,7 @@ export class JsonlAuditSink implements AuditSink {
 export class PlaywrightAttachmentAuditSink implements AuditSink {
   public constructor(private readonly testInfo: Pick<TestInfo, 'attach'>) {}
 
-  public async write(event: HealwrightAuditEvent): Promise<void> {
+  public async write(event: AegilocAuditEvent): Promise<void> {
     await this.testInfo.attach(`${AUDIT_ATTACHMENT_PREFIX}${event.eventId}`, {
       body: JSON.stringify(event, null, 2),
       contentType: AUDIT_ATTACHMENT_CONTENT_TYPE,
@@ -415,7 +431,7 @@ export class PlaywrightAttachmentAuditSink implements AuditSink {
 export class CompositeAuditSink implements AuditSink {
   public constructor(private readonly sinks: readonly AuditSink[]) {}
 
-  public async write(event: HealwrightAuditEvent): Promise<void> {
+  public async write(event: AegilocAuditEvent): Promise<void> {
     for (const sink of this.sinks) {
       await sink.write(event);
     }

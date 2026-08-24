@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/kamenAsenov/healwright/registry/governance-policy.schema.json",
-  "title": "Healwright governance policy",
+  "$id": "https://github.com/kamenAsenov/aegiloc/registry/governance-policy.schema.json",
+  "title": "Aegiloc governance policy",
   "type": "object",
   "additionalProperties": false,
   "required": ["version"],
@@ -45,7 +45,9 @@
       "type": "string",
       "pattern": "^(?!.*[?*])\\S(?:.*\\S)?$"
     },
-    "action": { "enum": ["click", "fill", "check", "selectOption"] },
+    "action": {
+      "enum": ["click", "fill", "check", "uncheck", "selectOption", "hover", "focus"]
+    },
     "actionBudget": {
       "type": "object",
       "additionalProperties": false,

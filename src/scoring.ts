@@ -185,8 +185,30 @@ function isActionCompatible(candidate: CandidateSnapshot, action: TargetAction):
         (role !== undefined && ['checkbox', 'radio', 'switch'].includes(role)) ||
         (tag === 'input' && ['checkbox', 'radio'].includes(type ?? ''))
       );
+    case 'uncheck':
+      return tag === 'input' && type === 'checkbox';
     case 'selectOption':
       return tag === 'select';
+    case 'hover':
+      return role !== undefined || tag !== undefined;
+    case 'focus':
+      return (
+        (role !== undefined &&
+          [
+            'button',
+            'checkbox',
+            'combobox',
+            'link',
+            'radio',
+            'searchbox',
+            'slider',
+            'spinbutton',
+            'switch',
+            'tab',
+            'textbox',
+          ].includes(role)) ||
+        (tag !== undefined && ['a', 'button', 'input', 'select', 'textarea'].includes(tag))
+      );
   }
 }
 

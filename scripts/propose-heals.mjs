@@ -8,13 +8,13 @@ import {
   loadTargetRegistry,
   renderHealingProposalReport,
   verifyHealingProposal,
-} from 'healwright';
+} from 'aegiloc';
 
 const defaults = {
-  history: 'test-results/healwright/history.jsonl',
+  history: 'test-results/aegiloc/history.jsonl',
   registry: 'registry/targets.json',
-  json: 'test-results/healwright/proposals.json',
-  markdown: 'test-results/healwright/proposals.md',
+  json: 'test-results/aegiloc/proposals.json',
+  markdown: 'test-results/aegiloc/proposals.md',
   minimumObservations: DEFAULT_PROPOSAL_MINIMUM_OBSERVATIONS,
 };
 

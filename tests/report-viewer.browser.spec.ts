@@ -7,7 +7,7 @@ import {
   createHealingExecutionAuditEvent,
   rankCandidates,
   renderReportViewer,
-  type HealwrightAuditEvent,
+  type AegilocAuditEvent,
 } from '../src/index.js';
 
 function interactiveReport(): string {
@@ -77,7 +77,7 @@ function interactiveReport(): string {
     }),
     rankedCandidates: [],
   });
-  const events: readonly HealwrightAuditEvent[] = [healed, execution, rejected];
+  const events: readonly AegilocAuditEvent[] = [healed, execution, rejected];
   return renderReportViewer(
     events,
     createAuditEvidenceSummary(events, '2026-08-21T08:01:00.000Z'),

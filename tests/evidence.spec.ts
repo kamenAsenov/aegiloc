@@ -16,10 +16,10 @@ import {
   parseAuditHistory,
   serializeAuditHistory,
   writeAuditEvidence,
-  type HealwrightAuditEvent,
+  type AegilocAuditEvent,
 } from '../src/index.js';
 
-function eventPair(): readonly [HealwrightAuditEvent, HealwrightAuditEvent] {
+function eventPair(): readonly [AegilocAuditEvent, AegilocAuditEvent] {
   const provenance = {
     runId: 'run-1',
     testId: 'checkout-test',
@@ -60,14 +60,14 @@ function eventPair(): readonly [HealwrightAuditEvent, HealwrightAuditEvent] {
         phase: 'before',
         name: 'before.png',
         filePath: '/private/before.png',
-        auditPath: 'test-results/healwright/before.png',
+        auditPath: 'test-results/aegiloc/before.png',
         contentType: 'image/png',
       },
       {
         phase: 'after',
         name: 'after.png',
         filePath: '/private/after.png',
-        auditPath: 'test-results/healwright/after.png',
+        auditPath: 'test-results/aegiloc/after.png',
         contentType: 'image/png',
       },
     ],
@@ -75,7 +75,7 @@ function eventPair(): readonly [HealwrightAuditEvent, HealwrightAuditEvent] {
   return [assessment, execution];
 }
 
-function attachment(event: HealwrightAuditEvent) {
+function attachment(event: AegilocAuditEvent) {
   return {
     name: `${AUDIT_ATTACHMENT_PREFIX}${event.eventId}`,
     contentType: AUDIT_ATTACHMENT_CONTENT_TYPE,
@@ -83,7 +83,7 @@ function attachment(event: HealwrightAuditEvent) {
   };
 }
 
-test('extracts only typed Healwright audit attachments', () => {
+test('extracts only typed Aegiloc audit attachments', () => {
   const [assessment] = eventPair();
   expect(
     auditEventsFromAttachments([
@@ -153,7 +153,7 @@ test('rejects conflicting records that reuse one event id', () => {
 test('summarizes outcomes and provenance deterministically', () => {
   const events = eventPair();
   expect(createAuditEvidenceSummary(events, '2026-08-16T01:00:00.000Z')).toEqual({
-    schemaVersion: 1,
+    schemaVersion: 2,
     generatedAt: '2026-08-16T01:00:00.000Z',
     events: { total: 2, assessments: 1, executions: 1 },
     decisions: { observed: 0, eligible: 0, rejected: 1, strictCiFailure: 0 },
@@ -173,6 +173,20 @@ test('summarizes outcomes and provenance deterministically', () => {
         assessmentCount: 1,
         executionCount: 1,
         successfulHealingCount: 1,
+        executionProfile: 'automatic',
+        ambiguityCount: 0,
+        ambiguityRate: 0,
+        lowConfidenceCount: 0,
+        semanticRejectionCount: 0,
+        protectedAssessmentCount: 0,
+        distinctRunCount: 1,
+        healingRate: 1,
+        chronicDrift: false,
+        firstDriftAt: '2026-08-16T00:00:00.000Z',
+        lastDriftAt: '2026-08-16T00:00:00.000Z',
+        timeSinceFirstDriftMs: 3_600_000,
+        marginRange: { minimum: 0, average: 0, maximum: 0 },
+        recentOutcomes: ['healed'],
       },
     ],
   });

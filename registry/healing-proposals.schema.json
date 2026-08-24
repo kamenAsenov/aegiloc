@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/kamenAsenov/healwright/registry/healing-proposals.schema.json",
-  "title": "Healwright locator proposal bundle",
-  "description": "Human-reviewable locator suggestions derived from successful guarded healing audit chains.",
+  "$id": "https://github.com/kamenAsenov/aegiloc/registry/healing-proposals.schema.json",
+  "title": "Aegiloc locator proposal bundle",
+  "description": "Human-reviewable locator suggestions derived from independent automatic or proposal-only audit observations.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -15,9 +15,9 @@
   ],
   "properties": {
     "$schema": {
-      "const": "https://github.com/kamenAsenov/healwright/registry/healing-proposals.schema.json"
+      "const": "https://github.com/kamenAsenov/aegiloc/registry/healing-proposals.schema.json"
     },
-    "schemaVersion": { "const": 2 },
+    "schemaVersion": { "const": 3 },
     "generatedAt": { "type": "string", "format": "date-time" },
     "minimumObservations": { "type": "integer", "minimum": 2 },
     "proposals": {
@@ -51,21 +51,27 @@
         "schemaVersion",
         "proposalId",
         "status",
+        "source",
         "targetKey",
         "action",
         "targetDefinitionHash",
         "currentPrimary",
         "suggestedPrimary",
+        "locatorAlternatives",
+        "registryPatch",
         "candidate",
         "evidence"
       ],
       "properties": {
-        "schemaVersion": { "const": 2 },
+        "schemaVersion": { "const": 3 },
         "proposalId": {
           "type": "string",
           "pattern": "^sha256:[a-f0-9]{64}$"
         },
         "status": { "const": "review-required" },
+        "source": {
+          "enum": ["automatic-execution", "proposal-only-observation"]
+        },
         "targetKey": { "$ref": "#/$defs/nonEmptyString" },
         "action": { "$ref": "#/$defs/action" },
         "targetDefinitionHash": {
@@ -76,17 +82,19 @@
           "$ref": "targets.schema.json#/$defs/primary"
         },
         "suggestedPrimary": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["type", "role", "name", "exact"],
-          "properties": {
-            "type": { "const": "role" },
-            "role": {
-              "$ref": "targets.schema.json#/$defs/ariaRole"
-            },
-            "name": { "$ref": "#/$defs/nonEmptyString" },
-            "exact": { "const": true }
-          }
+          "$ref": "targets.schema.json#/$defs/primary"
+        },
+        "locatorAlternatives": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/locatorSuggestion" }
+        },
+        "registryPatch": {
+          "type": "array",
+          "prefixItems": [{ "$ref": "#/$defs/testPatch" }, { "$ref": "#/$defs/replacePatch" }],
+          "items": false,
+          "minItems": 2,
+          "maxItems": 2
         },
         "candidate": {
           "type": "object",
@@ -100,7 +108,13 @@
             "tag": {
               "type": "string",
               "pattern": "^[a-z][a-z0-9-]*$"
-            }
+            },
+            "stableAttributes": {
+              "type": "object",
+              "propertyNames": { "$ref": "#/$defs/nonEmptyString" },
+              "additionalProperties": { "type": "string" }
+            },
+            "visibleText": { "type": "string" }
           }
         },
         "evidence": {
@@ -176,13 +190,11 @@
             },
             "executionEventIds": {
               "type": "array",
-              "minItems": 2,
               "uniqueItems": true,
               "items": { "$ref": "#/$defs/nonEmptyString" }
             },
             "screenshotPaths": {
               "type": "array",
-              "minItems": 2,
               "uniqueItems": true,
               "items": { "$ref": "#/$defs/nonEmptyString" }
             },
@@ -215,6 +227,7 @@
             "stale-policy",
             "unknown-target",
             "unsupported-candidate",
+            "missing-locator-evidence",
             "already-current"
           ]
         },
@@ -222,7 +235,44 @@
       }
     },
     "action": {
-      "enum": ["click", "fill", "check", "selectOption"]
+      "enum": ["click", "fill", "check", "uncheck", "selectOption", "hover", "focus"]
+    },
+    "locatorSuggestion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["locator", "strategy", "matchCount", "matchesCandidate"],
+      "properties": {
+        "locator": { "$ref": "targets.schema.json#/$defs/primary" },
+        "strategy": {
+          "enum": ["role", "label", "testId", "text", "placeholder", "title", "altText", "css"]
+        },
+        "matchCount": { "type": "integer", "minimum": 0 },
+        "matchesCandidate": { "type": "boolean" }
+      }
+    },
+    "patchPath": {
+      "type": "string",
+      "pattern": "^/targets/[^/]+/primary$"
+    },
+    "testPatch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op", "path", "value"],
+      "properties": {
+        "op": { "const": "test" },
+        "path": { "$ref": "#/$defs/patchPath" },
+        "value": { "$ref": "targets.schema.json#/$defs/primary" }
+      }
+    },
+    "replacePatch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op", "path", "value"],
+      "properties": {
+        "op": { "const": "replace" },
+        "path": { "$ref": "#/$defs/patchPath" },
+        "value": { "$ref": "targets.schema.json#/$defs/primary" }
+      }
     }
   }
 }

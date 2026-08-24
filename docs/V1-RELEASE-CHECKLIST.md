@@ -5,7 +5,7 @@ command or GitHub check actually passed; unchecked items are work remaining, not
 
 ## Factual baseline — 2026-08-20
 
-- [x] v0.7 was merged through PR [#3](https://github.com/kamenAsenov/healwright/pull/3).
+- [x] v0.7 was merged through PR [#3](https://github.com/kamenAsenov/aegiloc/pull/3).
 - [x] merged `main` baseline is `936bca2661ad137e3b24d2c5437fecd278289b3b`.
 - [x] `release/v1.0.0` was created from that exact commit with a clean worktree.
 - [x] no `v0.7.0` tag or GitHub Release exists.
@@ -51,7 +51,7 @@ Environment: macOS, Node.js `24.19.0`, pnpm `11.19.0`.
 - [x] v1 product/UX brief accepted by implementation and tests.
 - [x] report overview, event timeline, candidate comparison, filters, trust state, and next actions.
 - [x] accessible and responsive report behavior with safe evidence escaping.
-- [x] guided `healwright demo` and explicit `--open` behavior.
+- [x] guided `aegiloc demo` and explicit `--open` behavior.
 - [x] first-user README and realistic screenshot from generated product output.
 - [x] adoption, Page Object/fixture, CI/retention, proposal review, and troubleshooting guidance.
 - [x] public API inventory snapshot and compatibility policy.
@@ -73,15 +73,15 @@ Environment: macOS, Node.js `24.19.0`, pnpm `11.19.0`.
   - 10 canonical evidence events, an integrity manifest, and governance PASS with 0 violations;
   - 1 basic consumer test and 3 realistic demo tests.
 - [x] pull-request dependency review, Node 22/24 compatibility, quality, and supply-chain jobs — all
-      passed in [CI run 32504809275](https://github.com/kamenAsenov/healwright/actions/runs/32504809275).
+      passed in [CI run 32504809275](https://github.com/kamenAsenov/aegiloc/actions/runs/32504809275).
 - [x] release branch diff/security/package audit — `git diff --check` passed, no repository-local
       absolute paths or common credential patterns were found, the committed screenshot is a
       1440×1040 PNG, and the dry-run package contains the reviewed 173-file manifest.
 - [x] exact reviewed release commit merged to `main` as
-      [`c414136`](https://github.com/kamenAsenov/healwright/commit/c4141360b7642b458c8de5875270c84005ad66f8)
+      [`c414136`](https://github.com/kamenAsenov/aegiloc/commit/c4141360b7642b458c8de5875270c84005ad66f8)
 - [x] post-merge `main` CI, including provenance and SBOM attestations — passed in
-      [CI run 32505903244](https://github.com/kamenAsenov/healwright/actions/runs/32505903244)
+      [CI run 32505903244](https://github.com/kamenAsenov/aegiloc/actions/runs/32505903244)
 - [x] annotated `v1.0.0` tag on the verified merged commit
-- [x] [GitHub Release](https://github.com/kamenAsenov/healwright/releases/tag/v1.0.0) with honest scope
+- [x] [GitHub Release](https://github.com/kamenAsenov/aegiloc/releases/tag/v1.0.0) with honest scope
       and limitations
 - [x] npm publication explicitly reported as not performed

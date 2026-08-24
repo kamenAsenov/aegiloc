@@ -1,10 +1,10 @@
-const confirmationVariable = 'HEALWRIGHT_PUBLISH';
+const confirmationVariable = 'AEGILOC_PUBLISH';
 const confirmationValue = 'I_UNDERSTAND_THIS_PUBLISHES_TO_NPM';
 
 if (process.env[confirmationVariable] !== confirmationValue) {
   process.stderr.write(
     [
-      'Healwright publication blocked.',
+      'Aegiloc publication blocked.',
       'Publishing is never part of the normal release or CI workflow.',
       `A maintainer must explicitly set ${confirmationVariable}=${confirmationValue}`,
       'after reviewing package ownership, the dry-run contents, credentials, and the target version.',

@@ -13,6 +13,7 @@ import {
   type HealingProposalVerification,
 } from './proposals.js';
 import { SUPPORTED_ARIA_ROLES } from './registry.js';
+import type { LocatorSuggestionEvidence } from './suggestions.js';
 import {
   TARGET_ACTIONS,
   type PrimaryLocatorDefinition,
@@ -33,6 +34,7 @@ const REJECTION_REASONS = [
   'stale-policy',
   'unknown-target',
   'unsupported-candidate',
+  'missing-locator-evidence',
   'already-current',
 ] as const satisfies readonly HealingProposalRejectionReason[];
 
@@ -139,8 +141,12 @@ function integerSet(value: unknown, path: string, minimumItems = 0): readonly nu
   return entries;
 }
 
-function safeScreenshotPaths(value: unknown, path: string): readonly string[] {
-  const paths = stringSet(value, path, 2);
+function safeScreenshotPaths(
+  value: unknown,
+  path: string,
+  minimumItems: number,
+): readonly string[] {
+  const paths = stringSet(value, path, minimumItems);
   for (const [index, screenshotPath] of paths.entries()) {
     if (
       posix.isAbsolute(screenshotPath) ||
@@ -152,6 +158,16 @@ function safeScreenshotPaths(value: unknown, path: string): readonly string[] {
     }
   }
   return paths;
+}
+
+function stringRecord(value: unknown, path: string): Readonly<Record<string, string>> {
+  const entries = record(value, path);
+  return Object.fromEntries(
+    Object.entries(entries).map(([key, entry]) => [
+      text(key, `${path} key`),
+      text(entry, `${path}.${key}`),
+    ]),
+  );
 }
 
 function primaryLocator(value: unknown, path: string): PrimaryLocatorDefinition {
@@ -175,7 +191,10 @@ function primaryLocator(value: unknown, path: string): PrimaryLocatorDefinition 
       };
     }
     case 'label':
-    case 'text': {
+    case 'text':
+    case 'placeholder':
+    case 'title':
+    case 'altText': {
       onlyKeys(locator, ['type', 'value', 'exact'], path);
       if (locator.exact !== undefined && typeof locator.exact !== 'boolean') {
         throw new ProposalBundleValidationError(`${path}.exact`, 'expected a boolean');
@@ -195,6 +214,28 @@ function primaryLocator(value: unknown, path: string): PrimaryLocatorDefinition 
   }
 }
 
+function locatorSuggestion(value: unknown, path: string): LocatorSuggestionEvidence {
+  const suggestion = record(value, path);
+  onlyKeys(suggestion, ['locator', 'strategy', 'matchCount', 'matchesCandidate'], path);
+  const locator = primaryLocator(suggestion.locator, `${path}.locator`);
+  if (suggestion.strategy !== locator.type) {
+    throw new ProposalBundleValidationError(`${path}.strategy`, 'must match locator type');
+  }
+  if (typeof suggestion.matchesCandidate !== 'boolean') {
+    throw new ProposalBundleValidationError(`${path}.matchesCandidate`, 'expected a boolean');
+  }
+  return {
+    locator,
+    strategy: locator.type,
+    matchCount: integer(suggestion.matchCount, `${path}.matchCount`, 0),
+    matchesCandidate: suggestion.matchesCandidate,
+  };
+}
+
+function primaryPath(targetKey: string): string {
+  return `/targets/${targetKey.replace(/~/g, '~0').replace(/\//g, '~1')}/primary`;
+}
+
 function proposal(value: unknown, path: string, minimumObservations: number): HealingProposal {
   const item = record(value, path);
   onlyKeys(
@@ -203,11 +244,14 @@ function proposal(value: unknown, path: string, minimumObservations: number): He
       'schemaVersion',
       'proposalId',
       'status',
+      'source',
       'targetKey',
       'action',
       'targetDefinitionHash',
       'currentPrimary',
       'suggestedPrimary',
+      'locatorAlternatives',
+      'registryPatch',
       'candidate',
       'evidence',
     ],
@@ -216,15 +260,71 @@ function proposal(value: unknown, path: string, minimumObservations: number): He
   if (item.schemaVersion !== HEALING_PROPOSAL_SCHEMA_VERSION || item.status !== 'review-required') {
     throw new ProposalBundleValidationError(path, 'unsupported proposal version or status');
   }
+  if (item.source !== 'automatic-execution' && item.source !== 'proposal-only-observation') {
+    throw new ProposalBundleValidationError(`${path}.source`, 'unsupported evidence source');
+  }
+  const source = item.source;
+  const targetKey = text(item.targetKey, `${path}.targetKey`);
+  const currentPrimary = primaryLocator(item.currentPrimary, `${path}.currentPrimary`);
   const suggested = primaryLocator(item.suggestedPrimary, `${path}.suggestedPrimary`);
-  if (suggested.type !== 'role' || suggested.name === undefined || suggested.exact !== true) {
+  if (!Array.isArray(item.locatorAlternatives) || item.locatorAlternatives.length === 0) {
     throw new ProposalBundleValidationError(
-      `${path}.suggestedPrimary`,
-      'expected an exact named role locator',
+      `${path}.locatorAlternatives`,
+      'expected at least one locator suggestion',
     );
   }
+  const locatorAlternatives = item.locatorAlternatives.map((entry, index) =>
+    locatorSuggestion(entry, `${path}.locatorAlternatives[${index}]`),
+  );
+  if (
+    JSON.stringify(locatorAlternatives[0]?.locator) !== JSON.stringify(suggested) ||
+    locatorAlternatives.some(
+      (alternative) => alternative.matchCount !== 1 || !alternative.matchesCandidate,
+    )
+  ) {
+    throw new ProposalBundleValidationError(
+      `${path}.locatorAlternatives`,
+      'suggestions must be unique, match the candidate, and begin with suggestedPrimary',
+    );
+  }
+
+  if (!Array.isArray(item.registryPatch) || item.registryPatch.length !== 2) {
+    throw new ProposalBundleValidationError(
+      `${path}.registryPatch`,
+      'expected test and replace operations',
+    );
+  }
+  const [testOperation, replaceOperation] = item.registryPatch.map((operation, index) =>
+    record(operation, `${path}.registryPatch[${index}]`),
+  );
+  if (testOperation === undefined || replaceOperation === undefined) {
+    throw new ProposalBundleValidationError(`${path}.registryPatch`, 'expected two operations');
+  }
+  onlyKeys(testOperation, ['op', 'path', 'value'], `${path}.registryPatch[0]`);
+  onlyKeys(replaceOperation, ['op', 'path', 'value'], `${path}.registryPatch[1]`);
+  const expectedPath = primaryPath(targetKey);
+  if (
+    testOperation.op !== 'test' ||
+    replaceOperation.op !== 'replace' ||
+    testOperation.path !== expectedPath ||
+    replaceOperation.path !== expectedPath ||
+    JSON.stringify(primaryLocator(testOperation.value, `${path}.registryPatch[0].value`)) !==
+      JSON.stringify(currentPrimary) ||
+    JSON.stringify(primaryLocator(replaceOperation.value, `${path}.registryPatch[1].value`)) !==
+      JSON.stringify(suggested)
+  ) {
+    throw new ProposalBundleValidationError(
+      `${path}.registryPatch`,
+      'patch must test currentPrimary before replacing it with suggestedPrimary',
+    );
+  }
+
   const candidateValue = record(item.candidate, `${path}.candidate`);
-  onlyKeys(candidateValue, ['role', 'accessibleName', 'tag'], `${path}.candidate`);
+  onlyKeys(
+    candidateValue,
+    ['role', 'accessibleName', 'tag', 'stableAttributes', 'visibleText'],
+    `${path}.candidate`,
+  );
   const candidateRole = text(candidateValue.role, `${path}.candidate.role`);
   if (!SUPPORTED_ARIA_ROLES.includes(candidateRole as RoleLocatorDefinition['role'])) {
     throw new ProposalBundleValidationError(`${path}.candidate.role`, 'unsupported ARIA role');
@@ -237,12 +337,21 @@ function proposal(value: unknown, path: string, minimumObservations: number): He
   if (!/^[a-z][a-z0-9-]*$/.test(tag)) {
     throw new ProposalBundleValidationError(`${path}.candidate.tag`, 'invalid HTML tag');
   }
-  if (candidateRole !== suggested.role || candidateAccessibleName !== suggested.name) {
-    throw new ProposalBundleValidationError(
-      `${path}.candidate`,
-      'candidate identity must match the suggested role locator',
-    );
-  }
+  const stableAttributes =
+    candidateValue.stableAttributes === undefined
+      ? undefined
+      : stringRecord(candidateValue.stableAttributes, `${path}.candidate.stableAttributes`);
+  const visibleText =
+    candidateValue.visibleText === undefined
+      ? undefined
+      : typeof candidateValue.visibleText === 'string'
+        ? candidateValue.visibleText
+        : (() => {
+            throw new ProposalBundleValidationError(
+              `${path}.candidate.visibleText`,
+              'expected a string',
+            );
+          })();
 
   const evidenceValue = record(item.evidence, `${path}.evidence`);
   onlyKeys(
@@ -287,14 +396,16 @@ function proposal(value: unknown, path: string, minimumObservations: number): He
   const executionEventIds = stringSet(
     evidenceValue.executionEventIds,
     `${path}.evidence.executionEventIds`,
-    2,
+    source === 'automatic-execution' ? 2 : 0,
   );
   if (
     distinctRunCount !== runIds.length ||
     occurrenceCount < distinctRunCount ||
     distinctRunCount < minimumObservations ||
     assessmentEventIds.length !== occurrenceCount ||
-    executionEventIds.length !== occurrenceCount
+    (source === 'automatic-execution'
+      ? executionEventIds.length !== occurrenceCount
+      : executionEventIds.length !== 0)
   ) {
     throw new ProposalBundleValidationError(`${path}.evidence`, 'inconsistent evidence counts');
   }
@@ -323,15 +434,23 @@ function proposal(value: unknown, path: string, minimumObservations: number): He
     schemaVersion: HEALING_PROPOSAL_SCHEMA_VERSION,
     proposalId: hash(item.proposalId, `${path}.proposalId`),
     status: 'review-required',
-    targetKey: text(item.targetKey, `${path}.targetKey`),
+    source,
+    targetKey,
     action: action(item.action, `${path}.action`),
     targetDefinitionHash: hash(item.targetDefinitionHash, `${path}.targetDefinitionHash`),
-    currentPrimary: primaryLocator(item.currentPrimary, `${path}.currentPrimary`),
+    currentPrimary,
     suggestedPrimary: suggested,
+    locatorAlternatives,
+    registryPatch: [
+      { op: 'test', path: expectedPath, value: currentPrimary },
+      { op: 'replace', path: expectedPath, value: suggested },
+    ],
     candidate: {
-      role: candidateRole,
+      role: candidateRole as RoleLocatorDefinition['role'],
       accessibleName: candidateAccessibleName,
       tag,
+      ...(stableAttributes === undefined ? {} : { stableAttributes }),
+      ...(visibleText === undefined ? {} : { visibleText }),
     },
     evidence: {
       occurrenceCount,
@@ -352,6 +471,7 @@ function proposal(value: unknown, path: string, minimumObservations: number): He
       screenshotPaths: safeScreenshotPaths(
         evidenceValue.screenshotPaths,
         `${path}.evidence.screenshotPaths`,
+        source === 'automatic-execution' ? 2 : 0,
       ),
       firstSeen,
       lastSeen,

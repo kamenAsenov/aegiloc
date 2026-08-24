@@ -1,20 +1,49 @@
 # Changelog
 
-All notable changes to Healwright are documented here. The project follows Semantic Versioning for
-release tags. This repository is not published to npm; the unscoped package name is occupied by an
-unrelated project.
+All notable changes to Aegiloc are documented here. The project follows Semantic Versioning for
+release tags and is not published to npm.
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-08-24
+
+### Added
+
+- Exact pathname, unique-frame, and unique-container gates for context-bounded candidate discovery.
+- Placeholder, title, and alt-text primary locators plus `uncheck`, `hover`, and `focus` actions.
+- Verified Playwright-native locator alternatives and schema-v3 review-only locator proposals.
+- Opt-in successful-primary fingerprint observations and independent-run fingerprint proposals.
+- Historical target-health analytics covering healing, ambiguity, confidence, protected attempts,
+  score/margin ranges, drift age, and recent outcomes.
+- A typed `createAegilocTest` fixture that wires evidence, screenshots, provenance, and visible
+  `PASSED_WITH_HEALING` results.
+- Comparative research, v1.1 migration guidance, and new public package/schema contracts.
+
+### Changed
+
+- The project, package, binary, evidence paths, report, documentation, and examples now use the
+  Aegiloc identity.
+- Evidence summaries advance to schema v2 and locator proposal bundles to schema v3; generated
+  artifacts should be regenerated.
+- The basic consumer example now demonstrates the public typed fixture.
+
+### Security
+
+- Context mismatch fails before candidate collection, proposal suggestions must uniquely resolve to
+  the assessed element, and no locator or fingerprint proposal has an automatic apply path.
+
 ## [1.0.1] - 2026-08-23
+
+Historical note: releases through v1.0.1 used the former Healwright source-repository identity. No
+npm package was published under that name. Historical release-note files retain it intentionally.
 
 ### Fixed
 
 - `pnpm demo` now preserves existing demo output and requires an explicit
   `pnpm cli demo --force` rerun after review.
 - Troubleshooting now points repeat demo runs to the same explicit force command as the CLI error.
-- Evaluator documentation now warns that the unscoped npm package name belongs to an unrelated
-  project and that this release must be run from its source checkout.
+- Evaluator documentation warned that the former unscoped npm package name belonged to an unrelated
+  project and that this release had to be run from its source checkout.
 
 ### Changed
 
@@ -34,7 +63,7 @@ unrelated project.
 
 ### Added
 
-- A guided `healwright demo` / `--open` journey and deliberate `view --open` behavior with portable
+- A guided `aegiloc demo` / `--open` journey and deliberate `view --open` behavior with portable
   fallback paths and overwrite protection.
 - A polished self-contained report with run/trust hierarchy, decision timelines, candidate signal
   tables, filters, responsive and keyboard behavior, next-action guidance, and restrictive CSP.
@@ -70,7 +99,7 @@ Prepared for review; not tagged, published to npm, or published as a GitHub Rele
 
 - Strict evidence manifests with ordered SHA-256 digests, byte lengths, and optional
   HMAC-SHA-256 authentication using external key files.
-- `healwright attest` and `healwright verify` with required-authentication mode, key identity,
+- `aegiloc attest` and `aegiloc verify` with required-authentication mode, key identity,
   minimum key strength, POSIX permission checks, and symbolic-link rejection.
 - Adversarial tests for missing, truncated, replaced, reordered, malformed, weak-key, wrong-key,
   and unauthenticated evidence.
@@ -102,7 +131,7 @@ Prepared for review; not tagged, published to npm, or published as a GitHub Rele
 
 ### Added
 
-- A compiled `healwright` CLI with help, non-destructive initialization, registry validation, local
+- A compiled `aegiloc` CLI with help, non-destructive initialization, registry validation, local
   diagnostics, and static report generation.
 - A self-contained evidence viewer with canonical summary/history agreement, HTML escaping, clear
   empty states, ranked assessment details, successful heals, and rejected or protected outcomes.
@@ -114,7 +143,7 @@ Prepared for review; not tagged, published to npm, or published as a GitHub Rele
 ### Changed
 
 - Package metadata and documentation now identify `0.6.0 Technical Preview` consistently and expose
-  `dist/cli.js` through the `healwright` bin entry.
+  `dist/cli.js` through the `aegiloc` bin entry.
 - The complete release gate and CI include the realistic demo and generated-viewer verification.
 - Portfolio and repository-readiness documentation from the untagged v0.5 preparation work is
   incorporated into this reviewable preview milestone.
@@ -180,7 +209,7 @@ Prepared for review; not tagged, published to npm, or published as a GitHub Rele
   conflicting event-ID rejection.
 - Provenance summaries covering runs, tests, projects, retries, commits, and legacy events.
 - An independently runnable evidence-verification CLI and strict summary JSON Schema.
-- CI verification and retention of canonical Healwright evidence artifacts.
+- CI verification and retention of canonical Aegiloc evidence artifacts.
 - Synthetic reporter tests and an explicit four-worker Chromium reporter integration gate.
 
 ### Changed
@@ -204,12 +233,13 @@ Prepared for review; not tagged, published to npm, or published as a GitHub Rele
 - Guarded healing execution with screenshots, JSONL audit events, and visible
   `PASSED_WITH_HEALING` results.
 
-[0.4.0]: https://github.com/kamenAsenov/healwright/compare/v0.3.1...v0.4.0
-[0.6.0]: https://github.com/kamenAsenov/healwright/compare/v0.4.0...v0.6.0
-[0.7.0]: https://github.com/kamenAsenov/healwright/compare/v0.6.0...v0.7.0
-[1.0.0]: https://github.com/kamenAsenov/healwright/compare/v0.4.0...v1.0.0
-[1.0.1]: https://github.com/kamenAsenov/healwright/compare/v1.0.0...v1.0.1
-[Unreleased]: https://github.com/kamenAsenov/healwright/compare/v1.0.1...HEAD
-[0.3.1]: https://github.com/kamenAsenov/healwright/compare/v0.3.0...v0.3.1
-[0.3.0]: https://github.com/kamenAsenov/healwright/compare/82513a74882500d5d31a3c8d284a0727565cef77...v0.3.0
-[0.2.0]: https://github.com/kamenAsenov/healwright/tree/82513a74882500d5d31a3c8d284a0727565cef77
+[0.4.0]: https://github.com/kamenAsenov/aegiloc/compare/v0.3.1...v0.4.0
+[0.6.0]: https://github.com/kamenAsenov/aegiloc/compare/v0.4.0...v0.6.0
+[0.7.0]: https://github.com/kamenAsenov/aegiloc/compare/v0.6.0...v0.7.0
+[1.0.0]: https://github.com/kamenAsenov/aegiloc/compare/v0.4.0...v1.0.0
+[1.0.1]: https://github.com/kamenAsenov/aegiloc/compare/v1.0.0...v1.0.1
+[1.1.0]: https://github.com/kamenAsenov/aegiloc/compare/v1.0.1...v1.1.0
+[Unreleased]: https://github.com/kamenAsenov/aegiloc/compare/v1.1.0...HEAD
+[0.3.1]: https://github.com/kamenAsenov/aegiloc/compare/v0.3.0...v0.3.1
+[0.3.0]: https://github.com/kamenAsenov/aegiloc/compare/82513a74882500d5d31a3c8d284a0727565cef77...v0.3.0
+[0.2.0]: https://github.com/kamenAsenov/aegiloc/tree/82513a74882500d5d31a3c8d284a0727565cef77

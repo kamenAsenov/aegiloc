@@ -9,6 +9,7 @@ import {
   type TargetAction,
   type ExecutionRisk,
   type TargetDefinition,
+  type TargetContextDefinition,
   type TargetFingerprint,
   type TargetPolicy,
   type TargetRegistry,
@@ -180,7 +181,10 @@ function parsePrimaryLocator(value: unknown, path: string): PrimaryLocatorDefini
       };
     }
     case 'label':
-    case 'text': {
+    case 'text':
+    case 'placeholder':
+    case 'title':
+    case 'altText': {
       expectOnlyKeys(locator, ['type', 'value', 'exact'], path);
       const exact = expectOptionalExact(locator, path);
       return {
@@ -196,6 +200,38 @@ function parsePrimaryLocator(value: unknown, path: string): PrimaryLocatorDefini
     default:
       throw new RegistryValidationError(`${path}.type`, `unsupported locator type "${type}"`);
   }
+}
+
+function parseContext(value: unknown, path: string): TargetContextDefinition {
+  const context = expectRecord(value, path);
+  expectOnlyKeys(context, ['pathname', 'frame', 'container'], path);
+
+  const pathname =
+    context.pathname === undefined ? undefined : expectString(context.pathname, `${path}.pathname`);
+  if (
+    pathname !== undefined &&
+    (!pathname.startsWith('/') || pathname.includes('?') || pathname.includes('#'))
+  ) {
+    throw new RegistryValidationError(
+      `${path}.pathname`,
+      'expected an exact pathname beginning with / and without query or fragment',
+    );
+  }
+  const frame =
+    context.frame === undefined ? undefined : parsePrimaryLocator(context.frame, `${path}.frame`);
+  const container =
+    context.container === undefined
+      ? undefined
+      : parsePrimaryLocator(context.container, `${path}.container`);
+  if (pathname === undefined && frame === undefined && container === undefined) {
+    throw new RegistryValidationError(path, 'expected at least one context constraint');
+  }
+
+  return {
+    ...(pathname === undefined ? {} : { pathname }),
+    ...(frame === undefined ? {} : { frame }),
+    ...(container === undefined ? {} : { container }),
+  };
 }
 
 function expectStringArray(value: unknown, path: string): readonly string[] {
@@ -314,10 +350,13 @@ function parsePolicy(value: unknown, path: string): TargetPolicy {
 
 function parseTarget(value: unknown, path: string): TargetDefinition {
   const target = expectRecord(value, path);
-  expectOnlyKeys(target, ['description', 'primary', 'fingerprint', 'policy'], path);
+  expectOnlyKeys(target, ['description', 'context', 'primary', 'fingerprint', 'policy'], path);
 
   return {
     description: expectString(target.description, `${path}.description`),
+    ...(target.context === undefined
+      ? {}
+      : { context: parseContext(target.context, `${path}.context`) }),
     primary: parsePrimaryLocator(target.primary, `${path}.primary`),
     fingerprint: parseFingerprint(target.fingerprint, `${path}.fingerprint`),
     policy: parsePolicy(target.policy, `${path}.policy`),
@@ -336,7 +375,21 @@ export function parseTargetRegistry(value: unknown): TargetRegistry {
   }
 
   const defaults = expectRecord(registry.defaults, '$.defaults');
-  expectOnlyKeys(defaults, ['confidenceThreshold', 'minimumScoreMargin'], '$.defaults');
+  expectOnlyKeys(
+    defaults,
+    ['confidenceThreshold', 'minimumScoreMargin', 'testIdAttribute'],
+    '$.defaults',
+  );
+  const testIdAttribute =
+    defaults.testIdAttribute === undefined
+      ? undefined
+      : expectString(defaults.testIdAttribute, '$.defaults.testIdAttribute');
+  if (testIdAttribute !== undefined && !/^[A-Za-z_:][A-Za-z0-9_.:-]*$/.test(testIdAttribute)) {
+    throw new RegistryValidationError(
+      '$.defaults.testIdAttribute',
+      'expected a valid HTML attribute name',
+    );
+  }
 
   const rawTargets = expectRecord(registry.targets, '$.targets');
   if (Object.keys(rawTargets).length === 0) {
@@ -361,6 +414,7 @@ export function parseTargetRegistry(value: unknown): TargetRegistry {
         defaults.minimumScoreMargin,
         '$.defaults.minimumScoreMargin',
       ),
+      ...(testIdAttribute === undefined ? {} : { testIdAttribute }),
     },
     targets,
   };

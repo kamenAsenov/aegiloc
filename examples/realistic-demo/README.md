@@ -1,6 +1,6 @@
 # Realistic local storefront demo
 
-This deterministic example makes the v1.0 evaluation behavior visible without depending on
+This deterministic example makes the v1.1 evaluation behavior visible without depending on
 an external site. It uses the same local checkout fixture for three intentionally different cases.
 
 ## Run it
@@ -23,7 +23,7 @@ report.
 | ----------------- | ----------------------------------------------------------- | --------------------------------------------------------- |
 | Ordinary baseline | No mutation                                                 | Plain Playwright locator succeeds; no healing occurs      |
 | Safe drift        | `Apply discount` becomes `Apply Discount`                   | One compatible semantic winner is revalidated and clicked |
-| Ambiguous drift   | The terms test-id changes and two matching checkboxes exist | Healwright rejects the tie and leaves both unchecked      |
+| Ambiguous drift   | The terms test-id changes and two matching checkboxes exist | Aegiloc rejects the tie and leaves both unchecked         |
 
 The final output includes a visible `PASSED_WITH_HEALING` line for the safe case and canonical audit
 events for both the successful and rejected assessments.

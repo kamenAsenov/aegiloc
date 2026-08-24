@@ -17,7 +17,7 @@ import {
   verifyHealingProposal,
   verifyHealingProposalBundle,
   type AuditProvenanceInput,
-  type HealwrightAuditEvent,
+  type AegilocAuditEvent,
   type HealingAuditEvent,
   type HealingExecutionAuditEvent,
   type PrimaryLocatorDefinition,
@@ -94,6 +94,23 @@ function eventPair(
     },
   ]);
   const assessment = assessCandidates(ranked, registry.targets['checkout.terms'].policy.healing);
+  const topCandidate = ranked[0]?.candidate;
+  const locatorSuggestions =
+    topCandidate?.role === undefined || topCandidate.accessibleName === undefined
+      ? []
+      : [
+          {
+            locator: {
+              type: 'role',
+              role: topCandidate.role,
+              name: topCandidate.accessibleName,
+              exact: true,
+            } as PrimaryLocatorDefinition,
+            strategy: 'role' as const,
+            matchCount: 1,
+            matchesCandidate: true,
+          },
+        ];
   const assessmentEventId = `assessment-${index}`;
   const assessmentEvent = createHealingAuditEvent({
     eventId: assessmentEventId,
@@ -108,6 +125,7 @@ function eventPair(
     collectionStatus: 'completed',
     assessment,
     rankedCandidates: ranked,
+    locatorSuggestions,
   });
   const executionStatus = options.executionStatus ?? 'succeeded';
   const executionEvent = createHealingExecutionAuditEvent({
@@ -125,14 +143,14 @@ function eventPair(
         phase: 'before',
         name: `before-${index}.png`,
         filePath: `/private/not-audited/before-${index}.png`,
-        auditPath: `test-results/healwright/before-${index}.png`,
+        auditPath: `test-results/aegiloc/before-${index}.png`,
         contentType: 'image/png',
       },
       {
         phase: 'after',
         name: `after-${index}.png`,
         filePath: `/private/not-audited/after-${index}.png`,
-        auditPath: `test-results/healwright/after-${index}.png`,
+        auditPath: `test-results/aegiloc/after-${index}.png`,
         contentType: 'image/png',
       },
     ],
@@ -140,7 +158,7 @@ function eventPair(
   return [assessmentEvent, executionEvent];
 }
 
-function threeSuccessfulPairs(options: PairOptions = {}): readonly HealwrightAuditEvent[] {
+function threeSuccessfulPairs(options: PairOptions = {}): readonly AegilocAuditEvent[] {
   return [1, 2, 3].flatMap((index) => eventPair(index, options));
 }
 
@@ -161,7 +179,7 @@ test('reports the exact malformed JSONL line', () => {
 
   expect(caught).toBeInstanceOf(ProposalHistoryError);
   expect(caught).toMatchObject({
-    message: 'Invalid Healwright history at line 2: invalid JSON',
+    message: 'Invalid Aegiloc history at line 2: invalid JSON',
     cause: expect.any(SyntaxError),
   });
 });
@@ -298,20 +316,73 @@ test('creates a review-required proposal after three successful agreements', () 
       commitShas: ['abcdef0123456789'],
       candidateIds: ['input:accept-terms:1', 'input:accept-terms:2', 'input:accept-terms:3'],
       screenshotPaths: [
-        'test-results/healwright/after-1.png',
-        'test-results/healwright/after-2.png',
-        'test-results/healwright/after-3.png',
-        'test-results/healwright/before-1.png',
-        'test-results/healwright/before-2.png',
-        'test-results/healwright/before-3.png',
+        'test-results/aegiloc/after-1.png',
+        'test-results/aegiloc/after-2.png',
+        'test-results/aegiloc/after-3.png',
+        'test-results/aegiloc/before-1.png',
+        'test-results/aegiloc/before-2.png',
+        'test-results/aegiloc/before-3.png',
       ],
     },
   });
   expect(bundle.proposals[0]?.proposalId).toMatch(/^sha256:[a-f0-9]{64}$/);
 });
 
+test('creates a multi-run proposal for a protected target without any replacement execution', () => {
+  const protectedRegistry = {
+    ...registry,
+    targets: {
+      'checkout.terms': {
+        ...registry.targets['checkout.terms'],
+        policy: {
+          ...registry.targets['checkout.terms'].policy,
+          executionRisk: 'proposal-only',
+        },
+      },
+    },
+  } as const satisfies TargetRegistry;
+  const observations = [1, 2, 3].map((index) => {
+    const [assessment] = eventPair(index);
+    return {
+      ...assessment,
+      modeDecision: 'rejected' as const,
+      executionPolicy: {
+        risk: 'proposal-only' as const,
+        automaticExecutionAllowed: false,
+      },
+    };
+  });
+
+  const bundle = generateHealingProposals(observations, protectedRegistry, {
+    generatedAt: '2026-08-15T01:00:00.000Z',
+  });
+
+  expect(bundle.rejections).toEqual([]);
+  expect(bundle.proposals[0]).toMatchObject({
+    source: 'proposal-only-observation',
+    locatorAlternatives: [
+      {
+        strategy: 'role',
+        matchCount: 1,
+        matchesCandidate: true,
+      },
+    ],
+    registryPatch: [
+      { op: 'test', path: '/targets/checkout.terms/primary', value: primary },
+      { op: 'replace', path: '/targets/checkout.terms/primary' },
+    ],
+    evidence: {
+      occurrenceCount: 3,
+      distinctRunCount: 3,
+      executionEventIds: [],
+      screenshotPaths: [],
+    },
+  });
+  expect(parseHealingProposalBundle(JSON.stringify(bundle))).toEqual(bundle);
+});
+
 test('excludes pre-eligibility evidence from locator proposals', () => {
-  const events = threeSuccessfulPairs().map((event): HealwrightAuditEvent => {
+  const events = threeSuccessfulPairs().map((event): AegilocAuditEvent => {
     if (event.eventType !== 'locator-drift-assessed') {
       return event;
     }
@@ -444,7 +515,7 @@ test('rejects reuse of one assessment by multiple executions', () => {
   const reusedExecution = {
     ...execution,
     eventId: 'execution-reused',
-  } as HealwrightAuditEvent;
+  } as AegilocAuditEvent;
 
   expect(
     generateHealingProposals([assessment, execution, reusedExecution], registry).rejections[0]
@@ -636,7 +707,7 @@ test('renders a human-review warning and traceable evidence', () => {
   expect(report).toContain('Review required');
   expect(report).toContain('never edits test source or the locator registry');
   expect(report).toContain('assessment-1');
-  expect(report).toContain('test-results/healwright/before-1.png');
+  expect(report).toContain('test-results/aegiloc/before-1.png');
 });
 
 test('rejects invalid generation options', () => {
@@ -737,7 +808,7 @@ test('strict proposal parsing rejects unsafe screenshot references', () => {
           ...proposal,
           evidence: {
             ...proposal.evidence,
-            screenshotPaths: ['/private/evidence.png', 'test-results/healwright/after.png'],
+            screenshotPaths: ['/private/evidence.png', 'test-results/aegiloc/after.png'],
           },
         },
       ],
@@ -748,7 +819,7 @@ test('strict proposal parsing rejects unsafe screenshot references', () => {
   }
 });
 
-test('strict proposal parsing rejects candidate and suggested locator disagreement', () => {
+test('strict proposal parsing rejects suggested locator and uniqueness evidence disagreement', () => {
   const generated = generateHealingProposals(threeSuccessfulPairs(), registry, {
     generatedAt: '2026-08-15T01:00:00.000Z',
   });
@@ -760,12 +831,17 @@ test('strict proposal parsing rejects candidate and suggested locator disagreeme
       proposals: [
         {
           ...proposal,
-          candidate: { ...proposal.candidate, accessibleName: 'Different candidate' },
+          locatorAlternatives: [
+            {
+              ...proposal.locatorAlternatives[0],
+              matchesCandidate: false,
+            },
+          ],
         },
       ],
     };
     expect(() => parseHealingProposalBundle(JSON.stringify(malformed))).toThrow(
-      /candidate identity must match/,
+      /suggestions must be unique/,
     );
   }
 });
@@ -783,7 +859,6 @@ test('bundle verification reports proposal tampering without mutating inputs', (
         proposals: [
           {
             ...proposal,
-            suggestedPrimary: { ...proposal.suggestedPrimary, name: 'Tampered name' },
             candidate: { ...proposal.candidate, accessibleName: 'Tampered name' },
           },
         ],

@@ -43,7 +43,7 @@ function auditEvent(): HealingAuditEvent {
 
 test('writes one valid JSON object per JSONL line', async ({ browserName }, testInfo) => {
   void browserName;
-  const filePath = testInfo.outputPath('healwright', 'history.jsonl');
+  const filePath = testInfo.outputPath('aegiloc', 'history.jsonl');
   const sink = new JsonlAuditSink(filePath);
 
   await sink.write(auditEvent());
@@ -98,7 +98,7 @@ test('execution events reference safe screenshot paths without serializing absol
         phase: 'before',
         name: 'before.png',
         filePath: '/Users/example/private/before.png',
-        auditPath: 'test-results/healwright/before.png',
+        auditPath: 'test-results/aegiloc/before.png',
         contentType: 'image/png',
       },
     ],
@@ -111,7 +111,7 @@ test('execution events reference safe screenshot paths without serializing absol
     screenshots: [
       {
         phase: 'before',
-        path: 'test-results/healwright/before.png',
+        path: 'test-results/aegiloc/before.png',
       },
     ],
   });

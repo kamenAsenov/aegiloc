@@ -1,8 +1,7 @@
 # Quick start
 
-This guide runs Healwright from a local checkout. This repository is not published to npm, and the
-unscoped `healwright` package name is occupied by an unrelated project. Do not install that package
-to evaluate this repository.
+This guide runs Aegiloc from a local checkout. No Aegiloc package is published to npm; use this
+source repository for evaluation.
 
 ## Prerequisites
 
@@ -14,8 +13,8 @@ to evaluate this repository.
 ## Install and build
 
 ```bash
-git clone https://github.com/kamenAsenov/healwright.git
-cd healwright
+git clone https://github.com/kamenAsenov/aegiloc.git
+cd aegiloc
 pnpm install --frozen-lockfile
 pnpm exec playwright install chromium
 pnpm build
@@ -58,7 +57,8 @@ Playwright performs the action normally.
 pnpm test:healing
 ```
 
-The focused suite applies controlled mutations for `click`, `fill`, `check`, and `selectOption`.
+The focused suite applies controlled mutations across the supported action surface, including
+`click`, `fill`, `check`, and `selectOption`.
 Expected successful recoveries are printed as `PASSED_WITH_HEALING` and include structured audit and
 screenshot attachments.
 
@@ -105,7 +105,7 @@ Stop the server with `Ctrl+C`. Playwright starts and stops the same server autom
 pnpm example:verify
 ```
 
-This builds Healwright, starts the existing fixture, and executes the minimal project under
+This builds Aegiloc, starts the existing fixture, and executes the minimal project under
 [`examples/basic-playwright`](../examples/basic-playwright). The example imports the package through
 its public export rather than reaching into `src/`.
 
@@ -142,10 +142,10 @@ pnpm governance:evaluate
 Expected files:
 
 ```text
-test-results/healwright/history.jsonl
-test-results/healwright/summary.json
-test-results/healwright/health-summary.json
-test-results/healwright/health-summary.md
+test-results/aegiloc/history.jsonl
+test-results/aegiloc/summary.json
+test-results/aegiloc/health-summary.json
+test-results/aegiloc/health-summary.md
 ```
 
 Evidence verification rejects malformed, conflicting, or non-canonical history. Governance returns

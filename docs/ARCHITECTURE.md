@@ -1,6 +1,6 @@
 # Architecture
 
-Healwright is a deterministic layer around Playwright Test actions. Tests name a semantic target;
+Aegiloc is a deterministic layer around Playwright Test actions. Tests name a semantic target;
 the version-controlled registry supplies its primary locator, fingerprint, allowed actions, and
 risk policy. Ordinary Playwright behavior remains the default path.
 
@@ -10,7 +10,9 @@ risk policy. Ordinary Playwright behavior remains the default path.
 flowchart TD
   Test["Playwright test"] --> Wrapper["healer.target(key).action()"]
   Wrapper --> Registry["Validated target registry"]
-  Registry --> Primary["Primary Playwright locator"]
+  Registry --> Context{"Exact target context?"}
+  Context -->|"no"| ContextReject["Fail closed before discovery"]
+  Context -->|"yes"| Primary["Primary Playwright locator"]
   Primary -->|"action succeeds"| Normal["Normal Playwright pass"]
   Primary -->|"action fails"| Classifier{"Genuinely missing?"}
   Classifier -->|"no"| Original["Preserve original failure"]
@@ -28,7 +30,7 @@ flowchart TD
   Reporter --> Manifest["Optional authenticated evidence manifest"]
   Reporter --> Proposals["Human-reviewed locator proposals"]
   Reporter --> Governance["Budgets, baselines, waivers, health summary"]
-  Reporter --> Viewer["Validated static evidence viewer"]
+  Reporter --> Viewer["Validated static evidence viewer + target health"]
 ```
 
 ## Components
@@ -43,9 +45,11 @@ provides editor and tooling support; parity tests keep it aligned with runtime v
 ### Wrapper and primary action
 
 [`src/healer.ts`](../src/healer.ts) implements the explicit target API and action allowlists.
-[`src/locator.ts`](../src/locator.ts) resolves role, label, test-id, text, and CSS primary locators
-using public Playwright APIs. [`src/classification.ts`](../src/classification.ts) runs the primary
-action and proves genuine absence without reclassifying ordinary actionability failures.
+[`src/locator.ts`](../src/locator.ts) resolves role, label, test-id, text, placeholder, title,
+alt-text, and CSS primary locators using public Playwright APIs. [`src/context.ts`](../src/context.ts)
+requires any exact pathname, unique frame, and unique container before primary or recovery logic.
+[`src/classification.ts`](../src/classification.ts) runs the primary action and proves genuine
+absence without reclassifying ordinary actionability failures.
 
 ### Candidate collection
 
@@ -92,7 +96,19 @@ truncated, reordered, replaced, or mismatched files.
 [`src/proposals.ts`](../src/proposals.ts) links eligible assessments to successful executions and
 requires independent-run consensus. [`src/proposal-validation.ts`](../src/proposal-validation.ts)
 strictly verifies proposal shape, hashes, current registry state, provenance, and screenshot
-references. Proposals are artifacts for humans; no code applies them automatically.
+references. [`src/suggestions.ts`](../src/suggestions.ts) derives ordered Playwright-native locator
+alternatives and proves that each suggestion is unique and resolves to the assessed live candidate.
+
+[`src/fingerprints.ts`](../src/fingerprints.ts) separately records opt-in fingerprints only after an
+ordinary primary action succeeds. Independent-run consensus can create a review-required
+fingerprint JSON Patch preview. Locator and fingerprint proposals are artifacts for humans; no code
+applies them automatically.
+
+### Typed Playwright fixture
+
+[`src/fixture.ts`](../src/fixture.ts) exposes `createAegilocTest`. It wires the explicit healer to
+Playwright attachments, screenshots, result annotations, and provenance without changing the
+runtime trust boundary. Direct `createHealer` construction remains public.
 
 ### Governance
 
@@ -128,10 +144,10 @@ source. Governance and proposals consume evidence but never make an unsafe candi
 
 ## Public API and package boundaries
 
-`src/index.ts` is the intentional framework surface. `healwright/reporter` is the reporter subpath;
-the `healwright` package bin points to `dist/cli.js`; six schema subpaths expose registry, proposal,
-evidence summary/manifest, policy, and health contracts. Package tests compile an external-style consumer and load
-built exports through Node package resolution.
+`src/index.ts` is the intentional framework surface. `aegiloc/reporter` is the reporter subpath;
+the `aegiloc` package bin points to `dist/cli.js`; seven schema subpaths expose registry, locator
+proposal, fingerprint proposal, evidence summary/manifest, policy, and health contracts. Package
+tests compile an external-style consumer and load built exports through Node package resolution.
 
 See [`TECHNICAL-REFERENCE.md`](TECHNICAL-REFERENCE.md) for modes, scoring weights, evidence files,
 fixture mutations, and package details.

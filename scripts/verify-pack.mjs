@@ -25,7 +25,7 @@ if (jsonStart === -1) {
 }
 
 const manifest = JSON.parse(result.stdout.slice(jsonStart));
-if (manifest.name !== 'healwright' || manifest.version !== '1.0.1') {
+if (manifest.name !== 'aegiloc' || manifest.version !== '1.1.0') {
   throw new Error('Pack manifest identity does not match the reviewed package');
 }
 
@@ -42,9 +42,12 @@ const requiredPaths = [
   'docs/ARCHITECTURE.md',
   'docs/ADOPTION.md',
   'docs/COMPATIBILITY.md',
+  'docs/COMPARATIVE-RESEARCH.md',
+  'docs/MIGRATION-v1.1.md',
   'docs/TROUBLESHOOTING.md',
-  'docs/assets/healwright-report-v1.png',
+  'docs/assets/aegiloc-report-v1.png',
   'docs/releases/v1.0.1.md',
+  'docs/releases/v1.1.0.md',
   'docs/releases/v1.0.0.md',
   'docs/releases/v0.6.0.md',
   'docs/releases/v0.7.0.md',
@@ -53,9 +56,11 @@ const requiredPaths = [
   'examples/realistic-demo/tests/storefront.spec.ts',
   'registry/targets.schema.json',
   'registry/evidence-manifest.schema.json',
+  'registry/fingerprint-proposals.schema.json',
   'performance/candidate-collection-budget.json',
   'scripts/guard-publish.mjs',
   'scripts/generate-sbom.mjs',
+  'scripts/propose-fingerprints.mjs',
   'api/public-api.json',
   'scripts/verify-reproducible-pack.mjs',
 ];

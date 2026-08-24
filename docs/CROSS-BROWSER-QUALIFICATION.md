@@ -1,6 +1,6 @@
 # Cross-browser qualification
 
-Healwright remains Chromium-first for its full portfolio suite and realistic demo. v1.0 also runs a
+Aegiloc remains Chromium-first for its full portfolio suite and realistic demo. v1.1 also runs a
 focused core qualification suite on Playwright Firefox and WebKit.
 
 ```bash

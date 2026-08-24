@@ -10,12 +10,12 @@ import {
   verifyEvidenceManifest,
   writeAuditEvidence,
   writeEvidenceManifest,
-  type HealwrightAuditEvent,
+  type AegilocAuditEvent,
 } from '../src/index.js';
 
 const generatedAt = '2026-08-20T20:00:00.000Z';
 
-function events(): readonly HealwrightAuditEvent[] {
+function events(): readonly AegilocAuditEvent[] {
   return [
     createHealingAuditEvent({
       eventId: 'manifest-assessment-1',

@@ -122,7 +122,7 @@ function renderSbom(packageJson, lockfile) {
           version: packageJson.version,
           purl: rootPurl,
         },
-        properties: [{ name: 'healwright:pnpm-lock-sha256', value: lockDigest }],
+        properties: [{ name: 'aegiloc:pnpm-lock-sha256', value: lockDigest }],
       },
       components: parseLockPackages(lockfile),
     },

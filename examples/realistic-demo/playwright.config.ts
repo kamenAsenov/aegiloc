@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { defineConfig, devices } from '@playwright/test';
 
 const repositoryRoot = fileURLToPath(new URL('../..', import.meta.url));
-const healwrightReporter = fileURLToPath(import.meta.resolve('healwright/reporter'));
+const aegilocReporter = fileURLToPath(import.meta.resolve('aegiloc/reporter'));
 
 export default defineConfig({
   testDir: './tests',
@@ -12,7 +12,7 @@ export default defineConfig({
   retries: 0,
   reporter: [
     ['line'],
-    [healwrightReporter, { outputDirectory: 'test-results/realistic-demo/evidence' }],
+    [aegilocReporter, { outputDirectory: 'test-results/realistic-demo/evidence' }],
     [
       'html',
       {

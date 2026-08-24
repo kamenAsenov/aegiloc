@@ -1,6 +1,6 @@
 # Governance policy reference
 
-Healwright governance evaluates canonical audit evidence after a Playwright run. It does not
+Aegiloc governance evaluates canonical audit evidence after a Playwright run. It does not
 participate in candidate selection or runtime execution. A malformed supplied policy fails closed.
 
 ## Configuration

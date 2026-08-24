@@ -2,7 +2,7 @@
 
 ## Product promise
 
-Healwright is a deterministic, safety-first locator-drift layer for Playwright Test. Its local
+Aegiloc is a deterministic, safety-first locator-drift layer for Playwright Test. Its local
 product surface should help a reviewer answer three questions quickly: what happened, why was the
 decision safe or rejected, and what human action is appropriate next.
 
@@ -68,3 +68,5 @@ guidance covers evidence artifacts, retention, integrity/authentication, and sen
    report path even when opening is unavailable.
 10. Automated tests cover rendering, filtering hooks, accessibility basics, trust messaging,
     escaping, overwrite behavior, demo errors, and conservative runtime regression boundaries.
+11. Historical target health distinguishes recurring drift, ambiguity, low confidence, and
+    protected attempts without turning trend data into runtime authorization.

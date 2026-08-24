@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/kamenAsenov/healwright/registry/evidence-summary.schema.json",
-  "title": "Healwright audit evidence summary",
-  "description": "Deterministic run-level counts and provenance derived from canonical Healwright audit history.",
+  "$id": "https://github.com/kamenAsenov/aegiloc/registry/evidence-summary.schema.json",
+  "title": "Aegiloc audit evidence summary",
+  "description": "Deterministic run-level counts and provenance derived from canonical Aegiloc audit history.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -15,7 +15,7 @@
     "targets"
   ],
   "properties": {
-    "schemaVersion": { "const": 1 },
+    "schemaVersion": { "const": 2 },
     "generatedAt": { "type": "string", "format": "date-time" },
     "events": {
       "$ref": "#/$defs/eventCounts"
@@ -82,6 +82,21 @@
       "type": "integer",
       "minimum": 0
     },
+    "probability": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "range": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["minimum", "average", "maximum"],
+      "properties": {
+        "minimum": { "$ref": "#/$defs/probability" },
+        "average": { "$ref": "#/$defs/probability" },
+        "maximum": { "$ref": "#/$defs/probability" }
+      }
+    },
     "nonEmptyString": {
       "type": "string",
       "pattern": "\\S"
@@ -109,7 +124,17 @@
         "actions",
         "assessmentCount",
         "executionCount",
-        "successfulHealingCount"
+        "successfulHealingCount",
+        "executionProfile",
+        "ambiguityCount",
+        "ambiguityRate",
+        "lowConfidenceCount",
+        "semanticRejectionCount",
+        "protectedAssessmentCount",
+        "distinctRunCount",
+        "healingRate",
+        "chronicDrift",
+        "recentOutcomes"
       ],
       "properties": {
         "targetKey": { "$ref": "#/$defs/nonEmptyString" },
@@ -117,11 +142,34 @@
           "type": "array",
           "minItems": 1,
           "uniqueItems": true,
-          "items": { "enum": ["click", "fill", "check", "selectOption"] }
+          "items": {
+            "enum": ["click", "fill", "check", "uncheck", "selectOption", "hover", "focus"]
+          }
         },
         "assessmentCount": { "$ref": "#/$defs/count" },
         "executionCount": { "$ref": "#/$defs/count" },
-        "successfulHealingCount": { "$ref": "#/$defs/count" }
+        "successfulHealingCount": { "$ref": "#/$defs/count" },
+        "executionProfile": {
+          "enum": ["automatic", "proposal-only", "mixed", "unknown"]
+        },
+        "ambiguityCount": { "$ref": "#/$defs/count" },
+        "ambiguityRate": { "$ref": "#/$defs/probability" },
+        "lowConfidenceCount": { "$ref": "#/$defs/count" },
+        "semanticRejectionCount": { "$ref": "#/$defs/count" },
+        "protectedAssessmentCount": { "$ref": "#/$defs/count" },
+        "distinctRunCount": { "$ref": "#/$defs/count" },
+        "healingRate": { "$ref": "#/$defs/probability" },
+        "chronicDrift": { "type": "boolean" },
+        "firstDriftAt": { "type": "string", "format": "date-time" },
+        "lastDriftAt": { "type": "string", "format": "date-time" },
+        "timeSinceFirstDriftMs": { "type": "integer", "minimum": 0 },
+        "scoreRange": { "$ref": "#/$defs/range" },
+        "marginRange": { "$ref": "#/$defs/range" },
+        "recentOutcomes": {
+          "type": "array",
+          "maxItems": 10,
+          "items": { "enum": ["healed", "rejected", "protected", "failed", "observed"] }
+        }
       }
     }
   }

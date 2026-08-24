@@ -144,9 +144,9 @@ test('runs the built CLI help as a real process smoke test', async () => {
 
   const result = await execFileAsync(process.execPath, [cliPath.pathname, '--help']);
 
-  expect(result.stdout).toContain('healwright init');
-  expect(result.stdout).toContain('healwright demo');
-  expect(result.stdout).toContain('healwright attest');
+  expect(result.stdout).toContain('aegiloc init');
+  expect(result.stdout).toContain('aegiloc demo');
+  expect(result.stdout).toContain('aegiloc attest');
   expect(result.stdout).toContain('No command rewrites tests');
 });
 
@@ -266,7 +266,7 @@ test('doctor passes against the built local package and Playwright peer', async 
 
   expect(result.stdout).toContain('PASS  Node.js');
   expect(result.stdout).toContain('PASS  @playwright/test is resolvable');
-  expect(result.stdout).toContain('Healwright doctor: ready for local evaluation.');
+  expect(result.stdout).toContain('Aegiloc doctor: ready for local evaluation.');
 });
 
 test('init creates a valid starter registry without overwriting by default', async ({

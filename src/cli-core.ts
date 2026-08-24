@@ -57,29 +57,29 @@ export interface RunCliOptions {
   readonly openPath?: (path: string) => Promise<void>;
 }
 
-const HELP = `Healwright v1.0.1 Evaluation Release
+const HELP = `Aegiloc v1.1.0 Evaluation Release
 
 Conservative, deterministic self-healing for Playwright Test.
 
 Usage:
-  healwright --help
-  healwright init [--registry <path>] [--force]
-  healwright validate --registry <path>
-  healwright doctor
-  healwright demo [--force] [--open]
-  healwright attest --history <path> --summary <path> --out <manifest> [--key-file <path> --key-id <id>] [--force]
-  healwright verify --manifest <path> [--key-file <path>] [--key-id <id>] [--require-authenticated]
-  healwright view --history <path> --summary <path> --out <dir> [--manifest <path>] [--key-file <path> --key-id <id>] [--require-authenticated] [--force] [--open]
+  aegiloc --help
+  aegiloc init [--registry <path>] [--force]
+  aegiloc validate --registry <path>
+  aegiloc doctor
+  aegiloc demo [--force] [--open]
+  aegiloc attest --history <path> --summary <path> --out <manifest> [--key-file <path> --key-id <id>] [--force]
+  aegiloc verify --manifest <path> [--key-file <path>] [--key-id <id>] [--require-authenticated]
+  aegiloc view --history <path> --summary <path> --out <dir> [--manifest <path>] [--key-file <path> --key-id <id>] [--require-authenticated] [--force] [--open]
 
 Examples:
-  healwright init
-  healwright validate --registry healwright.targets.json
-  healwright doctor
-  healwright demo
-  healwright attest --history test-results/healwright/history.jsonl --summary test-results/healwright/summary.json --out test-results/healwright/manifest.json
-  healwright verify --manifest test-results/healwright/manifest.json
-  healwright view --history test-results/healwright/history.jsonl \\
-    --summary test-results/healwright/summary.json --out healwright-report --open
+  aegiloc init
+  aegiloc validate --registry aegiloc.targets.json
+  aegiloc doctor
+  aegiloc demo
+  aegiloc attest --history test-results/aegiloc/history.jsonl --summary test-results/aegiloc/summary.json --out test-results/aegiloc/manifest.json
+  aegiloc verify --manifest test-results/aegiloc/manifest.json
+  aegiloc view --history test-results/aegiloc/history.jsonl \\
+    --summary test-results/aegiloc/summary.json --out aegiloc-report --open
 
 Safety:
   init never overwrites an existing registry unless --force is explicit.
@@ -173,7 +173,7 @@ export function parseCliArguments(arguments_: readonly string[]): CliCommand {
       rejectUnknownOptions(options, ['--registry'], ['--force']);
       return {
         command,
-        registryPath: optionValue(options, '--registry') ?? 'healwright.targets.json',
+        registryPath: optionValue(options, '--registry') ?? 'aegiloc.targets.json',
         force: options.includes('--force'),
       };
     }
@@ -271,7 +271,7 @@ export function parseCliArguments(arguments_: readonly string[]): CliCommand {
       };
     }
     default:
-      throw new TypeError(`Unknown command "${String(command)}"; run healwright --help`);
+      throw new TypeError(`Unknown command "${String(command)}"; run aegiloc --help`);
   }
 }
 
@@ -397,7 +397,7 @@ async function openIfRequested(
     io.stdout(`Opened ${path}\n`);
   } catch (error) {
     io.stderr(
-      `healwright: could not open the report automatically (${messageForError(error)}). Open this path manually: ${path}\nTry: ${manualOpenCommand(path)}\n`,
+      `aegiloc: could not open the report automatically (${messageForError(error)}). Open this path manually: ${path}\nTry: ${manualOpenCommand(path)}\n`,
     );
   }
 }
@@ -419,7 +419,7 @@ async function runDoctor(io: CliIo, cwd: string): Promise<number> {
   const realisticExampleReady = await pathExists(
     new URL('../examples/realistic-demo/targets.json', import.meta.url),
   );
-  const localRegistryReady = await pathExists(resolve(cwd, 'healwright.targets.json'));
+  const localRegistryReady = await pathExists(resolve(cwd, 'aegiloc.targets.json'));
   const checks = [
     {
       label: `Node.js ${process.versions.node} (requires 22.x or 24.x)`,
@@ -432,8 +432,8 @@ async function runDoctor(io: CliIo, cwd: string): Promise<number> {
     { label: 'realistic demo registry is present', passed: realisticExampleReady, required: false },
     {
       label: localRegistryReady
-        ? 'local healwright.targets.json is present (optional)'
-        : 'local healwright.targets.json not found (optional; run healwright init)',
+        ? 'local aegiloc.targets.json is present (optional)'
+        : 'local aegiloc.targets.json not found (optional; run aegiloc init)',
       passed: localRegistryReady,
       required: false,
     },
@@ -444,8 +444,8 @@ async function runDoctor(io: CliIo, cwd: string): Promise<number> {
   const failed = checks.filter((check) => check.required && !check.passed).length;
   io.stdout(
     failed === 0
-      ? 'Healwright doctor: ready for local evaluation.\n'
-      : `Healwright doctor: ${String(failed)} required check(s) failed.\n`,
+      ? 'Aegiloc doctor: ready for local evaluation.\n'
+      : `Aegiloc doctor: ${String(failed)} required check(s) failed.\n`,
   );
   return failed === 0 ? 0 : 1;
 }
@@ -462,7 +462,7 @@ export async function runCli(
   try {
     parsed = parseCliArguments(arguments_);
   } catch (error) {
-    io.stderr(`healwright: ${messageForError(error)}\n`);
+    io.stderr(`aegiloc: ${messageForError(error)}\n`);
     return 1;
   }
 
@@ -504,7 +504,7 @@ export async function runCli(
           flag: parsed.force ? 'w' : 'wx',
         });
         io.stdout(
-          `Created ${registryPath}\nNext: review the fingerprint and policy, then run healwright validate --registry ${registryPath}\n`,
+          `Created ${registryPath}\nNext: review the fingerprint and policy, then run aegiloc validate --registry ${registryPath}\n`,
         );
         return 0;
       }
@@ -512,7 +512,7 @@ export async function runCli(
         const registryPath = resolve(cwd, parsed.registryPath);
         const registry = await loadTargetRegistry(registryPath);
         io.stdout(
-          `Valid Healwright registry: ${registryPath} (${String(Object.keys(registry.targets).length)} target(s))\n`,
+          `Valid Aegiloc registry: ${registryPath} (${String(Object.keys(registry.targets).length)} target(s))\n`,
         );
         return 0;
       }
@@ -594,11 +594,11 @@ export async function runCli(
           ? resolve(cwd, parsed.registryPath)
           : resolve(cwd, parsed.manifestPath);
       io.stderr(
-        `healwright: refusing to overwrite ${outputPath}; pass --force only after reviewing the existing file\n`,
+        `aegiloc: refusing to overwrite ${outputPath}; pass --force only after reviewing the existing file\n`,
       );
       return 1;
     }
-    io.stderr(`healwright: ${messageForError(error)}\n`);
+    io.stderr(`aegiloc: ${messageForError(error)}\n`);
     return 1;
   }
 }

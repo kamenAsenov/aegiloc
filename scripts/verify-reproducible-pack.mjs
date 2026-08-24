@@ -39,7 +39,7 @@ function sha256(contents) {
   return createHash('sha256').update(contents).digest('hex');
 }
 
-const temporaryRoot = await mkdtemp(join(tmpdir(), 'healwright-reproducible-pack-'));
+const temporaryRoot = await mkdtemp(join(tmpdir(), 'aegiloc-reproducible-pack-'));
 try {
   const firstDirectory = join(temporaryRoot, 'first');
   const secondDirectory = join(temporaryRoot, 'second');

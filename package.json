@@ -1,18 +1,18 @@
 {
-  "name": "healwright",
-  "version": "1.0.1",
+  "name": "aegiloc",
+  "version": "1.1.0",
   "private": false,
   "description": "A conservative, deterministic self-healing layer for Playwright Test.",
   "license": "MIT",
   "author": "Kamen Asenov",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/kamenAsenov/healwright.git"
+    "url": "git+https://github.com/kamenAsenov/aegiloc.git"
   },
   "bugs": {
-    "url": "https://github.com/kamenAsenov/healwright/issues"
+    "url": "https://github.com/kamenAsenov/aegiloc/issues"
   },
-  "homepage": "https://github.com/kamenAsenov/healwright#readme",
+  "homepage": "https://github.com/kamenAsenov/aegiloc#readme",
   "keywords": [
     "playwright",
     "testing",
@@ -26,7 +26,7 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "bin": {
-    "healwright": "./dist/cli.js"
+    "aegiloc": "./dist/cli.js"
   },
   "exports": {
     ".": {
@@ -41,6 +41,7 @@
     "./proposal-schema": "./registry/healing-proposals.schema.json",
     "./evidence-summary-schema": "./registry/evidence-summary.schema.json",
     "./evidence-manifest-schema": "./registry/evidence-manifest.schema.json",
+    "./fingerprint-proposal-schema": "./registry/fingerprint-proposals.schema.json",
     "./governance-policy-schema": "./registry/governance-policy.schema.json",
     "./health-summary-schema": "./registry/health-summary.schema.json"
   },
@@ -64,6 +65,7 @@
     "examples/realistic-demo/tsconfig*.json",
     "scripts/verify-evidence.mjs",
     "scripts/propose-heals.mjs",
+    "scripts/propose-fingerprints.mjs",
     "scripts/verify-proposals.mjs",
     "scripts/evaluate-governance.mjs",
     "scripts/guard-publish.mjs",
@@ -97,9 +99,10 @@
     "docs:check": "node scripts/verify-docs.mjs",
     "docs:screenshot": "pnpm build && node scripts/capture-report-preview.mjs",
     "demo": "pnpm build && node dist/cli.js demo",
-    "evidence:attest": "pnpm build && node dist/cli.js attest --history test-results/healwright/history.jsonl --summary test-results/healwright/summary.json --out test-results/healwright/manifest.json --force",
-    "evidence:manifest:verify": "node dist/cli.js verify --manifest test-results/healwright/manifest.json",
+    "evidence:attest": "pnpm build && node dist/cli.js attest --history test-results/aegiloc/history.jsonl --summary test-results/aegiloc/summary.json --out test-results/aegiloc/manifest.json --force",
+    "evidence:manifest:verify": "node dist/cli.js verify --manifest test-results/aegiloc/manifest.json",
     "evidence:verify": "pnpm build && node scripts/verify-evidence.mjs",
+    "fingerprint:propose": "pnpm build && node scripts/propose-fingerprints.mjs",
     "example:verify": "pnpm build && tsc -p examples/basic-playwright/tsconfig.json && playwright test --config=examples/basic-playwright/playwright.config.ts",
     "example:realistic": "node scripts/reset-realistic-demo.mjs && pnpm build && tsc -p examples/realistic-demo/tsconfig.json && playwright test --config=examples/realistic-demo/playwright.config.ts && node dist/cli.js attest --history test-results/realistic-demo/evidence/history.jsonl --summary test-results/realistic-demo/evidence/summary.json --out test-results/realistic-demo/evidence/manifest.json && node dist/cli.js verify --manifest test-results/realistic-demo/evidence/manifest.json && node dist/cli.js view --history test-results/realistic-demo/evidence/history.jsonl --summary test-results/realistic-demo/evidence/summary.json --manifest test-results/realistic-demo/evidence/manifest.json --out test-results/realistic-demo/viewer",
     "governance:evaluate": "pnpm build && node scripts/evaluate-governance.mjs",
@@ -140,7 +143,7 @@
     "test:scoring": "playwright test --config=playwright.unit.config.ts tests/scoring.spec.ts",
     "test:scoring:property": "playwright test --config=playwright.unit.config.ts tests/scoring.property.spec.ts",
     "test:governance": "pnpm build && playwright test --config=playwright.unit.config.ts tests/governance.spec.ts tests/governance-cli.spec.ts tests/governance-ci-contract.spec.ts",
-    "test:unit": "pnpm build && playwright test --config=playwright.unit.config.ts tests/api-compatibility.spec.ts tests/audit.spec.ts tests/classification.spec.ts tests/cli.spec.ts tests/evidence.spec.ts tests/evidence-manifest.spec.ts tests/governance.spec.ts tests/governance-cli.spec.ts tests/governance-ci-contract.spec.ts tests/modes.spec.ts tests/portfolio-contracts.spec.ts tests/proposals.spec.ts tests/registry.spec.ts tests/registry-schema-parity.spec.ts tests/registry-validation.expanded.spec.ts tests/reporter.spec.ts tests/report-viewer.spec.ts tests/safety-contracts.expanded.spec.ts tests/scoring.spec.ts tests/scoring.property.spec.ts tests/scoring-boundaries.expanded.spec.ts tests/scoring-unicode.spec.ts tests/semantic-eligibility.spec.ts tests/supply-chain.spec.ts"
+    "test:unit": "pnpm build && playwright test --config=playwright.unit.config.ts tests/api-compatibility.spec.ts tests/audit.spec.ts tests/classification.spec.ts tests/cli.spec.ts tests/evidence.spec.ts tests/evidence-manifest.spec.ts tests/fingerprints.spec.ts tests/governance.spec.ts tests/governance-cli.spec.ts tests/governance-ci-contract.spec.ts tests/modes.spec.ts tests/portfolio-contracts.spec.ts tests/proposals.spec.ts tests/registry.spec.ts tests/registry-schema-parity.spec.ts tests/registry-validation.expanded.spec.ts tests/reporter.spec.ts tests/report-viewer.spec.ts tests/safety-contracts.expanded.spec.ts tests/scoring.spec.ts tests/scoring.property.spec.ts tests/scoring-boundaries.expanded.spec.ts tests/scoring-unicode.spec.ts tests/semantic-eligibility.spec.ts tests/supply-chain.spec.ts"
   },
   "peerDependencies": {
     "@playwright/test": ">=1.50.0 <2"

@@ -7,7 +7,7 @@ import type {
   AuditRankedCandidate,
   HealingAuditEvent,
   HealingExecutionAuditEvent,
-  HealwrightAuditEvent,
+  AegilocAuditEvent,
 } from './audit.js';
 import { createAuditEvidenceSummary, type AuditEvidenceSummary } from './evidence.js';
 import { verifyEvidenceManifest } from './evidence-manifest.js';
@@ -101,7 +101,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function parseSummary(
   contents: string,
-  events: readonly HealwrightAuditEvent[],
+  events: readonly AegilocAuditEvent[],
 ): AuditEvidenceSummary {
   let parsed: unknown;
   try {
@@ -138,6 +138,12 @@ function locatorText(locator: PrimaryLocatorDefinition): string {
       return `getByTestId(${JSON.stringify(locator.value)})`;
     case 'text':
       return `getByText(${JSON.stringify(locator.value)}${locator.exact === true ? ', { exact: true }' : ''})`;
+    case 'placeholder':
+      return `getByPlaceholder(${JSON.stringify(locator.value)}${locator.exact === true ? ', { exact: true }' : ''})`;
+    case 'title':
+      return `getByTitle(${JSON.stringify(locator.value)}${locator.exact === true ? ', { exact: true }' : ''})`;
+    case 'altText':
+      return `getByAltText(${JSON.stringify(locator.value)}${locator.exact === true ? ', { exact: true }' : ''})`;
     case 'css':
       return `locator(${JSON.stringify(locator.value)})`;
   }
@@ -145,6 +151,10 @@ function locatorText(locator: PrimaryLocatorDefinition): string {
 
 function percentage(value: number): string {
   return `${(value * 100).toFixed(1)}%`;
+}
+
+function displayTimestamp(value: string): string {
+  return value.replace('T', ' ').replace(/:\d{2}\.\d{3}Z$/u, ' UTC');
 }
 
 function label(value: string): string {
@@ -342,7 +352,7 @@ function assessmentCard(
 }
 
 function emptyState(message: string, next: string): string {
-  return `<div class="empty-state"><span aria-hidden="true">✓</span><div><strong>No Healwright drift evidence</strong><p>${escapeHtml(message)}</p><p><b>Next:</b> ${escapeHtml(next)}</p></div></div>`;
+  return `<div class="empty-state"><span aria-hidden="true">✓</span><div><strong>No Aegiloc drift evidence</strong><p>${escapeHtml(message)}</p><p><b>Next:</b> ${escapeHtml(next)}</p></div></div>`;
 }
 
 function trustPanel(trust: ReportEvidenceTrust): string {
@@ -379,7 +389,7 @@ function runOutcome(
     return {
       tone: 'rejected',
       label: 'Locator drift rejected safely',
-      detail: 'Healwright found no uniquely safe replacement and did not hide the failure.',
+      detail: 'Aegiloc found no uniquely safe replacement and did not hide the failure.',
     };
   }
   if (assessments.length > 0) {
@@ -393,7 +403,7 @@ function runOutcome(
     tone: 'ordinary',
     label: 'No locator drift evidence',
     detail:
-      'Healwright recorded no recovery attempt. Ordinary test results remain in the Playwright report.',
+      'Aegiloc recorded no recovery attempt. Ordinary test results remain in the Playwright report.',
   };
 }
 
@@ -404,15 +414,53 @@ function selectOptions(values: readonly string[]): string {
     .join('');
 }
 
+function historicalHealth(summary: AuditEvidenceSummary): string {
+  if (summary.targets.length === 0) return '';
+  const rows = summary.targets
+    .map((target) => {
+      const age =
+        target.timeSinceFirstDriftMs === undefined
+          ? '—'
+          : `${Math.floor(target.timeSinceFirstDriftMs / 86_400_000)}d`;
+      const score =
+        target.scoreRange === undefined
+          ? '—'
+          : `${percentage(target.scoreRange.minimum)}–${percentage(target.scoreRange.maximum)}`;
+      const margin =
+        target.marginRange === undefined
+          ? '—'
+          : `${percentage(target.marginRange.minimum)}–${percentage(target.marginRange.maximum)}`;
+      return `<tr>
+        <th scope="row"><code>${escapeHtml(target.targetKey)}</code>${target.chronicDrift ? ' <span class="status protected">Chronic</span>' : ''}</th>
+        <td>${escapeHtml(label(target.executionProfile))}</td>
+        <td>${String(target.distinctRunCount)}</td>
+        <td>${percentage(target.healingRate)}</td>
+        <td>${percentage(target.ambiguityRate)}</td>
+        <td>${score}</td>
+        <td>${margin}</td>
+        <td>${age}</td>
+        <td>${target.recentOutcomes.map((outcome) => escapeHtml(label(outcome))).join(' → ') || '—'}</td>
+      </tr>`;
+    })
+    .join('');
+  return `<section aria-labelledby="health-heading">
+    <h2 id="health-heading">Historical target health</h2>
+    <div class="health-table table-scroll"><table>
+      <thead><tr><th>Target</th><th>Profile</th><th>Runs</th><th>Heal rate</th><th>Ambiguity</th><th>Score range</th><th>Margin range</th><th>Age</th><th>Recent outcomes</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>
+  </section>`;
+}
+
 export function renderReportViewer(
-  events: readonly HealwrightAuditEvent[],
+  events: readonly AegilocAuditEvent[],
   summary: AuditEvidenceSummary,
   options: RenderReportViewerOptions = {},
 ): string {
   if (!isDeepStrictEqual(createAuditEvidenceSummary(events, summary.generatedAt), summary)) {
     throw new AuditEvidenceError('report summary does not match the supplied events');
   }
-  const title = options.title ?? 'Healwright evidence report';
+  const title = options.title ?? 'Aegiloc evidence report';
   const trust = options.evidenceTrust ?? { level: 'validated' };
   const assessments = events.filter(
     (event): event is HealingAuditEvent => event.eventType === 'locator-drift-assessed',
@@ -450,7 +498,7 @@ export function renderReportViewer(
       h2 { margin: 2.4rem 0 1rem; font-size: 1.35rem; letter-spacing: -.015em; }
       h3 { margin-bottom: .35rem; font-size: 1.15rem; overflow-wrap: anywhere; }
       p { line-height: 1.55; }
-      .hero, .filters, .event-card, .empty-state, .about { border: 1px solid #d8dfdd; background: #fff; }
+      .hero, .filters, .event-card, .empty-state, .about, .health-table { border: 1px solid #d8dfdd; background: #fff; }
       .hero { padding: clamp(1.4rem, 4vw, 2.5rem); border-radius: 1rem; box-shadow: 0 1rem 3rem rgb(29 54 49 / 6%); }
       .hero-grid { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(250px, .8fr); gap: 2rem; align-items: start; }
       .subtitle { max-width: 50rem; color: #536461; }
@@ -517,6 +565,8 @@ export function renderReportViewer(
       table { width: 100%; margin-top: .7rem; border-collapse: collapse; font-size: .8rem; }
       th, td { padding: .45rem; border-bottom: 1px solid #e0e7e5; text-align: left; }
       th { color: #526461; }
+      .health-table { padding: .35rem .8rem .8rem; border-radius: .8rem; }
+      .health-table table { min-width: 920px; }
       .evidence-list { margin-bottom: 0; padding-left: 1.2rem; }
       .evidence-list li { margin: .45rem 0; }
       .evidence-list .pill { margin-right: .4rem; }
@@ -543,8 +593,8 @@ export function renderReportViewer(
           <div>
             <p class="eyebrow">Deterministic locator evidence</p>
             <h1>${escapeHtml(title)}</h1>
-            <p class="subtitle">A local report of what Healwright assessed, rejected, or executed. It never changes tests or locator registries.</p>
-            <span class="release">v1.0.1 evaluation release</span>
+            <p class="subtitle">A local report of what Aegiloc assessed, rejected, or executed. It never changes tests or locator registries.</p>
+            <span class="release">v1.1.0 evaluation release</span>
             <div class="outcome ${overall.tone}">
               <strong>${escapeHtml(overall.label)}</strong>
               <p>${escapeHtml(overall.detail)}</p>
@@ -553,20 +603,21 @@ export function renderReportViewer(
           ${trustPanel(trust)}
         </div>
         <div class="metrics">
-          <div class="metric generated"><span>Generated</span><strong>${escapeHtml(summary.generatedAt)}</strong></div>
+          <div class="metric generated"><span>Generated</span><strong><time datetime="${escapeHtml(summary.generatedAt)}">${escapeHtml(displayTimestamp(summary.generatedAt))}</time></strong></div>
           <div class="metric"><span>Assessments</span><strong>${String(summary.events.assessments)}</strong></div>
           <div class="metric"><span>Successful heals</span><strong>${String(summary.executions.succeeded)}</strong></div>
           <div class="metric"><span>Rejected</span><strong>${String(summary.decisions.rejected)}</strong></div>
           <div class="metric"><span>Execution failures</span><strong>${String(summary.executions.failed)}</strong></div>
         </div>
       </header>
+      ${historicalHealth(summary)}
       <section aria-labelledby="events-heading">
         <h2 id="events-heading">Decision timeline</h2>
         ${
           assessments.length === 0
             ? emptyState(
                 'No locator drift assessment was recorded. This does not replace the ordinary Playwright report.',
-                'No Healwright action is required.',
+                'No Aegiloc action is required.',
               )
             : `<form class="filters" data-report-filters>
               <div class="filter-grid">
@@ -584,9 +635,9 @@ export function renderReportViewer(
         }
       </section>
       <aside class="about">
-        <strong>About this report:</strong> Healwright evidence explains locator-recovery behavior only. Test intent, assertions, business correctness, authentication, data, APIs, and network behavior remain owned by Playwright tests and product reviewers. Validated evidence is not the same as authenticated evidence, and a healed pass still requires review.
+        <strong>About this report:</strong> Aegiloc evidence explains locator-recovery behavior only. Test intent, assertions, business correctness, authentication, data, APIs, and network behavior remain owned by Playwright tests and product reviewers. Validated evidence is not the same as authenticated evidence, and a healed pass still requires review.
       </aside>
-      <footer>Generated locally by Healwright · no remote scripts, telemetry, or automatic source changes</footer>
+      <footer>Generated locally by Aegiloc · no remote scripts, telemetry, or automatic source changes</footer>
     </main>
     <script>${FILTER_SCRIPT}</script>
   </body>

@@ -1,25 +1,42 @@
-import type { Locator, Page } from '@playwright/test';
+import type { FrameLocator, Locator, Page } from '@playwright/test';
 
 import type { PrimaryLocatorDefinition } from './types.js';
 
-export function resolvePrimaryLocator(page: Page, definition: PrimaryLocatorDefinition): Locator {
+export type LocatorRoot = Page | Locator | FrameLocator;
+
+export function resolvePrimaryLocator(
+  root: LocatorRoot,
+  definition: PrimaryLocatorDefinition,
+): Locator {
   switch (definition.type) {
     case 'role':
-      return page.getByRole(definition.role, {
+      return root.getByRole(definition.role, {
         ...(definition.name === undefined ? {} : { name: definition.name }),
         ...(definition.exact === undefined ? {} : { exact: definition.exact }),
       });
     case 'label':
-      return page.getByLabel(definition.value, {
+      return root.getByLabel(definition.value, {
         ...(definition.exact === undefined ? {} : { exact: definition.exact }),
       });
     case 'testId':
-      return page.getByTestId(definition.value);
+      return root.getByTestId(definition.value);
     case 'text':
-      return page.getByText(definition.value, {
+      return root.getByText(definition.value, {
+        ...(definition.exact === undefined ? {} : { exact: definition.exact }),
+      });
+    case 'placeholder':
+      return root.getByPlaceholder(definition.value, {
+        ...(definition.exact === undefined ? {} : { exact: definition.exact }),
+      });
+    case 'title':
+      return root.getByTitle(definition.value, {
+        ...(definition.exact === undefined ? {} : { exact: definition.exact }),
+      });
+    case 'altText':
+      return root.getByAltText(definition.value, {
         ...(definition.exact === undefined ? {} : { exact: definition.exact }),
       });
     case 'css':
-      return page.locator(definition.value);
+      return root.locator(definition.value);
   }
 }

@@ -1,6 +1,8 @@
 import type { Locator, Page } from '@playwright/test';
 
-import type { AriaRole, TargetAction, TargetGeometry } from './types.js';
+import { resolveTargetContext } from './context.js';
+import type { LocatorRoot } from './locator.js';
+import type { AriaRole, TargetAction, TargetContextDefinition, TargetGeometry } from './types.js';
 
 const ACTION_SELECTORS: Readonly<Record<TargetAction, string>> = {
   click: [
@@ -37,8 +39,34 @@ const ACTION_SELECTORS: Readonly<Record<TargetAction, string>> = {
     '[role="radio"]',
     '[role="switch"]',
   ].join(', '),
+  uncheck: ['input[type="checkbox"]', '[role="checkbox"]', '[role="switch"]'].join(', '),
   selectOption: 'select',
+  hover: [
+    'button',
+    'a[href]',
+    'input',
+    'select',
+    'textarea',
+    '[role]',
+    '[tabindex]',
+    '[title]',
+  ].join(', '),
+  focus: [
+    'button',
+    'a[href]',
+    'input',
+    'select',
+    'textarea',
+    '[contenteditable="true"]',
+    '[tabindex]',
+  ].join(', '),
 };
+
+export interface CandidateCollectionOptions {
+  readonly targetKey?: string;
+  readonly context?: TargetContextDefinition;
+  readonly testIdAttribute?: string;
+}
 
 export interface CandidateSnapshot {
   readonly id: string;
@@ -103,8 +131,11 @@ function normalizeDomText(value: string | null | undefined): string {
   return (value ?? '').replace(/\s+/g, ' ').trim().slice(0, 240);
 }
 
-async function snapshotDomCandidates(locator: Locator): Promise<readonly DomCandidateSnapshot[]> {
-  return locator.evaluateAll((elements) => {
+async function snapshotDomCandidates(
+  locator: Locator,
+  testIdAttribute: string,
+): Promise<readonly DomCandidateSnapshot[]> {
+  return locator.evaluateAll((elements, configuredTestIdAttribute) => {
     const normalize = (value: string | null | undefined): string =>
       (value ?? '').replace(/\s+/g, ' ').trim().slice(0, 240);
 
@@ -118,22 +149,23 @@ async function snapshotDomCandidates(locator: Locator): Promise<readonly DomCand
         style.visibility !== 'hidden';
 
       const stableAttributes: Record<string, string> = {};
+      const stableAttributeNames = new Set([
+        'autocomplete',
+        'alt',
+        'data-cy',
+        'data-qa',
+        'data-target',
+        'data-test',
+        'data-testid',
+        'id',
+        'name',
+        'placeholder',
+        'title',
+        'type',
+        configuredTestIdAttribute,
+      ]);
       for (const attribute of element.attributes) {
-        if (
-          [
-            'autocomplete',
-            'data-cy',
-            'data-qa',
-            'data-target',
-            'data-test',
-            'data-testid',
-            'id',
-            'name',
-            'placeholder',
-            'title',
-            'type',
-          ].includes(attribute.name)
-        ) {
+        if (stableAttributeNames.has(attribute.name)) {
           stableAttributes[attribute.name] = attribute.value;
         } else if (attribute.name === 'href') {
           try {
@@ -183,7 +215,7 @@ async function snapshotDomCandidates(locator: Locator): Promise<readonly DomCand
         },
       };
     });
-  });
+  }, testIdAttribute);
 }
 
 async function collectAriaIdentities(
@@ -212,9 +244,14 @@ async function collectAriaIdentities(
 export async function collectCandidates(
   page: Page,
   action: TargetAction,
+  options: CandidateCollectionOptions = {},
 ): Promise<readonly CandidateSnapshot[]> {
-  const candidates = page.locator(ACTION_SELECTORS[action]);
-  const domSnapshots = await snapshotDomCandidates(candidates);
+  const root = (
+    await resolveTargetContext(page, options.targetKey ?? '<candidate-collection>', options.context)
+  ).root;
+  const testIdAttribute = options.testIdAttribute ?? 'data-testid';
+  const candidates = root.locator(ACTION_SELECTORS[action]);
+  const domSnapshots = await snapshotDomCandidates(candidates, testIdAttribute);
   const visibleIndices = domSnapshots.flatMap((dom, index) => (dom.visible ? [index] : []));
   const ariaIdentities = await collectAriaIdentities(candidates, visibleIndices);
   const snapshots: CandidateSnapshot[] = [];
@@ -224,7 +261,7 @@ export async function collectCandidates(
     if (dom === undefined) continue;
     const aria = ariaIdentities.get(index) ?? {};
     const stableId =
-      dom.stableAttributes['data-testid'] ??
+      dom.stableAttributes[testIdAttribute] ??
       dom.stableAttributes.id ??
       dom.stableAttributes.name ??
       String(index);
@@ -244,9 +281,40 @@ export async function collectCandidates(
   return snapshots;
 }
 
+export async function snapshotLocatorCandidate(
+  locator: Locator,
+  testIdAttribute = 'data-testid',
+): Promise<CandidateSnapshot | undefined> {
+  if ((await locator.count()) !== 1) return undefined;
+  const [dom] = await snapshotDomCandidates(locator, testIdAttribute);
+  if (dom === undefined || !dom.visible) return undefined;
+  let aria: AriaIdentity = {};
+  try {
+    aria = parseAriaIdentity(await locator.ariaSnapshot());
+  } catch {
+    // The fingerprint remains useful when the accessibility snapshot is unavailable.
+  }
+  const stableId =
+    dom.stableAttributes[testIdAttribute] ??
+    dom.stableAttributes.id ??
+    dom.stableAttributes.name ??
+    'primary';
+  return {
+    id: `${dom.tag}:${stableId}:0`,
+    ...aria,
+    stableAttributes: dom.stableAttributes,
+    visibleText: normalizeDomText(dom.visibleText),
+    tag: dom.tag,
+    ancestorText: dom.ancestorText,
+    neighborText: dom.neighborText,
+    ...(dom.geometry === undefined ? {} : { geometry: dom.geometry }),
+  };
+}
+
 export async function resolveUniqueCandidateLocator(
   page: Page,
   candidate: CandidateSnapshot,
+  options: CandidateCollectionOptions = {},
 ): Promise<Locator | undefined> {
   if (
     candidate.role === undefined ||
@@ -257,15 +325,23 @@ export async function resolveUniqueCandidateLocator(
   }
 
   try {
-    let locator = page
+    const root: LocatorRoot = (
+      await resolveTargetContext(
+        page,
+        options.targetKey ?? '<candidate-revalidation>',
+        options.context,
+      )
+    ).root;
+    let locator = root
       .getByRole(candidate.role as AriaRole, {
         name: candidate.accessibleName,
         exact: true,
       })
-      .and(page.locator(candidate.tag));
-    const testId = candidate.stableAttributes['data-testid'];
+      .and(root.locator(candidate.tag));
+    const testIdAttribute = options.testIdAttribute ?? 'data-testid';
+    const testId = candidate.stableAttributes[testIdAttribute];
     if (testId !== undefined) {
-      locator = locator.and(page.getByTestId(testId));
+      locator = locator.and(root.getByTestId(testId));
     }
 
     return (await locator.count()) === 1 ? locator : undefined;

@@ -100,13 +100,13 @@ test('provider-neutral CLI returns distinct pass, policy-fail, and malformed-inp
     ...common,
   ]);
   expect(passing.status, passing.stderr).toBe(0);
-  expect(passing.stdout).toContain('HEALWRIGHT_GOVERNANCE PASS');
+  expect(passing.stdout).toContain('AEGILOC_GOVERNANCE PASS');
   expect(JSON.parse(await readFile(jsonPath, 'utf8'))).toMatchObject({ status: 'pass' });
   expect(await readFile(markdownPath, 'utf8')).toContain('Status:** PASS');
 
   const failing = runCli(['--history', historyPath, '--policy', failingPolicyPath, ...common]);
   expect(failing.status, failing.stderr).toBe(1);
-  expect(failing.stdout).toContain('HEALWRIGHT_GOVERNANCE FAIL');
+  expect(failing.stdout).toContain('AEGILOC_GOVERNANCE FAIL');
   expect(JSON.parse(await readFile(jsonPath, 'utf8'))).toMatchObject({ status: 'fail' });
 
   const malformed = runCli([
@@ -117,7 +117,7 @@ test('provider-neutral CLI returns distinct pass, policy-fail, and malformed-inp
     ...common,
   ]);
   expect(malformed.status).toBe(2);
-  expect(malformed.stderr).toContain('Invalid Healwright history');
+  expect(malformed.stderr).toContain('Invalid Aegiloc history');
 
   const nonCanonical = runCli([
     '--history',
@@ -170,5 +170,5 @@ test('CLI supports explicit no-policy summaries', async ({ browserName }, testIn
     '2026-08-16T12:00:00.000Z',
   ]);
   expect(result.status, result.stderr).toBe(0);
-  expect(result.stdout).toContain('HEALWRIGHT_GOVERNANCE PASS');
+  expect(result.stdout).toContain('AEGILOC_GOVERNANCE PASS');
 });

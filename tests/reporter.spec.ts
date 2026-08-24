@@ -12,7 +12,7 @@ import {
   parseAuditHistory,
   serializeAuditHistory,
 } from '../src/index.js';
-import HealwrightReporter, { healingStatusLines } from '../src/reporter.js';
+import AegilocReporter, { healingStatusLines } from '../src/reporter.js';
 
 const testCase = {
   titlePath: () => ['chromium', 'healing.browser.spec.ts', 'heals compatible drift'],
@@ -65,7 +65,7 @@ test('aggregates typed audit attachments into canonical run evidence', async ({
     }),
     rankedCandidates: [],
   });
-  const reporter = new HealwrightReporter({ outputDirectory });
+  const reporter = new AegilocReporter({ outputDirectory });
   await mkdir(outputDirectory, { recursive: true });
   await writeFile(`${outputDirectory}/history.jsonl`, serializeAuditHistory([event]), 'utf8');
   reporter.onTestEnd(testCase, {
@@ -96,7 +96,7 @@ test('fails closed when existing worker JSONL is malformed', async ({ browserNam
   await mkdir(outputDirectory, { recursive: true });
   await writeFile(`${outputDirectory}/history.jsonl`, '{not-json}\n', 'utf8');
 
-  await expect(new HealwrightReporter({ outputDirectory }).onEnd()).rejects.toThrow(
+  await expect(new AegilocReporter({ outputDirectory }).onEnd()).rejects.toThrow(
     AuditEvidenceError,
   );
 });

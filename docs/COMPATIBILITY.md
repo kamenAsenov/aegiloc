@@ -1,6 +1,6 @@
 # Compatibility policy
 
-Healwright v1.0.1 maintains a stable public contract for evaluation and carefully scoped pilot
+Aegiloc v1.1 maintains a stable public contract for evaluation and carefully scoped pilot
 use. Stability describes compatibility, not proof of production adoption.
 
 ## Supported environment
@@ -8,20 +8,20 @@ use. Stability describes compatibility, not proof of production adoption.
 | Surface          | v1 contract                                                             |
 | ---------------- | ----------------------------------------------------------------------- |
 | Node.js          | `>=22 <25`; package contracts run on Node 22 and 24 in CI               |
-| Playwright Test  | `>=1.50.0 <2`; v1.0 is qualified with frozen development version 1.62.1 |
+| Playwright Test  | `>=1.50.0 <2`; v1.1 is qualified with frozen development version 1.62.1 |
 | Module format    | ESM                                                                     |
 | Primary browser  | Chromium full suite                                                     |
 | Focused browsers | Firefox and WebKit core safety qualification                            |
 
 Node 20 is excluded because it reached end of life before this release. Odd or current Node majors
 outside the range are not part of the v1 support promise. Playwright versions inside the peer range
-must retain the public APIs used by Healwright; a newly discovered incompatibility is handled as a
+must retain the public APIs used by Aegiloc; a newly discovered incompatibility is handled as a
 bug and may narrow the range in a documented patch when required for safety.
 
 ## Public API promise
 
-The supported programmatic surface is the package root (`healwright`) and reporter subpath
-(`healwright/reporter`) recorded in [`api/public-api.json`](../api/public-api.json). JSON Schema
+The supported programmatic surface is the package root (`aegiloc`) and reporter subpath
+(`aegiloc/reporter`) recorded in [`api/public-api.json`](../api/public-api.json). JSON Schema
 subpaths declared in `package.json` are also public.
 
 Within v1:
@@ -45,9 +45,14 @@ Every persisted format has an explicit internal version. Existing schema version
 unless a documented security issue makes rejection necessary. Incompatible format changes require a
 new schema version plus migration guidance; the existing version is not silently reinterpreted.
 
-The proposal bundle is currently schema version 2. Target registry, evidence summary, evidence
-manifest, governance policy, and health summary are version 1. The checked-in API inventory records
-these versions and their stable package subpaths.
+The locator proposal bundle is schema version 3, the evidence summary is version 2, and the
+fingerprint proposal bundle is version 1. Target registry, evidence manifest, governance policy,
+and health summary remain version 1. The checked-in API inventory records these versions and their
+stable package subpaths.
+
+The v1.1 Aegiloc identity replaces the former source-only repository/package name. Because no npm
+package was published under the former name, registry consumers do not have an in-place package
+upgrade. Source-checkout evaluators should follow [`MIGRATION-v1.1.md`](MIGRATION-v1.1.md).
 
 ## Reviewing API changes
 

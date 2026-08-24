@@ -21,7 +21,7 @@ codebase. A maintainer can apply them from the GitHub repository **About** setti
 
 Until a dedicated documentation site exists, use the repository URL:
 
-`https://github.com/kamenAsenov/healwright`
+`https://github.com/kamenAsenov/aegiloc`
 
 No adoption, enterprise-use, revenue, or production-readiness claims should be added without
 verifiable public evidence.
