@@ -11,6 +11,11 @@ per-target execution risk, immediate revalidation, and uniqueness. These control
 proof of user intent. Sensitive or irreversible operations should remain `proposal-only` or outside
 automatic healing.
 
+`uncheck` is particularly sensitive when it removes consent, terms acceptance, permissions,
+subscriptions, or a safety control. `hover` can be consequential when it reveals the wrong menu or
+changes the context of a later action. Treat new targets for these actions as `proposal-only` until
+the exact control is reviewed as reversible and low impact.
+
 ## Fingerprint quality
 
 A stale, vague, or incorrectly reviewed fingerprint can produce weak evidence. Geometry is
@@ -73,3 +78,7 @@ unreviewed scripts to generated output or serve evidence from a public directory
 `PASSED_WITH_HEALING` is an exceptional result that needs review, not proof that a locator update is
 safe forever. Governance budgets and waivers report operational policy; they cannot weaken runtime
 safety.
+
+Historical health rates, drift age, score ranges, and recent outcomes are computed only from retained
+test evidence supplied to Aegiloc. They are not production telemetry, a field reliability study, or
+evidence about systems and runs that were not observed.

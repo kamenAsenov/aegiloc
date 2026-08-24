@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "package": {
     "name": "aegiloc",
-    "version": "1.1.0"
+    "version": "1.1.1"
   },
   "support": {
     "node": ">=22 <25",

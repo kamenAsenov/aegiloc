@@ -594,7 +594,7 @@ export function renderReportViewer(
             <p class="eyebrow">Deterministic locator evidence</p>
             <h1>${escapeHtml(title)}</h1>
             <p class="subtitle">A local report of what Aegiloc assessed, rejected, or executed. It never changes tests or locator registries.</p>
-            <span class="release">v1.1.0 evaluation release</span>
+            <span class="release">v1.1.1 evaluation release</span>
             <div class="outcome ${overall.tone}">
               <strong>${escapeHtml(overall.label)}</strong>
               <p>${escapeHtml(overall.detail)}</p>

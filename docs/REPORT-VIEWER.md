@@ -35,6 +35,10 @@ Plain-language conclusions are visible first; detailed engineer evidence uses na
 sections. Controls are labeled, keyboard reachable, visibly focused, and responsive down to narrow
 viewports. Printing hides interactive filters.
 
+Historical target health is computed only from the canonical test history supplied to the viewer.
+It is a set of history-derived indicators for review—not production telemetry, a service-level
+measure, or proof of reliability in client systems or unobserved runs.
+
 ## Trust states
 
 `Evidence validated` means history and summary are internally canonical but no manifest was supplied.

@@ -5,6 +5,23 @@ release tags and is not published to npm.
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-08-24
+
+### Changed
+
+- Clarified that Healwright v1.0.1 was the initial GitHub evaluation release and Aegiloc is its
+  renamed successor with a deliberately new package and CLI identity, not a drop-in minor rename.
+- Documented `proposal-only` as the default recommendation for new `uncheck` targets and
+  observe/proposal-first adoption for `hover`, while preserving registry compatibility behavior.
+- Reframed target-health values consistently as history-derived test indicators rather than
+  production telemetry or evidence of client-system reliability.
+
+### Security
+
+- Added explicit warnings for consent, terms, permissions, subscriptions, destructive controls, and
+  hover-dependent interaction context. Runtime healing scope, scoring, and execution gates are
+  unchanged.
+
 ## [1.1.0] - 2026-08-24
 
 ### Added
@@ -239,7 +256,8 @@ Prepared for review; not tagged, published to npm, or published as a GitHub Rele
 [1.0.0]: https://github.com/kamenAsenov/aegiloc/compare/v0.4.0...v1.0.0
 [1.0.1]: https://github.com/kamenAsenov/aegiloc/compare/v1.0.0...v1.0.1
 [1.1.0]: https://github.com/kamenAsenov/aegiloc/compare/v1.0.1...v1.1.0
-[Unreleased]: https://github.com/kamenAsenov/aegiloc/compare/v1.1.0...HEAD
+[1.1.1]: https://github.com/kamenAsenov/aegiloc/compare/v1.1.0...v1.1.1
+[Unreleased]: https://github.com/kamenAsenov/aegiloc/compare/v1.1.1...HEAD
 [0.3.1]: https://github.com/kamenAsenov/aegiloc/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/kamenAsenov/aegiloc/compare/82513a74882500d5d31a3c8d284a0727565cef77...v0.3.0
 [0.2.0]: https://github.com/kamenAsenov/aegiloc/tree/82513a74882500d5d31a3c8d284a0727565cef77

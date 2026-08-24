@@ -9,7 +9,7 @@ test('portfolio entry points remain concise, honest, and connected to deeper doc
   const readmeLines = readme.split('\n').length;
 
   expect(readmeLines).toBeLessThan(250);
-  expect(readme).toContain('v1.1.0 is a stable-API evaluation release');
+  expect(readme).toContain('v1.1.1 is a stable-API evaluation release');
   expect(readme).toMatch(/a false-positive heal is worse than a failed heal/i);
   expect(readme).toContain('examples/basic-playwright');
   expect(readme).toContain('examples/realistic-demo');
@@ -22,7 +22,28 @@ test('portfolio entry points remain concise, honest, and connected to deeper doc
   expect(readme).toContain('docs/MIGRATION-v1.1.md');
   expect(readme).toContain('not a claim of production adoption');
   expect(readme).toContain('No Aegiloc package has been published to npm');
+  expect(readme).toContain('Healwright v1.0.1 was the initial GitHub evaluation release');
+  expect(readme).toContain('It is not a drop-in package or CLI rename');
   expect(readme).not.toMatch(/enterprise-ready|enterprise-grade|trusted by|used by \d+/i);
+});
+
+test('lineage, action-risk, and analytics boundaries stay explicit', async () => {
+  const [migration, adoption, viewer, release] = await Promise.all([
+    readFile(new URL('../docs/MIGRATION-v1.1.md', import.meta.url), 'utf8'),
+    readFile(new URL('../docs/ADOPTION.md', import.meta.url), 'utf8'),
+    readFile(new URL('../docs/REPORT-VIEWER.md', import.meta.url), 'utf8'),
+    readFile(new URL('../docs/releases/v1.1.1.md', import.meta.url), 'utf8'),
+  ]);
+
+  expect(migration).toContain('This is therefore not a drop-in package or CLI upgrade');
+  expect(migration).toContain('There are no compatibility aliases');
+  expect(adoption).toContain(
+    'For new `uncheck` targets, `proposal-only` is the default recommendation',
+  );
+  expect(adoption).toMatch(/Start `hover` targets in `observe` or\s+`proposal-only`/u);
+  expect(viewer).toContain('history-derived indicators');
+  expect(viewer).toContain('not production telemetry');
+  expect(release).toContain('adds no healing capability');
 });
 
 test('package metadata is ready for review but publication remains explicitly guarded', async () => {
@@ -38,7 +59,7 @@ test('package metadata is ready for review but publication remains explicitly gu
   };
 
   expect(packageJson.private).toBe(false);
-  expect(packageJson.version).toBe('1.1.0');
+  expect(packageJson.version).toBe('1.1.1');
   expect(packageJson.bin?.aegiloc).toBe('./dist/cli.js');
   expect(packageJson.license).toBe('MIT');
   expect(packageJson.repository?.url).toBe('git+https://github.com/kamenAsenov/aegiloc.git');

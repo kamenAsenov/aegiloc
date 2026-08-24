@@ -15,6 +15,11 @@ Keep an action outside Aegiloc or mark its target `proposal-only` when it:
 - runs in a regulated or safety-critical workflow without an independent risk review;
 - would allow a healed pass to hide a genuine product regression.
 
+Default new `uncheck` targets to `proposal-only` when they touch consent, terms, permissions,
+subscriptions, or destructive state. Start `hover` in `observe` or `proposal-only` unless the exact
+target has been reviewed as a reversible, low-impact control. Technical action support is not a
+blanket safety approval.
+
 Do not adopt the technical preview if the team cannot review target fingerprints, retain evidence
 safely, investigate `PASSED_WITH_HEALING`, and keep ordinary Playwright failures visible.
 

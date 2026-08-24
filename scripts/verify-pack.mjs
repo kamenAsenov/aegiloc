@@ -25,7 +25,7 @@ if (jsonStart === -1) {
 }
 
 const manifest = JSON.parse(result.stdout.slice(jsonStart));
-if (manifest.name !== 'aegiloc' || manifest.version !== '1.1.0') {
+if (manifest.name !== 'aegiloc' || manifest.version !== '1.1.1') {
   throw new Error('Pack manifest identity does not match the reviewed package');
 }
 
@@ -48,6 +48,7 @@ const requiredPaths = [
   'docs/assets/aegiloc-report-v1.png',
   'docs/releases/v1.0.1.md',
   'docs/releases/v1.1.0.md',
+  'docs/releases/v1.1.1.md',
   'docs/releases/v1.0.0.md',
   'docs/releases/v0.6.0.md',
   'docs/releases/v0.7.0.md',
