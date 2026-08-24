@@ -13,8 +13,10 @@ ambiguous, contradictory, protected, or stale evidence fails closed.
 await healer.target('checkout.placeOrder').click();
 ```
 
-**v1.0.0 is a stable-API evaluation release for external review and carefully scoped pilots.** It is
-not a claim of production adoption, and the package is not published to npm.
+**v1.0.1 is a stable-API evaluation release for external review and carefully scoped pilots.** It is
+not a claim of production adoption. This repository is not published to npm; the unscoped
+`healwright` name is currently occupied by an unrelated project, so evaluate this code from the
+source checkout below.
 
 ## Try the interactive local demo
 
@@ -29,9 +31,10 @@ pnpm demo
 ```
 
 The command runs the [deterministic local storefront](examples/realistic-demo), verifies its evidence
-manifest, and prints the absolute path to the report. Existing demo output is never replaced without
-`--force`: review it, then use `pnpm cli demo --force` to rerun. Add `--open` only when you explicitly
-want Healwright to open the report: `pnpm cli demo --force --open`.
+manifest, and prints the absolute path to `test-results/realistic-demo/viewer/index.html`. Existing
+demo output is never replaced without `--force`: review it, then use `pnpm cli demo --force` to
+rerun. Add `--open` only when you explicitly want Healwright to open the report:
+`pnpm cli demo --force --open`.
 
 ![Healwright v1 evidence report](docs/assets/healwright-report-v1.png)
 
@@ -157,7 +160,7 @@ qualification. It does not publish to npm.
 - [Evidence integrity](docs/EVIDENCE-INTEGRITY.md) and [supply chain](docs/SUPPLY-CHAIN.md)
 - [Cross-browser qualification](docs/CROSS-BROWSER-QUALIFICATION.md)
 - [Known risks](docs/KNOWN-RISKS.md) and [non-use cases](docs/WHEN-NOT-TO-USE.md)
-- [Compatibility policy](docs/COMPATIBILITY.md) and [v1.0.0 notes](docs/releases/v1.0.0.md)
+- [Compatibility policy](docs/COMPATIBILITY.md) and [v1.0.1 notes](docs/releases/v1.0.1.md)
 - [Contributing](CONTRIBUTING.md) and [security reporting](SECURITY.md)
 
 ## License

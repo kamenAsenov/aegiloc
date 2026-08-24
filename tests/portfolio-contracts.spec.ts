@@ -9,7 +9,7 @@ test('portfolio entry points remain concise, honest, and connected to deeper doc
   const readmeLines = readme.split('\n').length;
 
   expect(readmeLines).toBeLessThan(250);
-  expect(readme).toContain('v1.0.0 is a stable-API evaluation release');
+  expect(readme).toContain('v1.0.1 is a stable-API evaluation release');
   expect(readme).toMatch(/a false-positive heal is worse than a failed heal/i);
   expect(readme).toContain('examples/basic-playwright');
   expect(readme).toContain('examples/realistic-demo');
@@ -19,6 +19,7 @@ test('portfolio entry points remain concise, honest, and connected to deeper doc
   expect(readme).toContain('docs/ARCHITECTURE.md');
   expect(readme).toContain('docs/SAFETY-MODEL.md');
   expect(readme).toContain('not a claim of production adoption');
+  expect(readme).toContain('occupied by an unrelated project');
   expect(readme).not.toMatch(/enterprise-ready|enterprise-grade|trusted by|used by \d+/i);
 });
 
@@ -35,7 +36,7 @@ test('package metadata is ready for review but publication remains explicitly gu
   };
 
   expect(packageJson.private).toBe(false);
-  expect(packageJson.version).toBe('1.0.0');
+  expect(packageJson.version).toBe('1.0.1');
   expect(packageJson.bin?.healwright).toBe('./dist/cli.js');
   expect(packageJson.license).toBe('MIT');
   expect(packageJson.repository?.url).toBe('git+https://github.com/kamenAsenov/healwright.git');
@@ -83,4 +84,14 @@ test('type-aware example linting resolves public imports before the package buil
   expect(eslintConfig).toContain("project: './examples/basic-playwright/tsconfig.eslint.json'");
   expect(eslintConfig).toContain("project: './examples/realistic-demo/tsconfig.eslint.json'");
   expect(eslintConfig).toContain('projectService: false');
+});
+
+test('cross-browser timing and performance qualification is serialized in every environment', async () => {
+  const config = await readFile(
+    new URL('../playwright.cross-browser.config.ts', import.meta.url),
+    'utf8',
+  );
+
+  expect(config).toContain('workers: 1');
+  expect(config).not.toContain('process.env.CI ? { workers: 1 }');
 });

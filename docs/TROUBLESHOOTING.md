@@ -25,8 +25,7 @@ Can `healwright doctor` complete?
 
 - **Unsupported Node:** use Node 22 or 24; Node 20 is end-of-life and outside v1 support.
 - **Browser executable missing:** run `pnpm exec playwright install chromium`.
-- **Demo output exists:** review it, then run `pnpm demo`; direct CLI use requires
-  `node dist/cli.js demo --force`.
+- **Demo output exists:** review it, then rerun explicitly with `pnpm cli demo --force`.
 - **Browser did not open:** the demo still prints an absolute report path. Open it manually with
   `open`, `xdg-open`, or `start`, or rerun with explicit `--open`.
 - **Port 4173 is occupied:** stop the existing process; the deterministic fixture uses a fixed port.

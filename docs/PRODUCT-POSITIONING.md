@@ -2,7 +2,7 @@
 
 ## Honest description
 
-Healwright is an evaluation-stage deterministic self-healing layer for Playwright Test. The v1.0.0
+Healwright is an evaluation-stage deterministic self-healing layer for Playwright Test. The v1.0.1
 release has a stable inventoried public API and remains focused on safe locator-drift
 recovery, inspectable evidence, human-reviewed proposals, local CLI onboarding, a static evidence
 viewer, optional evidence authentication, cross-browser qualification, and CI governance.
@@ -65,5 +65,6 @@ make different valid tradeoffs.
 The repository is ready for external evaluation and carefully scoped pilots. It has a stable v1
 compatibility contract, runnable demo, conservative boundaries, Chromium-first full suite, focused
 Firefox/WebKit qualification, and hardened evidence/delivery controls. It remains unpublished to npm
-and is not production-proven. Longer reliability runs and real operational adoption evidence remain
-future work.
+and is not production-proven. The unscoped npm name is occupied by an unrelated project, so this
+release is evaluated from its source checkout. Longer reliability runs and real operational adoption
+evidence remain future work.

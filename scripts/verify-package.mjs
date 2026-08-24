@@ -154,6 +154,7 @@ const artifactPaths = [
   './docs/releases/v0.6.0.md',
   './docs/releases/v0.7.0.md',
   './docs/releases/v1.0.0.md',
+  './docs/releases/v1.0.1.md',
   './docs/assets/healwright-report-v1.png',
   './api/public-api.json',
   './examples/basic-playwright/playwright.config.ts',

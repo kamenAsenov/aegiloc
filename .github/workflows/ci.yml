@@ -92,7 +92,7 @@ jobs:
       - name: Verify basic consumer example
         run: pnpm example:verify
 
-      - name: Verify realistic technical-preview demo
+      - name: Verify realistic evaluation-release demo
         run: pnpm example:realistic
 
       - name: Exercise reporter with parallel workers

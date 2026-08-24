@@ -1,6 +1,6 @@
 # Compatibility policy
 
-Healwright v1.0.0 establishes a stable public contract for evaluation and carefully scoped pilot
+Healwright v1.0.1 maintains a stable public contract for evaluation and carefully scoped pilot
 use. Stability describes compatibility, not proof of production adoption.
 
 ## Supported environment

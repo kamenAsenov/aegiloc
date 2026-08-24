@@ -1,6 +1,6 @@
 # Known risks
 
-Healwright v1.0.0 is an evaluation release with a stable API. Conservative design reduces some
+Healwright v1.0.1 is an evaluation release with a stable API. Conservative design reduces some
 locator-recovery risks; it does not remove the need for test ownership or product review.
 
 ## False-positive execution
@@ -55,6 +55,12 @@ locators.
 Reproducible tarballs, SBOMs, dependency review, and GitHub attestations improve traceability but do
 not prove absence of vulnerabilities or authorize publication. Attestations are produced only for
 `main` workflow artifacts and remain distinct from npm packages, tags, and releases.
+
+## Distribution identity
+
+The unscoped `healwright` name on npm belongs to an unrelated project. This repository is distributed
+as a GitHub source release only; installing the unscoped npm package does not install this code. Any
+future registry distribution requires a separately reviewed package name owned by this project.
 
 ## Generated report content
 
