@@ -1,8 +1,13 @@
-# Migrating to Aegiloc v1.1
+# Migrating from Healwright v1.0.1 to Aegiloc v1.1
 
-v1.1 introduces the Aegiloc identity and adds backwards-compatible framework capabilities. The
-package was not published under the former name, so this is a repository/package identity reset
-rather than an npm migration.
+Healwright v1.0.1 was the initial GitHub evaluation release. Aegiloc is its renamed successor. The
+target-registry data contract remains compatible and the added framework APIs are additive, but the
+repository, package import, CLI binary, environment prefix, and default evidence path have new
+identities. This is therefore not a drop-in package or CLI upgrade.
+
+No package was published under the former name, so there are no npm consumers or registry artifacts
+to migrate. This guide is for source-checkout evaluators and deliberately records the identity break
+instead of presenting it as an ordinary backwards-compatible minor rename.
 
 ## Rename imports and commands
 
@@ -14,8 +19,9 @@ import AegilocReporter from 'aegiloc/reporter';
 ```
 
 The binary is `aegiloc`, environment variables use the `AEGILOC_` prefix, and default evidence now
-lives under `test-results/aegiloc`. Historical release notes retain the former project name so the
-repository history remains understandable.
+lives under `test-results/aegiloc`. There are no compatibility aliases for the former import, binary,
+environment prefix, or evidence path. Historical release notes retain the former project name so
+the repository history remains understandable.
 
 ## Existing v1 registries
 
@@ -54,6 +60,20 @@ const test = createAegilocTest({
 ```
 
 Start in `observe`; move only reviewed reversible targets to `guarded`.
+
+## Review action risk after the rename
+
+The expanded action list is a technical capability, not a safety classification. For new targets:
+
+- keep `uncheck` as `proposal-only`, especially for consent, terms, permissions, subscriptions, or
+  destructive controls;
+- start `hover` in `observe` or `proposal-only`, because hovering the wrong element can reveal a
+  different menu or change the meaning of a later action;
+- move either action to automatic execution only when the exact target is reviewed as reversible and
+  low impact.
+
+This guidance does not silently reinterpret existing registry files. Older registries retain the
+documented compatibility default, so migration review must set `executionRisk` explicitly.
 
 ## Locator and fingerprint proposals
 

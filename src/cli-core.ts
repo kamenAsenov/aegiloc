@@ -57,7 +57,7 @@ export interface RunCliOptions {
   readonly openPath?: (path: string) => Promise<void>;
 }
 
-const HELP = `Aegiloc v1.1.0 Evaluation Release
+const HELP = `Aegiloc v1.1.1 Evaluation Release
 
 Conservative, deterministic self-healing for Playwright Test.
 

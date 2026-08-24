@@ -178,6 +178,7 @@ const artifactPaths = [
   './docs/releases/v1.0.0.md',
   './docs/releases/v1.0.1.md',
   './docs/releases/v1.1.0.md',
+  './docs/releases/v1.1.1.md',
   './docs/assets/aegiloc-report-v1.png',
   './api/public-api.json',
   './examples/basic-playwright/playwright.config.ts',

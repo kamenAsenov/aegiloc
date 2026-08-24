@@ -125,7 +125,9 @@ installing software.
 
 [`src/report-viewer.ts`](../src/report-viewer.ts) strictly parses history, recomputes the canonical
 summary, and emits one escaped, script-free HTML file. The viewer is downstream evidence
-presentation: it cannot influence scoring, runtime execution, proposals, or governance.
+presentation: it cannot influence scoring, runtime execution, proposals, or governance. Its target
+health values are history-derived indicators from supplied test evidence, not production telemetry
+or a reliability claim.
 
 ## Trust boundaries
 

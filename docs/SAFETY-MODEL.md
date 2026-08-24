@@ -70,6 +70,12 @@ A proposal-only target still collects compatible candidates and records diagnost
 `observe`, `guarded`, or `strict-ci` workflows, but no replacement can execute. The policy is
 recorded in audit events and checked again immediately before candidate resolution.
 
+New `uncheck` targets should remain `proposal-only` when they affect consent, terms, permissions,
+subscriptions, or destructive state. New `hover` targets should begin in `observe` or
+`proposal-only`, because a wrong hover can change the interaction context for subsequent steps.
+Automatic execution is a per-target decision reserved for reviewed, reversible, low-impact controls;
+support for an action does not itself make that action safe.
+
 ## Why scores cannot override semantics
 
 Weighted similarity is useful for ordering compatible candidates, but arithmetic must not make an

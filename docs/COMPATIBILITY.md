@@ -50,9 +50,12 @@ fingerprint proposal bundle is version 1. Target registry, evidence manifest, go
 and health summary remain version 1. The checked-in API inventory records these versions and their
 stable package subpaths.
 
-The v1.1 Aegiloc identity replaces the former source-only repository/package name. Because no npm
-package was published under the former name, registry consumers do not have an in-place package
-upgrade. Source-checkout evaluators should follow [`MIGRATION-v1.1.md`](MIGRATION-v1.1.md).
+Healwright v1.0.1 was the initial GitHub evaluation release; Aegiloc is its renamed successor. The
+v1.1 identity replaces the former source-only repository, package, binary, environment prefix, and
+evidence path without compatibility aliases. This identity transition is not a drop-in minor
+upgrade. Because no npm package was published under the former name, registry consumers do not have
+an in-place package migration. Source-checkout evaluators should follow
+[`MIGRATION-v1.1.md`](MIGRATION-v1.1.md).
 
 ## Reviewing API changes
 

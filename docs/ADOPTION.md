@@ -117,6 +117,13 @@ Use `proposal-only` for checkout submission, destructive actions, permission cha
 authentication, or any action where a plausible wrong target has material consequences. It still
 collects reviewable evidence but blocks automatic execution.
 
+For new `uncheck` targets, `proposal-only` is the default recommendation—particularly for consent,
+terms, permissions, subscriptions, and destructive controls. Start `hover` targets in `observe` or
+`proposal-only`; a wrong hover can reveal a different menu or alter the context for a later action.
+Move either to `automatic` only after reviewing that exact target as reversible and low impact. This
+guidance does not change the parser's compatibility default for older registries, so declare
+`executionRisk` explicitly.
+
 ## Review a healed pass
 
 1. Treat `PASSED_WITH_HEALING` as exceptional, not as an ordinary green test.
@@ -141,6 +148,8 @@ learn from a failed or healed action.
 Use the Aegiloc reporter with the ordinary Playwright reporters. Retain canonical history,
 summary, manifest, health summary, screenshots, and traces according to your data policy. These may
 contain target names, accessible text, selectors, paths, commit identifiers, and application state.
+Health and viewer metrics are history-derived indicators from the retained test runs supplied to
+Aegiloc. They are not production telemetry and do not establish reliability in client systems.
 
 Recommended CI order:
 

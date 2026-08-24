@@ -117,7 +117,7 @@ test('renders a practical, self-contained v1 decision report', () => {
   expect(html).toContain('Scoring signals');
   expect(html).toContain('What should I do next?');
   expect(html).toContain('screenshots/before.png');
-  expect(html).toContain('v1.1.0 evaluation release');
+  expect(html).toContain('v1.1.1 evaluation release');
   expect(html).toMatch(/script-src 'sha256-[A-Za-z0-9+/=]+'/u);
   expect(html).toContain("default-src 'none'");
   expect(html).not.toMatch(/(?:src|href)=["']https?:/u);

@@ -1,7 +1,7 @@
 # Aegiloc
 
 [![CI](https://github.com/kamenAsenov/aegiloc/actions/workflows/ci.yml/badge.svg)](https://github.com/kamenAsenov/aegiloc/actions/workflows/ci.yml)
-[![Version](https://img.shields.io/badge/version-1.1.0-2f81f7.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.1.1-2f81f7.svg)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 **A conservative, deterministic self-healing layer for Playwright Test.**
@@ -14,9 +14,15 @@ reviewable evidence. A false-positive heal is worse than a failed heal.
 await healer.target('checkout.placeOrder').click();
 ```
 
-**v1.1.0 is a stable-API evaluation release for external review and carefully scoped pilots.** It
+**v1.1.1 is a stable-API evaluation release for external review and carefully scoped pilots.** It
 is not a claim of production adoption. No Aegiloc package has been published to npm; evaluate the
 project from this source repository.
+
+**Project lineage:** Healwright v1.0.1 was the initial GitHub evaluation release. Aegiloc is its
+renamed successor with a new repository, package, binary, environment-prefix, and evidence-path
+identity. It is not a drop-in package or CLI rename. No package was published under the former name,
+so there is no npm registry migration; source-checkout evaluators should follow the
+[v1.1 migration guide](docs/MIGRATION-v1.1.md).
 
 ## See it work
 
@@ -74,10 +80,15 @@ real product regressions remain ordinary failures. Read the [safety model](docs/
 | Execution risk   | `automatic` or `proposal-only` per target                                               |
 | Evidence         | JSONL, ranked candidates, before/after screenshots, summaries, integrity manifests      |
 | Review loop      | unique locator suggestions, consensus proposals, opt-in fingerprint observations        |
-| Operations       | health trends, budgets, baselines, waivers, static local report                         |
+| Operations       | history-derived indicators, budgets, baselines, waivers, static local report            |
 
 No LLM, API key, cloud service, Docker, database, OCR, or visual AI is required. Candidate scoring is
 fixed and replayable. Aegiloc uses public Playwright APIs only.
+
+Action support is not blanket authorization to heal. Treat new `uncheck` targets as `proposal-only`,
+especially for consent, terms, permissions, subscriptions, and destructive controls. Start `hover`
+in `observe` or `proposal-only`; permit automatic execution only for a reviewed low-impact target.
+These are policy recommendations—older registries retain their documented compatibility defaults.
 
 ## Minimal integration
 
@@ -115,7 +126,7 @@ flowchart LR
   E -->|"weak or ambiguous"| F["Fail closed + audit"]
   E -->|"high confidence"| G["Fresh guarded revalidation"]
   G -->|"same unique winner"| H["Action + PASSED_WITH_HEALING"]
-  H --> I["Evidence, review proposals, health analytics"]
+  H --> I["Evidence, review proposals, history-derived indicators"]
 ```
 
 The design draws practical lessons from mature and experimental locator-recovery projects while
@@ -161,7 +172,7 @@ examples, and the focused browser matrix. It never publishes to npm.
 - [Architecture](docs/ARCHITECTURE.md) · [Technical reference](docs/TECHNICAL-REFERENCE.md)
 - [Safety model](docs/SAFETY-MODEL.md) · [Known risks](docs/KNOWN-RISKS.md)
 - [Compatibility](docs/COMPATIBILITY.md) · [v1.1 migration](docs/MIGRATION-v1.1.md)
-- [v1.1 release notes](docs/releases/v1.1.0.md) · [Roadmap](ROADMAP.md)
+- [v1.1.1 release notes](docs/releases/v1.1.1.md) · [Roadmap](ROADMAP.md)
 
 ## License
 

@@ -80,6 +80,13 @@ ranks evidence but never executes a replacement. Older v0.3 registries without `
 retain the documented `automatic` compatibility default; v0.4 registries should declare it
 explicitly. See [`MIGRATION-v0.4.md`](MIGRATION-v0.4.md).
 
+Action support is not an execution-risk classification. For new registries, keep `uncheck`
+`proposal-only` when it can remove consent, terms acceptance, permissions, subscriptions, or another
+material state. Start `hover` in `observe` or `proposal-only`, because a wrong hover can expose a
+different interaction context. Automatic execution is appropriate only after the exact target—not
+merely the action name—is reviewed as reversible and low impact. This is maintainer guidance rather
+than a silent change to the compatibility default above.
+
 ## Deterministic scoring
 
 The scoring engine is pure: identical fingerprints and candidate snapshots produce the same ranking.
@@ -158,9 +165,11 @@ test-results/aegiloc/summary.json
 ```
 
 The summary covers assessment decisions, execution outcomes, target/action counts, successful
-heals, runs, tests, projects, retries, commits, and legacy events. Identical duplicates are
-deduplicated. Conflicting event reuse, malformed attachments, missing bodies, and name/body mismatch
-fail the run. Output is deterministic and written atomically.
+heals, runs, tests, projects, retries, commits, and legacy events. These are history-derived
+indicators from the supplied test evidence, not production telemetry or proof of reliability in a
+client system. Identical duplicates are deduplicated. Conflicting event reuse, malformed
+attachments, missing bodies, and name/body mismatch fail the run. Output is deterministic and
+written atomically.
 
 ```bash
 pnpm evidence:verify

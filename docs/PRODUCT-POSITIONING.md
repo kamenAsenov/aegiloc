@@ -28,6 +28,8 @@ Aegiloc demonstrates that locator recovery can be bounded by explicit contracts:
 - scoring is fixed, deterministic, and inspectable;
 - guarded execution requires confidence, separation, semantic identity, and fresh agreement;
 - evidence, proposals, and governance make exceptional passes visible and reviewable.
+- target-health values are history-derived test indicators, not production telemetry or reliability
+  claims.
 - a deterministic local demo and zero-dependency report viewer make those boundaries practical to
   evaluate without a hosted service.
 - optional manifests, reproducible packages, SBOMs, and provenance-ready CI connect runtime evidence
